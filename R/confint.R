@@ -1,0 +1,66 @@
+##' Calculate Wald og Likelihood based (profile likelihood) confidence intervals
+##' 
+##' Calculates either Wald confidence limits: \deqn{\hat{\theta} \pm
+##' z_{\alpha/2}*\hat\sigma_{\hat\theta}} or profile likelihood confidence
+##' limits, defined as the set of value \eqn{\tau}:
+##' \deqn{logLik(\hat\theta_{\tau},\tau)-logLik(\hat\theta)< q_{\alpha}/2}
+##' 
+##' where \eqn{q_{\alpha}} is the \eqn{\alpha} fractile of the \eqn{\chi^2_1}
+##' distribution, and \eqn{\hat\theta_{\tau}} are obtained by maximizing the
+##' log-likelihood with tau being fixed.
+##'
+##' @title Calculate confidence limits for parameters
+##' @param object \code{lvm}-object.
+##' @param parm Index of which parameters to calculate confidence limits for.
+##' @param level Confidence level
+##' @param profile Logical expression defining whether to calculate confidence
+##' limits via the profile log likelihood
+##' @param \dots Additional arguments to be passed to the low level functions
+##' @return A 2xp matrix with columns of lower and upper confidence limits
+##' @author Klaus K. Holst
+##' @seealso \code{\link{bootstrap}{lvm}}
+##' @keywords models regression
+##' @examples
+##' 
+##' m <- lvm(y~x)
+##' d <- sim(m,100)
+##' e <- estimate(y~x, d)
+##' confint(e,3,profile=TRUE)
+##' confint(e,3)
+##' \dontrun{
+##' B <- bootstrap(e,R=100)
+##' B
+##' }
+##'
+##' @aliases confint.multigroupfit
+##' @S3method confint lvmfit
+##' @method confint lvmfit
+confint.lvmfit <- function(object,parm=1:length(coef(object)),level=0.95,profile=FALSE,...) {
+  if (is.character(parm)) {
+    parm <- parpos(Model(object),p=parm)
+    parm <- parm[attributes(parm)$ord]
+  } 
+  if (!profile) {
+    return(confint.default(object,parm=parm,level=level,...))
+  }
+  res <- c()
+  for (i in parm) {
+    res <- rbind(res, profci.lvmfit(object,parm=i,level=level,profile=profile))
+  }  
+  rownames(res) <- names(coef(object))[parm]
+  colnames(res) <- paste((c(0,1) + c(1,-1)*(1-level)/2)*100,"%")
+  return(res) 
+}
+
+
+##' @S3method confint multigroupfit
+confint.multigroupfit <- function(object,parm=1:length(pars(object)),level=0.95,
+                                  estimates=TRUE,...) {
+  p <- 1-(1-level)/2
+  res <- cbind(pars(object),pars(object)) + qnorm(p)*cbind(-1,1)%x%diag(vcov(object))^0.5
+  colnames(res) <- paste(c(1-p,p)*100,"%",sep="")
+  rownames(res) <- parpos(object); rownames(res)[is.na(rownames(res))] <- ""
+  if (estimates) res <- cbind(coef(object,level=0)[,c(1,2,4)],res)
+  res[parm,,drop=FALSE]
+}
+  

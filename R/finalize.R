@@ -1,0 +1,167 @@
+##' @export
+`finalize` <-
+function(x,...) UseMethod("finalize")
+
+##' @S3method finalize lvm
+`finalize.lvm` <-
+function(x, diag=FALSE, cor=FALSE, addcolor=TRUE, intercept=FALSE, plain=FALSE, cex, fontsize1=10, cols=c("lightblue","orange","yellowgreen"), unexpr=FALSE, addstyle=TRUE, ...) {
+  opt <- options(warn=-1)
+  var <- rownames(covariance(x)$rel)
+
+  g <- Graph(x)
+
+   if (unexpr) {
+    mylab <- as.character(edgeRenderInfo(g)$label); names(mylab) <- names(edgeRenderInfo(g)$label)
+    g@renderInfo@edges$label <- as.list(mylab)
+  } 
+  
+  if (length(edgeDataDefaults(g)$futureinfo)>0) {
+    estr <- names(edgeDataDefaults(g)$futureinfo$label)
+    estr <- estr[which(unlist(lapply(estr,nchar))>0)]
+    revestr <- sapply(estr, function(y) paste(rev(unlist(strsplit(y,"~"))),collapse="~"))
+    revidx <- which(revestr%in%edgeNames(g))
+    count <- 0
+    for (i in estr) {      
+      count <- count+1
+      for (f in names(edgeDataDefaults(g)$futureinfo)) {
+  ##      edgeRenderInfo(g)[[f]][[i]] <- edgeDataDefaults(g)$futureinfo[[f]][[i]]
+        if (count%in%revidx)
+          g@renderInfo@edges[[f]][[revestr[count]]] <- edgeDataDefaults(g)$futureinfo[[f]][[i]]
+        else
+          g@renderInfo@edges[[f]][[i]] <- edgeDataDefaults(g)$futureinfo[[f]][[i]]          
+      }
+    }
+  }  
+  
+  if (intercept) {
+  ##  mu <- intfix(x)
+  ##  nNA <- sum(is.na(mu))
+ ##   if (nNA>0)
+##      mu[is.na(mu)] <- paste("m",1:nNA)
+##    mu <- unlist(mu)
+##    x <- addNode(mu,x)
+##    for (i in 1:length(mu)) {
+  ##    print(mu[i])
+##      x <- addEdge(var[i], var[i], x)
+##    }
+##    x <- addattr(x,attr="shape",var=mu,val="none")      
+  }
+
+  allEdges <- edgeNames(g)
+  regEdges <- c()
+  recursive <- c()
+  A <- index(x)$A
+  if (index(x)$npar.reg>0)
+  for (i in 1:(nrow(A)-1))
+    for (j in (i+1):(ncol(A))) {
+##      if(A[i,j]==1 & A[j,i]==1) recursive <- c(recursive,
+##                        paste(var[i],"~",var[j], sep=""),
+##                        paste(var[j],"~",var[i], sep=""))
+      
+      if(A[i,j]==1) regEdges <- c(regEdges,paste(var[i],"~",var[j], sep=""))
+      if(A[j,i]==1) regEdges <- c(regEdges,paste(var[j],"~",var[i], sep=""))
+    }
+
+  
+  varEdges <- corEdges <- c()
+  delta <- ifelse(diag,0,1)  
+  if (cor | diag) {
+    for (r in 1:(nrow(covariance(x)$rel)-delta) ) {
+      for (s in (r+delta):ncol(covariance(x)$rel) ) {
+        if (cor | r==s)
+          if (covariance(x)$rel[r,s]==1 & (!any(c(var[r],var[s])%in%exogenous(x)))) {
+            newedges <- c()
+            if (A[r,s]!=1) {
+              g <- addEdge(var[r],var[s], g)
+              newedges <- paste(var[r],"~",var[s], sep="")
+            } else {
+              if (A[s,r]!=1) {
+                g <- addEdge(var[s],var[r], g)
+                newedges <- c(newedges,paste(var[s],"~",var[r], sep=""))
+              }
+            }
+##            g <- addEdge(var[s],var[r], g)
+##            newedges <- c(paste(var[r],"~",var[s], sep=""),
+##                          paste(var[s],"~",var[r], sep=""))
+            if (r==s)
+              varEdges <- c(varEdges,
+                            newedges
+                            )
+            if (r!=s)
+            corEdges <- c(corEdges,newedges)
+          }
+      }
+    }
+  }
+
+  allEdges <- unique(c(regEdges,corEdges,varEdges))
+  corEdges <- setdiff(corEdges,regEdges)
+
+  for (e in allEdges) {
+    dir <- "forward"; lty <- 1; arrowtail <- "none"
+    if (e %in% recursive) {
+      dir <- "none"; lty <- 1; arrowtail <- "open"
+    }
+    if (e %in% varEdges) {
+      dir <- "none"; lty <- 2; arrowtail <- "none"
+    }
+    if (e %in% corEdges) {
+      dir <- "none"; lty <- 2; arrowtail <- "open"
+    }
+    arrowhead <- "open"
+##    estr <- paste("\"",e,"\"",sep="")
+    estr <- e
+    for (f in c("col","cex","textCol","lwd","lty")) {
+      if (!(estr%in%names(edgeRenderInfo(g)[[f]]))
+          || is.na(edgeRenderInfo(g)[[f]][[estr]]))
+        g <- addattr(g,f,var=estr,
+                     val=edgeDataDefaults(g)[[f]],
+                     fun="edgeRenderInfo")      
+    }
+
+    if (addstyle) {
+      g <- addattr(g,"lty",var=estr,val=lty,fun="edgeRenderInfo")
+      g <- addattr(g,"direction",var=estr,val=dir,fun="edgeRenderInfo")
+      g <- addattr(g,"dir",var=estr,val=dir,fun="edgeRenderInfo")
+      g <- addattr(g,"arrowhead",var=estr,val=arrowhead,fun="edgeRenderInfo")
+      g <- addattr(g,"arrowtail",var=estr,val=arrowtail,fun="edgeRenderInfo")
+      g <- addattr(g,attr="fontsize",var=estr,val=fontsize1,fun="edgeRenderInfo")
+    }
+    if (is.null(edgeRenderInfo(g)$label))
+      edgeRenderInfo(g)$label <- expression()
+
+    if (!missing(cex))
+      if (!is.null(cex))
+        nodeRenderInfo(g)$cex <- cex
+
+    if (plain) {
+      x <- addattr(x,attr="shape",var=vars(x),val="none")      
+    } else {    
+      if (addcolor) {
+        if (is.null(nodeRenderInfo(Graph(x))$fill)) notcolored <- vars(x)
+        else notcolored <- vars(x)[is.na(nodeRenderInfo(Graph(x))$fill)]
+        nodecolor(g, intersect(notcolored,exogenous(x))) <- cols[1]
+        nodecolor(g, intersect(notcolored,endogenous(x))) <- cols[2]
+        nodecolor(g, intersect(notcolored,latent(x))) <- cols[3]
+        ##        nodecolor(x, intersect(notcolored,survival(x))) <- cols[4]        
+        myhooks <- gethook("color.hooks")
+        count <- 3
+        for (f in myhooks) {
+          count <- count+1
+          res <- do.call(f, list(x=x,subset=notcolored))
+          if (length(cols)>=count) {
+            nodecolor(g,res$vars) <- cols[count]
+          } else {
+            nodecolor(g, res$vars) <- res$col
+          }
+        }       
+      }
+    }
+    
+  }
+  
+  options(opt)
+  return(g)
+}
+
+

@@ -1,0 +1,55 @@
+##' Generic method for labeling elements of an object
+##'
+##' @title Label elements of object
+##' @param x Object
+##' @param ... Additional arguments
+##' @author Klaus K. Holst
+##' @export
+`baptize` <- function(x,...) UseMethod("baptize")
+
+###{{{ baptize.lvm
+
+##' @S3method baptize lvm
+baptize.lvm <- function(x,labels,overwrite=FALSE,unique=FALSE,...) {
+  p <- describecoef(x, mean=TRUE)  
+  MeanFix <- intfix(x)
+  RegFix <- regfix(x)
+  CovFix <- covfix(x)
+  count <- 0
+  curlab <- parlabels(x)
+  coef(x)
+  for (i in 1:length(p)) {
+    p0 <- p[[i]]
+    if (attributes(p0)$type=="reg") {
+      curfix <- RegFix$values[p0[2],p0[1]]
+      curlab <- RegFix$labels[p0[2],p0[1]]
+      if (all(is.na(c(curfix,curlab))) | overwrite) {
+        count <- count+1
+##        st <- ifelse(missing(labels),paste("p",count,sep=""),labels[count])
+        st <- ifelse(missing(labels),paste(p0[1],p0[2],sep="<-"),labels[count])
+        regfix(x,from=p0[2],to=p0[1]) <- st
+      }
+    } else if (attributes(p0)$type=="cov") {
+      curfix <- CovFix$values[p0[2],p0[1]]
+      curlab <- CovFix$labels[p0[2],p0[1]]
+      if (all(is.na(c(curfix,curlab))) | overwrite) {
+        count <- count+1
+##        st <- ifelse(missing(labels),paste("p",count,sep=""),labels[count])
+##        st <- paste("p",count,sep="")
+        st <- ifelse(missing(labels),paste(p0[1],p0[2],sep="<->"),labels[count])
+        covfix(x,p0[2],p0[1],exo=FALSE) <- st
+      }
+    } else { ## Mean parameter
+      curfix <- MeanFix[[p0]]
+      if (is.na(curfix) | overwrite) {
+        count <- count+1
+        st <- ifelse(missing(labels),p0,labels[count]) 
+##        st <- ifelse(missing(labels),paste("m",count,sep=""),labels[count])
+        intfix(x,p0) <- st        
+      }
+    }
+  }
+  return(x)
+}
+
+###}}}

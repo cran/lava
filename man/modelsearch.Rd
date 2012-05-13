@@ -1,0 +1,44 @@
+\name{modelsearch}
+\alias{modelsearch}
+\title{Model searching}
+\usage{
+  modelsearch(x, k = 1, dir = "forward", ...)
+}
+\arguments{
+  \item{x}{\code{lvmfit}-object}
+
+  \item{k}{Number of parameters to test simultaneously. For
+  \code{equivalence} the number of additional associations
+  to be added instead of \code{rel}.}
+
+  \item{dir}{Direction to do model search. "forward" := add
+  associations/arrows to model/graph (score tests),
+  "backward" := remove associations/arrows from model/graph
+  (wald test)}
+
+  \item{\dots}{Additional arguments to be passed to the low
+  level functions}
+}
+\value{
+  Matrix of test-statistics and p-values
+}
+\description{
+  Performs Wald or score tests
+}
+\examples{
+m <- lvm();
+regression(m) <- c(y1,y2,y3) ~ eta; latent(m) <- ~eta
+regression(m) <- eta ~ x
+m0 <- m; regression(m0) <- y2 ~ x
+dd <- sim(m0,100)[,manifest(m0)]
+e <- estimate(m,dd);
+modelsearch(e)
+}
+\author{
+  Klaus K. Holst
+}
+\seealso{
+  \code{\link{compare}}, \code{\link{equivalence}}
+}
+\keyword{htest}
+

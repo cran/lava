@@ -1,0 +1,33 @@
+\name{Graph}
+\alias{Graph}
+\alias{Graph<-}
+\title{Extract graph}
+\usage{
+  Graph(x, ...)
+
+  Graph(x, ...) <- value
+}
+\arguments{
+  \item{x}{Model object}
+
+  \item{value}{New \code{graphNEL} object}
+
+  \item{\dots}{Additional arguments to be passed to the low
+  level functions}
+}
+\description{
+  Extract or replace graph object
+}
+\examples{
+m <- lvm(y~x)
+Graph(m)
+}
+\author{
+  Klaus K. Holst
+}
+\seealso{
+  \code{\link{Model}}
+}
+\keyword{graphs}
+\keyword{models}
+
