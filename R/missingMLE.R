@@ -30,8 +30,8 @@ missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=
   exo <- exogenous(model)
   exclude <- c()
 
-  exoremove <- c()
   for (i in setdiff(1:nrow(patterns),pattern.allmis)) {
+    exoremove <- c()
     includemodel <- TRUE
     count <- count+1
     mypattern <- patterns[i,]
@@ -41,25 +41,25 @@ missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=
       latent(m0,zero=FALSE) <- colnames(data.mis)[mypattern]
       if (type>1) {
         mytop <- intersect(topendo,colnames(data.mis)[mypattern])
-        if (!is.null(mytop))
+        if (!is.null(mytop)) {
           kill(m0) <- mytop
-###        for (xx in exo) {
-
-          ### Commented out, 30/1/2012 KKHO          
+          for (xx in exo) {        
           ## If exogenous variable only have effect on missing variables,
           ##  then remove it from the model
-###          if (all(c(rownames(A)[A[xx,]==1])%in%names(mypattern)[mypattern])) {
-###            exoremove <- c(exoremove,xx)
-###            kill(m0) <- xx
+            if (all(c(rownames(A)[A[xx,]==1])%in%mytop)) {
+              exoremove <- c(exoremove,xx)
+              kill(m0) <- xx
+            }
+          }
             ## and is missing,
 ##            if (all(c(xx,rownames(A)[A[xx,]==1])%in%names(mypattern)[mypattern])) {
 
 ###         }
 ###        }
+        }
       }
     ##      kill(m0) <- colnames(data.mis)[mypattern]
     } else
-
     pattern.compl <- count
 ##    d0 <- data[mis.type==i,manifest(m0),drop=FALSE];
     d0 <- data[mis.type==i,c(manifest(m0),keep),drop=FALSE];
@@ -76,7 +76,6 @@ missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=
     clust0 <- cluster[mis.type==i]
     modelexo <- exogenous(model)
     exogenous(m0) <- setdiff(modelexo,exoremove)
-    
     ##    index(m0) <- reindex(m0,deriv=TRUE,zeroones=TRUE)
     if (is.null(intersect(modelexo,latent(m0)))) {
       print("Missing exogenous variables... Going for complete-case analysis in these cases")
@@ -134,7 +133,7 @@ estimate.MAR <- function(x,data,which=endogenous(x),fix,type=2,startcc=FALSE,con
 ##  }
   if (missing(fix))
     fix <- ifelse(length(xfix)>0,FALSE,TRUE)  
-
+  
   S <- diag(length(manifest(x)));
   mu <- rep(0,nrow(S));  
   ##  S <- mu <- NULL
@@ -241,21 +240,28 @@ estimate.MAR <- function(x,data,which=endogenous(x),fix,type=2,startcc=FALSE,con
     if (!silent)
       message("\n")
   }
-  names(control$start) <- NULL
+  ##  names(control$start) <- NULL
   if (is.null(control$meanstructure))
     control$meanstructure <- TRUE
   ##  if (is.null(control$information))
   ##    control$information <- "obs"
-
+  
   mg0 <- with(val, suppressWarnings(multigroup(models,datasets,fix=FALSE,exo.fix=FALSE,missing=FALSE)))
-
+  if (!is.null(names(control$start))) {
+    ## Find position of parameters
+    parorder1 <- parpos(mg0,p=names(control$start))
+    paridx <- match(parorder1,names(control$start))
+    newpos <- paridx[which(!is.na(paridx))]   
+    control$start[which(!is.na(paridx))] <- control$start[na.omit(paridx)]
+  }
+  
   
   if (onlymodel) return(list(mg=mg0,val=val,weight=val$weights,weight2=val$weights2,cluster=val$clusters))
 
   if (all(unlist(lapply(val$weights,is.null)))) val$weights <- NULL
   if (all(unlist(lapply(val$weights2,is.null)))) val$weights2 <- NULL
   if (all(unlist(lapply(val$clusters,is.null)))) val$clusters <- NULL
-  
+
 ##  e.mis <- estimate(mg0,control=list(start=p,trace=1,method="nlminb1"))
   e.mis <- estimate(mg0,control=control,silent=silent,
                     weight=val$weights,weight2=val$weights2,
