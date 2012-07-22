@@ -7,12 +7,11 @@
 ##' @S3method distribution<- lvm
 "distribution<-.lvm" <- function(x,variable,...,value) {
   if (class(variable)[1]=="formula")
-    variable <- all.vars(variable)
+    variable <- all.vars(variable)  
   if (length(variable)==1) {
-    var. <- paste("\"", variable, "\"", sep="")
+    addvar(x) <- as.formula(paste("~",variable))
     if (is.numeric(value)) value <- list(value)
-    mytext <- paste("c(", paste(paste(var.,"=",expression(value),sep=""),collapse=","),")")
-    nodeRenderInfo(Graph(x))$"distribution" <- eval(parse(text=mytext))
+    x$attributes$distribution[[variable]] <- value ##eval(parse(text=mytext))
     return(x)
   }    
   if ((length(value)!=length(variable) & length(value)!=1))
@@ -29,7 +28,7 @@
 
 ##' @S3method distribution lvm
 "distribution.lvm" <- function(x,var,...) {
-  nodeRenderInfo(Graph(x))$distribution[var]
+  x$attributes$distribution[var]
 }
 
 

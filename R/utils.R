@@ -189,7 +189,7 @@ fixsome <- function(x, exo.fix=TRUE, measurement.fix=TRUE, S, mu, n, data, x0=FA
 ##    etas <- index(x)$latent
 ##    ys <- index(x)$endogenous
     ys <- endogenous(x)
-    M <- as(Graph(x), Class="matrix")
+    M <- x$M
 
     for (e in etas) { ## Makes sure that at least one arrow from latent variable is fixed (identification)
       ys. <- names(which(M[e,ys]==1))
@@ -323,9 +323,17 @@ categorical2dummy <- function(x,data,silent=TRUE,...) {
   count <- 0
   for (i in catX) {
     count <- count+1
-    Y <- colnames(A)[A[i,]==1]
+    mnames <- Mnames[Mpos==count]
     kill(x0) <- i  
-    x0 <- regression(x0,to=Y,from=Mnames[Mpos==count],silent=silent)
+    Y <- colnames(A)[A[i,]==1]
+    if (length(mnames)==1) { 
+      fix <- as.list(F$labels[i,])
+      fixval <- F$values[i,]
+      fix[which(!is.na(fixval))] <- fixval[na.omit(fixval)]
+      regression(x0,to=Y,from=mnames,silent=silent) <- fix[Y]
+    } else {
+      x0 <- regression(x0,to=Y,from=mnames,silent=silent)
+    }
   }
   index(x0) <- reindex(x0,zeroones=TRUE,deriv=TRUE)
   return(list(x=x0,data=cbind(data,M)))
@@ -691,6 +699,23 @@ CondMom <- function(mu,S,idx,X) {
 }
 
 ###}}} CondMom
+
+###{{{ Depth-First/acc (accessible)
+
+DFS <- function(M,v,explored=c()) {
+  explored <- union(explored,v)
+  incident <- M[v,]
+  for (v1 in setdiff(which(incident==1),explored)) {
+    explored <- DFS(M,v1,explored)
+  }
+  return(explored)
+}
+acc <- function(M,v) {
+  if (is.character(v)) v <- which(colnames(M)==v)
+  colnames(M)[setdiff(DFS(M,v),v)]
+}
+
+###}}} Depth-First/acc (accessible)
 
 npar.lvm <- function(x) {
   return(index(x)$npar+ index(x)$npar.mean)
