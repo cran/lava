@@ -3,16 +3,44 @@
 ##' @S3method print lvm
 `print.lvm` <-
 function(x, ...) {
-  k <- length(vars(x))
-  cat("Latent Variable Model \n\twith: ", k, " variables.\n", sep="");
-  if (k==0)
-    return()
-  cat("Npar=", index(x)$npar, "+", index(x)$npar.mean, "\n", sep="")
-  cat("\n")
-  ff <- formula(x,TRUE)
-  for (f in ff) {
-    oneline <- as.character(f); 
-    cat(as.character(oneline),"\n")
+  res <- NULL
+  myhooks <- gethook("print.hooks")
+  for (f in myhooks) {
+    res <- do.call(f, list(x=x,...))
+  }
+  if (is.null(res)) {
+    k <- length(vars(x))
+    L <- rep(FALSE,k); names(L) <- vars(x); L[latent(x)] <- TRUE
+    cat("Latent Variable Model\n") ##;" \n\twith: ", k, " variables.\n", sep="");
+    if (k==0)
+      return()
+    ff <- formula(x,TRUE)
+    R <- c()
+    for (f in ff) {
+      oneline <- as.character(f);
+      y <- gsub(" ","",strsplit(f,"~")[[1]][1])
+##      if (!(y %in% endogenous(m)))
+      {
+        col1 <- as.character(oneline)
+        D <- attributes(distribution(x)[[y]])$family
+        col2 <- "Normal"
+        if (!is.null(D$family)) col2 <- paste(D$family,sep="")
+        if (!is.null(D$link)) col2 <- paste(col2,"(",D$link,")",sep="")
+        if (!is.null(D$par)) col2 <- paste(col2,"(",paste(D$par,collapse=","),")",sep="")
+        if (L[y]) col2 <- paste(col2,", Latent",sep="")  
+        R <- rbind(R,c(col1,"  ",col2))
+      }
+    }
+    if (length(R)>0) {
+      rownames(R) <- rep("",nrow(R)); colnames(R) <- rep("",ncol(R))
+      print(R,quote=FALSE,...)
+    }
+    cat("\n")
+    cat("Number of free parameters: ", index(x)$npar, " (+", index(x)$npar.mean, " intercepts)\n", sep="")
+
+##      oneline <- as.character(f); 
+##      cat(as.character(oneline),"\n")
+
   }
   invisible(x)
 }

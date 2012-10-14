@@ -33,6 +33,10 @@
 ##' The second argument of \code{f} can also be a number (e.g. defining an
 ##' offset) or be set to \code{NA} in order to clear any previously defined
 ##' linear constraints.
+##'
+##' Alternatively, a more straight forward notation can be used:
+##' 
+##' \code{regression(m) <- y ~ beta*x1 + beta*x2}
 ##' 
 ##' All the parameter values of the linear constraints can be given as the right
 ##' handside expression of the assigment function \code{regression<-} (or
@@ -113,49 +117,62 @@
       return(object)
     }
       
-    
     if (class(value)[1]=="formula") {
+      yx <- lapply(strsplit(as.character(value),"~"),function(x) gsub(" ","",x))[-1]
+      ##lhs <- getoutcome(value)
+      if (length(yx)==1) {        
+        lhs <- NULL; xidx <- 1
+      } else {
+        lhs <- yx[1]; xidx <- 2
+      }
+      X <- strsplit(yx[[xidx]],"+",fixed=TRUE)[[1]]
 
-      lhs <- getoutcome(value)
-      vspec <- attributes(terms(value,specials="v"))$specials$v
-      if (!is.null(vspec) && vspec==1) {
+      if (!is.null(lhs) && nchar(lhs[[1]])>2 && substr(lhs[[1]],1,2)=="v(") {
+      ## vspec <- attributes(terms(value,specials="v"))$specials$v
+      ## if (!is.null(vspec) && vspec==1) {
         v <- update(value,paste(decomp.specials(lhs),"~."))
         covariance(object,...) <- v
         return(object)
       }        
 
       curvar <- index(object)$var
-      ##      yx <- all.vars(value)
-      X <- attributes(terms(value))$term.labels
-      res <- lapply(X,decomp.specials)
+      ##      X <- attributes(terms(value))$term.labels
+      res <- lapply(X,decomp.specials,pattern2="[*]",reverse=TRUE)
       xx <- unlist(lapply(res, function(x) x[1]))      
-      
+
+      notexo <- c()
       if (length(lhs)>0) {
         yy <- decomp.specials(lhs)
-        yyf <- lapply(yy,function(y) decomp.specials(y,NULL,"[",fixed=TRUE))
+        yyf <- lapply(yy,function(y) decomp.specials(y,NULL,pattern2="[",fixed=TRUE))
         ys <- unlist(lapply(yyf,function(x) x[1]))      
-        object <- addvar(object,ys,...)
+        object <- addvar(object,ys,reindex=FALSE,...)
+        notexo <- ys
       }
       
       exo <- c()
-      notexo <- c()
-      xxf <- lapply(res,function(x) decomp.specials(x,NULL,"[",fixed=TRUE))
+      xxf <- lapply(as.list(xx),function(x) decomp.specials(x,NULL,pattern2="[",fixed=TRUE))
       xs <- unlist(lapply(xxf,function(x) x[1]))
-      object <- addvar(object,xs,...)
 
+      ## Remove intercepts?
+      rmint <- na.omit(match("-1",xs))
+      if (length(rmint)>0) intercept(object,ys) <- 0
+      xs <- setdiff(xs,c("-1","1"))
+
+      object <- addvar(object,xs,reindex=FALSE ,...)
       
       for (i in seq_len(length(xs))) {        
         xf <- unlist(strsplit(xx[[i]],"[\\[\\]]",perl=TRUE))
         if (length(xf)>1) {
-          xpar <- decomp.specials(xf[2],NULL,":")
-          val <- ifelse(xpar[1]=="NA",NA,xpar[1])
-          valn <- suppressWarnings(as.numeric(val))
-          intercept(object,xs[i]) <- ifelse(is.na(valn),val,valn)
+          xpar <- strsplit(xf[2],":")[[1]]
           if (length(xpar)>1) {
             val <- ifelse(xpar[2]=="NA",NA,xpar[2])
             valn <- suppressWarnings(as.numeric(val))
             covariance(object,xs[i]) <- ifelse(is.na(valn),val,valn)
           }
+          val <- ifelse(xpar[1]=="NA",NA,xpar[1])
+          valn <- suppressWarnings(as.numeric(val))
+          ##          browser()
+          intercept(object,xs[i]) <- ifelse(is.na(valn),val,valn)
           notexo <- c(notexo,xs[i])
         } else { exo <- c(exo,xs[i]) }
       }
@@ -171,20 +188,20 @@
         newexo <- setdiff(exo,c(notexo,curvar,ys))
         exogenous(object) <- union(newexo,setdiff(oldexo,notexo))
       }
-      
+
       for (i in seq_len(length(ys))) {
         y <- ys[i]
         yf <- unlist(strsplit(yy[i],"[\\[\\]]",perl=TRUE))
         if (length(yf)>1) {
-          ypar <- decomp.specials(yf[2],NULL,":")
-          val <- ifelse(ypar[1]=="NA",NA,ypar[1])
-          valn <- suppressWarnings(as.numeric(val))
-          intercept(object,y) <- ifelse(is.na(valn),val,valn)
+          ypar <- strsplit(yf[2],":")[[1]]
           if (length(ypar)>1) {
             val <- ifelse(ypar[2]=="NA",NA,ypar[2])
             valn <- suppressWarnings(as.numeric(val))
             covariance(object,y) <- ifelse(is.na(valn),val,valn)
           }
+          val <- ifelse(ypar[1]=="NA",NA,ypar[1])
+          valn <- suppressWarnings(as.numeric(val))
+          intercept(object,y) <- ifelse(is.na(valn),val,valn)
         }
         for (j in seq_len(length(xs))) {        
           if (length(res[[j]])>1) {
@@ -251,7 +268,7 @@
     fix <- as.numeric(sapply(sx, FUN=function(i) i[2]))
     allv <- index(object)$vars
     
-    object <- addvar(object, c(to,xs), silent=silent)
+    object <- addvar(object, c(to,xs), silent=silent,reindex=FALSE)
     
     for (i in to)
       for (j in xs) {

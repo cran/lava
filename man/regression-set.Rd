@@ -76,6 +76,11 @@
   (e.g. defining an offset) or be set to \code{NA} in order
   to clear any previously defined linear constraints.
 
+  Alternatively, a more straight forward notation can be
+  used:
+
+  \code{regression(m) <- y ~ beta*x1 + beta*x2}
+
   All the parameter values of the linear constraints can be
   given as the right handside expression of the assigment
   function \code{regression<-} (or \code{regfix<-}) if the

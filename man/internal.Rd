@@ -38,6 +38,7 @@
 \alias{parfix<-}
 \alias{parlabels}
 \alias{pars}
+\alias{pars.glm}
 \alias{pars.lvm}
 \alias{pars.lvmfit}
 \alias{procdata.lvmfit}
@@ -46,6 +47,8 @@
 \alias{randomslope<-}
 \alias{reindex}
 \alias{reorderdata}
+\alias{score.glm}
+\alias{Specials}
 \alias{starter.multigroup}
 \alias{startvalues}
 \alias{startvalues2}

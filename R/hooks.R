@@ -41,14 +41,8 @@ gethook <- function(hook="estimate.hooks",...) {
 
 ##' @export
 addhook <- function(x,hook="estimate.hooks",...) {
-  ##  env <- as.environment("package:lava")
-  ##  unlockBinding(hook,lava.env)
   newhooks <- unique(c(gethook(hook),x))
   assign(hook,newhooks,envir=lava.env)
-  ## lavaopt <- options()$lava
-  ## lavaopt[[hook]] <- c(gethook(hook),x)
-  ## options(lava=lavaopt)
-  ##  lockBinding(hook, lava.env)
   invisible(newhooks)
 }
 
@@ -58,18 +52,23 @@ assign("estimate.hooks",c(),envir=lava.env)
 assign("color.hooks",c(),envir=lava.env)
 assign("sim.hooks",c(),envir=lava.env)
 assign("post.hooks",c(),envir=lava.env)
+assign("print.hooks",c(),envir=lava.env)
+assign("plot.post.hooks",c(),envir=lava.env)
+assign("plot.hooks",c(),envir=lava.env)
 assign("options", list(
-                trace=0,
-                iter.max=300,
-                eval.max=250,
-                constrain=FALSE,
-                silent=TRUE,            
-                itol=1e-9,
-                Dmethod="simple", ##Richardson"
-                parallel=TRUE,
-                param="relative",
-                constrain=TRUE,
-                exogenous=TRUE,
-                Rgraphviz=TRUE,
-                debug=FALSE), envir=lava.env)
+                    trace=0,
+                    iter.max=300,
+                    eval.max=250,
+                    constrain=FALSE,
+                    silent=TRUE,            
+                    itol=1e-9,
+                    Dmethod="simple", ##Richardson"
+                    parallel=TRUE,
+                    param="relative",
+                    sparse=FALSE,
+                    test=TRUE,
+                    constrain=TRUE,
+                    exogenous=TRUE,
+                    Rgraphviz=TRUE,
+                    debug=FALSE), envir=lava.env)
        

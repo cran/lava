@@ -7,18 +7,33 @@ function(x,...) UseMethod("finalize")
 function(x, diag=FALSE, cor=FALSE, addcolor=TRUE, intercept=FALSE, plain=FALSE, cex, fontsize1=10, cols=c("lightblue","orange","yellowgreen"), unexpr=FALSE, addstyle=TRUE, ...) {
 
     g <- as(new("graphAM",adjMat=x$M,"directed"),"graphNEL")
-
     nodeRenderInfo(g)$fill <- NA
+    nodeRenderInfo(g)$label <- NA
+    nodeRenderInfo(g)$label[vars(x)] <- vars(x)
+    
     nodeRenderInfo(g)$shape <- x$graphdef$shape
+    Lab <- NULL
     for (i in seq_len(length(x$noderender))) {
       nn <- unlist(x$noderender[[i]])
       if (length(nn)>0) {
-        nodeRenderInfo(g)[names(x$noderender)[i]][[1]][names(nn)] <- nn
+        R <- list(as.list(x$noderender[[i]])); names(R) <- names(x$noderender)[i]
+        if (names(x$noderender)[i]!="label")
+          nodeRenderInfo(g) <- R
+        else Lab <- R[[1]]
       }
     }
-    nodeRenderInfo(g)$label <- x$noderender$label
-    edgeDataDefaults(g)$futureinfo <- x$edgerender$futureinfo
+    if (!is.null(Lab)) { ## Ugly hack to allow mathematical annotation
+      nn <- names(nodeRenderInfo(g)$label)
+      LL <- as.list(nodeRenderInfo(g)$label)
+      LL[names(Lab)] <- Lab
+      nodeRenderInfo(g) <- list(label=as.expression(LL))
+      names(nodeRenderInfo(g)$label) <- nn
+      ii <- which(names(nodeRenderInfo(g)$label)=="")
+      if (length(ii)>0)
+      nodeRenderInfo(g)$label <- nodeRenderInfo(g)$label[-ii]
+    }
     
+    edgeDataDefaults(g)$futureinfo <- x$edgerender$futureinfo    
     edgeRenderInfo(g)$lty <- x$graphdef$lty
     edgeRenderInfo(g)$lwd <- x$graphdef$lty
     edgeRenderInfo(g)$col <- x$graphdef$col
@@ -69,9 +84,11 @@ function(x, diag=FALSE, cor=FALSE, addcolor=TRUE, intercept=FALSE, plain=FALSE, 
 ##      if(A[i,j]==1 & A[j,i]==1) recursive <- c(recursive,
 ##                        paste(var[i],"~",var[j], sep=""),
 ##                        paste(var[j],"~",var[i], sep=""))
-      
-      if(A[i,j]==1) regEdges <- c(regEdges,paste(var[i],"~",var[j], sep=""))
-      if(A[j,i]==1) regEdges <- c(regEdges,paste(var[j],"~",var[i], sep=""))
+      if (A[j,i]==0 & x$M[j,i]!=0) {
+        g <- removeEdge(var[j],var[i],g)
+      }
+      if (A[i,j]==1) regEdges <- c(regEdges,paste(var[i],"~",var[j], sep=""))
+      if (A[j,i]==1) regEdges <- c(regEdges,paste(var[j],"~",var[i], sep=""))
     }
 
   
@@ -173,7 +190,7 @@ function(x, diag=FALSE, cor=FALSE, addcolor=TRUE, intercept=FALSE, plain=FALSE, 
       else notcolored <- vars(x)[is.na(x$noderender$fill)]
       nodecolor(g, intersect(notcolored,exogenous(x))) <- cols[1]
       nodecolor(g, intersect(notcolored,endogenous(x))) <- cols[2]
-        nodecolor(g, intersect(notcolored,latent(x))) <- cols[3]
+      nodecolor(g, intersect(notcolored,latent(x))) <- cols[3]
       ##        nodecolor(x, intersect(notcolored,survival(x))) <- cols[4]        
       myhooks <- gethook("color.hooks")
       count <- 3

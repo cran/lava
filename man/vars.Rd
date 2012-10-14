@@ -94,10 +94,10 @@
 \examples{
 g <- lvm(eta1 ~ x1+x2)
 regression(g) <- c(y1,y2,y3) ~ eta1
-latent(g) <- ~eta
+latent(g) <- ~eta1
 endogenous(g)
 exogenous(g)
-identical(latent(g), setdiff(manifest(g), vars(g)))
+identical(latent(g), setdiff(vars(g),manifest(g)))
 }
 \author{
   Klaus K. Holst

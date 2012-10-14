@@ -178,7 +178,7 @@ fixsome <- function(x, exo.fix=TRUE, measurement.fix=TRUE, S, mu, n, data, x0=FA
     S <- dd$S; mu <- dd$mu; n <- dd$n    
     var.missing <- setdiff(index(x)$manifest,colnames(S))
   } else { S <- NULL; mu <- NULL }
-
+  
   if (measurement.fix & param!="none") {
     if (length(var.missing)>0) {## Convert to latent:
       new.lat <- setdiff(var.missing,latent(x))
@@ -494,11 +494,30 @@ getoutcome <- function(formula) {
   res  
 }
 
+
 ##' @export
-decomp.specials <- function(x,pattern="[()]",sep=",",...) {
+Specials <- function(f,spec,split2="+",...) {
+  tt <- terms(f,spec)
+  pos <- attributes(tt)$specials[[spec]]
+  if (is.null(pos)) return(NULL)
+  x <- rownames(attributes(tt)$factors)[pos]
   st <- gsub(" ","",x)
-  if (!is.null(pattern))
+  res <- unlist(strsplit(st,"[()]"))[2]
+  if (is.null(split2)) return(res)
+  unlist(strsplit(res,"+",fixed=TRUE))
+}
+
+
+##' @export
+decomp.specials <- function(x,pattern="[()]",pattern2=NULL,sep=",",reverse=FALSE,...) {
+  st <- gsub(" ","",x)
+  if (!is.null(pattern)) {
     st <- rev(unlist(strsplit(st,pattern,...)))[1]
+  }
+  if (!is.null(pattern2)) {
+    st <- (unlist(strsplit(st,pattern2,...)))
+    if (reverse) st <- rev(st)
+  }
   unlist(strsplit(st,sep,...))
 }
 

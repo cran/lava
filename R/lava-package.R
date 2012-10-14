@@ -131,10 +131,34 @@ NULL
 ##' @keywords datasets
 NULL
 
+##' Serotonin data
+##'
+##' \tabular{rll}{
+##'         day    \tab numeric \tab Scan day of the year \cr
+##'         age    \tab numeric \tab Age at baseline scan \cr
+##'         mem    \tab numeric \tab Memory performance score \cr
+##'         depr   \tab numeric \tab Depression (mild) status 500 days after baseline \cr
+##'         gene1  \tab numeric \tab Gene marker 1 (HTR2A) \cr
+##'         gene2  \tab numeric \tab Gene marker 2 (HTTTLPR) \cr
+##'         cau \tab numeric \tab SERT binding, Caudate Nucleus \cr
+##'         th  \tab numeric \tab SERT binding, Thalamus \cr
+##'         put \tab numeric \tab SERT binding, Putamen \cr
+##'         mid \tab numeric \tab SERT binding, Midbrain \cr
+##'         aci \tab numeric \tab 5-HT2A binding, Anterior cingulate gyrus \cr
+##'         pci  \tab numeric \tab 5-HT2A binding, Posterior cingulate gyrus \cr
+##'         sfc \tab numeric \tab 5-HT2A binding, Superior frontal cortex \cr
+##'         par \tab numeric \tab 5-HT2A binding, Parietal cortex \cr
+##' }
+##' @name serotonin
+##' @docType data
+##' @format data.frame containing ...
+##' @keywords datasets
+NULL
+
 ##' Data
 ##'
 ##' Description
-##' @name serotonin
+##' @name serotonin2
 ##' @docType data
 ##' @format data.frame containing ...
 ##' @keywords datasets
@@ -159,14 +183,14 @@ NULL
 ##' @keywords utilities
 ##' @export
 ##' @aliases startvalues2 startvalues3 starter.multigroup modelPar
-##' modelVar matrices pars pars.lvm pars.lvmfit procdata.lvmfit
-##' modelPar modelVar matrices reorderdata graph2lvm igraph.lvm
-##' subgraph finalize index.lvm index.lvmfit index reindex index<-
-##' survival survival<- randomslope randomslope<- lisrel variances
-##' offdiags describecoef parlabels stdcoef CoefMat
+##' modelVar matrices pars pars.lvm pars.lvmfit pars.glm score.glm
+##' procdata.lvmfit modelPar modelVar matrices reorderdata graph2lvm
+##' igraph.lvm subgraph finalize index.lvm index.lvmfit index reindex
+##' index<- survival survival<- randomslope randomslope<- lisrel
+##' variances offdiags describecoef parlabels stdcoef CoefMat
 ##' CoefMat.multigroupfit deriv updatelvm checkmultigroup profci
 ##' estimate.MAR missingModel frobnorm getoutcome decomp.specials
-##' Inverse gaussian_logLik.lvm addhook gethook multigroup Weight
-##' fixsome parfix parfix<- %+% makemissing merge IV tr whichentry
-##' mdist meq parameter
+##' Specials Inverse gaussian_logLik.lvm addhook gethook multigroup
+##' Weight fixsome parfix parfix<- %+% makemissing merge IV tr
+##' whichentry mdist meq parameter
 NULL

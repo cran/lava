@@ -6,8 +6,11 @@ missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=
     var <- manifest(model)
   }
 
-  data0 <- subset(data, select=manifest(model))
-  data.mis <- is.na(data0[,var,drop=FALSE])
+##  data0 <- subset(data, select=manifest(model))
+##  data.mis.all <- is.na(data0)
+##  data.mis <- data.mis.all[,var,drop=FALSE]  
+  data.mis <- is.na(data[,var,drop=FALSE])
+  colnames(data.mis) <- var
   patterns <- unique(data.mis,MARGIN=1)
   
   mis.type <- apply(data.mis,1,
@@ -30,14 +33,13 @@ missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=
   exo <- exogenous(model)
   exclude <- c()
 
-  for (i in setdiff(1:nrow(patterns),pattern.allmis)) {
+  for (i in setdiff(seq_len(nrow(patterns)),pattern.allmis)) {
     exoremove <- c()
     includemodel <- TRUE
     count <- count+1
     mypattern <- patterns[i,]
     m0 <- mymodel;
     if (any(mypattern)) {
-      ##      browser()
       latent(m0,zero=FALSE) <- colnames(data.mis)[mypattern]
       if (type>1) {
         mytop <- intersect(topendo,colnames(data.mis)[mypattern])
@@ -62,24 +64,35 @@ missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=
     } else
     pattern.compl <- count
 ##    d0 <- data[mis.type==i,manifest(m0),drop=FALSE];
-    d0 <- data[mis.type==i,c(manifest(m0),keep),drop=FALSE];
-
+    d0 <- data[which(mis.type==i),c(manifest(m0),keep),drop=FALSE];
     w0.var <- intersect(manifest(m0),colnames(weight))
-    w0 <- weight[mis.type==i,w0.var,drop=FALSE];
+    w0 <- weight[which(mis.type==i),w0.var,drop=FALSE];
     if (!is.list(weight2)) {
       w02.var <- intersect(manifest(m0),colnames(weight2))
-      w02 <- weight2[mis.type==i,w02.var,drop=FALSE];
+      w02 <- weight2[which(mis.type==i),w02.var,drop=FALSE];
     } else {
       weights2 <- weight2
     }
 
-    clust0 <- cluster[mis.type==i]
-    modelexo <- exogenous(model)
-    exogenous(m0) <- setdiff(modelexo,exoremove)
-    ##    index(m0) <- reindex(m0,deriv=TRUE,zeroones=TRUE)
-    if (is.null(intersect(modelexo,latent(m0)))) {
-      print("Missing exogenous variables... Going for complete-case analysis in these cases")
-    } else {
+    clust0 <- cluster[which(mis.type==i)]
+    ex0 <- exogenous(m0) <- setdiff(exo,exoremove)
+    xmis <- which(apply(d0[,ex0,drop=FALSE],1,function(x) any(is.na(x))))
+
+    if (length(xmis)>0) {
+      misx <- ex0[apply(d0[xmis,ex0,drop=FALSE],2,function(x) any(is.na(x)))]
+      warning("Missing exogenous variables: ", paste(misx,collapse=","),
+              ". Removing rows...")
+      d0 <- d0[-xmis,,drop=FALSE]
+      w0 <- w0[-xmis,,drop=FALSE]      
+      clust0 <- clust0[-xmis]
+      w02 <- w02[-xmis,,drop=FALSE]
+    }
+    if (length(misx <- intersect(ex0,latent(m0)))>0) {
+      warning("Missing exogenous variables:", paste(misx,collapse=","),
+              "! Remove manually!.")          
+    }
+##    else
+    {
       if( sum(unlist(index(m0)[c("npar","npar.mean")]))>0 ) {
         models <- c(models, list(m0))
         datasets <- c(datasets, list(d0))
@@ -92,8 +105,21 @@ missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=
       }
     }
   }
-  
-##  print(exclude)
+
+  rmset <- c()
+  for (i in seq_len(length(datasets))) {
+    if (nrow(datasets[[i]])==0) rmset <- c(rmset,i)
+  }
+  if (length(rmset)>0) {
+    models[[rmset]] <- NULL
+    datasets[[rmset]] <- NULL
+    weights[[rmset]] <- NULL
+    weights2[[rmset]] <- NULL
+    clusters[[rmset]] <- NULL
+    patterns <- patterns[-rmset,,drop=FALSE]
+  }
+
+  ##  print(exclude)
   Patterns <- patterns
   if (length(exclude)>0)
     Patterns <- Patterns[-exclude,]

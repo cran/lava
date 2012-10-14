@@ -142,7 +142,7 @@ Range.lvm <- function(a=0,b=1) {
 ##' 
 ##' ## Specify model and estimate parameters
 ##' constrain(m, mu ~ x + alpha + nu + gamma) <- function(x) x[4]*pnorm(x[3]+x[1]*x[2])
-##' e <- estimate(m,d,control=list(trace=1,method="NR"))
+##' e <- estimate(m,d,control=list(trace=1,constrain=TRUE))
 ##' constraints(e,data=d)
 ##' 
 ##' ## Plot model-fit
@@ -233,6 +233,13 @@ constrain.default <- function(x,estimate=FALSE,...) {
     lhs <- getoutcome(par)
     xf <- attributes(terms(par))$term.labels
     par <- lhs
+    if (par%in%vars(x)) {
+      if (is.na(x$mean[[par]])) {
+        intercept(x,par) <- par
+      } else {
+        par <- x$mean[[par]]
+      }
+    }
     args <- xf
   }
   if (is.null(value) || suppressWarnings(is.na(value))) {
