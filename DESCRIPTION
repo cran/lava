@@ -1,8 +1,8 @@
 Package: lava
 Type: Package
 Title: Linear Latent Variable Models
-Version: 1.1-8
-Date: 2012-10-14
+Version: 1.1-11
+Date: 2012-10-31
 Author: Klaus K. Holst
 Maintainer: Klaus K. Holst <kkho@biostat.ku.dk>
 Description: Estimation and simulation of latent variable models
@@ -32,6 +32,6 @@ Collate: 'addattr.R' 'addvar.R' 'baptize.R' 'bootstrap.R' 'cancel.R'
         'startvalues.R' 'subgraph.R' 'subset.R' 'summary.R'
         'survival.R' 'utils.R' 'variances.R' 'vars.R' 'vcov.R'
         'weight.R' 'equivalence.R' 'eventTime.R'
-Packaged: 2012-10-16 13:40:09 UTC; nqh369
+Packaged: 2012-11-04 20:47:47 UTC; nqh369
 Repository: CRAN
-Date/Publication: 2012-10-16 15:56:55
+Date/Publication: 2012-11-05 07:31:11
