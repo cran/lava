@@ -1,5 +1,5 @@
 c80472f1501cf1274fb765048f2ed230 *CHANGES
-bc93b587096c604faf505614048814c3 *DESCRIPTION
+85bac61b57d1ff0b119d275ddcdded94 *DESCRIPTION
 4cff652a38b149e6615916593475c07f *NAMESPACE
 86abb4b5a27f3e00a688ebb7de480dd4 *R/Objective.R
 6268e27c67d015f20e9a1ef106093804 *R/addattr.R
@@ -21,7 +21,7 @@ ef38287980a8837d9e92f9e84756eae9 *R/distribution.R
 b519d3723ae85986b3d195111cca50c9 *R/effects.R
 b9dd0f9715563b5052375cce34c6a447 *R/endogenous.R
 0b287eeff393cdf51cbdec08d3a1570a *R/equivalence.R
-f0ef9cdf1cd75a29ad3406f8d27280a9 *R/estimate.R
+c0f7817fed3d61e731ea75943db18786 *R/estimate.R
 2e4561e534e4fa1ff889b29d8aa10409 *R/estimate.multigroup.R
 d91b0423a65d9e4b497a46e57993777b *R/eventTime.R
 885196c657c0c5717fe08bd66dae026d *R/exogenous.R
@@ -30,7 +30,7 @@ d91b0423a65d9e4b497a46e57993777b *R/eventTime.R
 8569b0766906bdcf37e9f7de4243aa3b *R/formula.R
 8861c7280e72d0ce455752c8084cc635 *R/functional.R
 6701470335dd8a8627bfe84d63ca8769 *R/glmest.R
-0cde18cb2825e19764b8f5180317fe74 *R/gof.R
+f21f1474f81c9b3bf184261305850297 *R/gof.R
 15f8512e6d60841f561da50697c8a914 *R/graph.R
 3f29172f84becfc1b2c2dd907569c7b8 *R/graph2lvm.R
 7b9401e7bc6f4fb421700f7fdd453307 *R/heavytail.R
@@ -58,17 +58,17 @@ b924b94e9070626a83a1d802cfbbb744 *R/modelPar.R
 be7c917e57dba93310007322349a29f3 *R/modelVar.R
 669bb2740dde82888aa73cab1941ff33 *R/modelsearch.R
 2c2228cf2263fef3a943e6e9654cc72e *R/moments.R
-a6663b403a2389283081d1cc296d03b0 *R/multigroup.R
+999b7b81c705a4e75fe276e23757a180 *R/multigroup.R
 3e560cd5189a3a0aa0460fda5651f556 *R/nested.R
 5133f56bd51cefefff692cc5c7db8c91 *R/nodecolor.R
 c59f1f56011fafd7cb9bf02f3eede83e *R/onload.R
-02f1f848b5a02734415d5486a6df137c *R/optims.R
+7deecc4242443de4f1bff3766935b37c *R/optims.R
 941c473016908592de62907fca477268 *R/parameter.R
 198593ee9d3dbf269dc1fcc687b12643 *R/parpos.R
 1e1df159ced9f3655ba9fbd147e63abf *R/pars.R
 f52dc019fd99ffd3b7772197d459023e *R/partialcor.R
 24d6844259bc29e789d78d4f52186a9c *R/path.R
-cf6076f8972d24a46a68a88bb0833b64 *R/plot.R
+2cd97d7347fdcea69a7e867652fc1d44 *R/plot.R
 60e43fffaa028aaac122208387c7d365 *R/predict.R
 4b349c621a38255ebddf8363db8d25b9 *R/print.R
 f81bcae0b1ce1b36a5b74587b22a8301 *R/profile.R
@@ -83,7 +83,7 @@ ecf1171e6ee151c15a7f7cb21176ebc5 *R/sim.R
 fb1d68fcc9c025f03cde53c6e308d249 *R/subset.R
 6dcfc2364f3add5ba13af1f0d2ae09b6 *R/summary.R
 67c174e64250178fb5f9dbcdacd28038 *R/survival.R
-5f7075e54cc0df7f13150cc61058268f *R/utils.R
+193a5a1a5637bd78af4ddac5093d081e *R/utils.R
 22fbb54ee82308af74ddf1f30550a1bf *R/variances.R
 48671da4780a56d2df412dbeddd3b39c *R/vars.R
 cd7ba3a518316fba14dbd10d576cf401 *R/vcov.R

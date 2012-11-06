@@ -152,6 +152,16 @@ function(x, data=parent.frame(),
     fix <- ifelse(length(xfix)>0,FALSE,TRUE)
   }
   Debug(list("start=",optim$start))
+
+
+  if (!missing & (is.matrix(data) | is.data.frame(data))) {
+    includelist <- c(manifest(x),xfix)
+    if (!missing(weight) && is.character(weight)) includelist <- c(includelist,weight)
+    if (!missing(weight2) && is.character(weight2)) includelist <- c(includelist,weight2)
+    if (!missing(cluster) && is.character(cluster)) includelist <- c(includelist,cluster)    
+    data <- na.omit(data[,intersect(colnames(data),includelist),drop=FALSE])
+  }
+  
   ## Weights...
   if (!missing(weight)) {
     if (is.character(weight)) {
@@ -192,9 +202,6 @@ function(x, data=parent.frame(),
   ## }
   
   ## e1<- estimate(m1,testdata[which(!xmis),-1],missing=TRUE)
-  if (!missing & (is.matrix(data) | is.data.frame(data))) {    
-    data <- na.omit(data[,intersect(colnames(data),c(manifest(x),xfix)),drop=FALSE])
-  }
 
   dd <- procdata.lvm(x,data=data)
   S <- dd$S; mu <- dd$mu; n <- dd$n
@@ -692,38 +699,35 @@ function(x, data=parent.frame(),
 ##' @S3method estimate formula
 estimate.formula <- function(x,data=parent.frame(),pred.norm=c(),unstruct=FALSE,silent=TRUE,cluster=NULL,...) {
   cl <- match.call()
-  ## {  varnames <- all.vars(x)
-  ##    mf <- model.frame(x,data)
-  ##    mt <- attr(mf, "terms")
-  ##    yvar <- names(mf)[1]
-  ##    y <- data[,yvar]
-  ##    opt <- options(na.action="na.pass")
-  ##    mm <- model.matrix(x,data)
-  ##    options(opt)
-  ##    covars <- colnames(mm)
-  ##    if (attr(terms(x),"intercept")==1)
-  ##      covars <- covars[-1]
-  ##    model <- lvm()
-  ##    for (i in covars) {
-  ##      model <- regression(model, to=yvar, from=i,silent=TRUE)
-  ##    }     
-  ##    mydata <- as.data.frame(cbind(y,mm)); names(mydata)[1] <- yvar
-  ##  }
-
   formulaId <- Specials(x,"cluster")
   formulaSt <- paste("~.-cluster(",formulaId,")",sep="")
   if (!is.null(formulaId)) {
     cluster <- formulaId
     x <- update(x,as.formula(formulaSt))  
   }
-  
-  model <- lvm(x,silent=silent)
-  ##  covars <- exogenous(model)
-  ##  exogenous(model) <- setdiff(covars,pred.norm)
-  ##  if (unstruct) {    
-  ##    model <- covariance(model,pred.norm,pairwise=TRUE)
-  ##  }
-  estimate(model,data,silent=silent,cluster=cluster,...)
+  if (!is.null(cluster))
+    x <- update(x,as.formula(paste(".~.+",cluster)))
+  varnames <- all.vars(x)
+  mf <- model.frame(x,data)
+  mt <- attr(mf, "terms")
+  yvar <- names(mf)[1]
+  y <- data[,yvar]
+  opt <- options(na.action="na.pass")
+  mm <- model.matrix(x,data)
+  options(opt)
+  covars <- colnames(mm)
+  covars <- unlist(lapply(covars, function(x) gsub("[^a-zA-Z0-9._]","",x)))
+  colnames(mm) <- covars
+  if (attr(terms(x),"intercept")==1)
+    covars <- covars[-1]
+  if (!is.null(cluster)) covars <- setdiff(covars,cluster)
+  model <- lvm(toformula(yvar,covars),silent=TRUE)
+  mydata <- na.omit(as.data.frame(cbind(y,mm))); names(mydata)[1] <- yvar
+   exogenous(model) <- setdiff(covars,pred.norm)
+   if (unstruct) {    
+     model <- covariance(model,pred.norm,pairwise=TRUE)
+   }
+  estimate(model,mydata,silent=silent,cluster=cluster,...)
 }
 
 ###}}} estimate.formula
