@@ -65,7 +65,6 @@ backwardeliminate <- function(x,
   ff <- function() {
     ii <- grep("m",names(coef(M)))
     vv <- variances(M,mean=TRUE)
-    ##   G <- estimate(M,data,quick=TRUE,silent=silent,missing=missing,onlymodel=TRUE)
     args <- c(list(x=M,data=data,missing=missing,quick=TRUE,silent=silent),dots)
     cc <- do.call("estimate",args)
     if (is.numeric(cc)) {
@@ -107,7 +106,6 @@ backwardsearch <- function(x,k=1,...) {
 
   p1 <- pp$p
   Tests <- c(); Vars <- list()
-  AP <- with(index(cur), symmetrize(A, upper=FALSE) + P)
 
   parnotvar<- setdiff(1:length(p1), variances(Model(x))) ## We don't want to perform tests on the boundary of the parameter space
   freecomb <- combn(parnotvar, k)
@@ -159,18 +157,20 @@ forwardsearch <- function(x,k=1,silent=FALSE,...) {
   npar.mean <- index(cur)$npar.mean
   nfree <- npar.sat-npar.cur
   if (nfree<k) {
-    cat("Cannot free",k,"variables from model.\n");
+    message("Cannot free",k,"variables from model.\n");
     return()
   }  
   
   Tests <- c(); Vars <- list()
-  AP <- with(index(cur), symmetrize(A, upper=FALSE) + P)
-    restricted <- c()
+  ##  AP <- with(index(cur), symmetrize(A, upper=FALSE) + P)
+  AP <- with(index(cur),A+t(A)+P)
+  restricted <- c()
   for (i in 1:(ncol(AP)-1))
     for (j in (i+1):nrow(AP))
       if ( AP[j,i]==0 ) {
         restricted <- rbind(restricted,  c(i,j))
-      }
+      }  
+   
   restrictedcomb <- combn(1:nrow(restricted), k) # Combinations of k-additions to the model
 
   n <- nrow(model.frame(x))
@@ -178,66 +178,49 @@ forwardsearch <- function(x,k=1,silent=FALSE,...) {
   mu <- colMeans(model.frame(x),na.rm=TRUE)
 
   if (!silent)
-    cat("Calculating score test for",ncol(restrictedcomb), "models:\n")
+    message("Calculating score test for ",ncol(restrictedcomb), " models:")
   count <- 0
   for (i in 1:ncol(restrictedcomb))
     {
       if (!silent) {
-        cat(".")
+        ##        cat(".")
+        message(".",appendLF = FALSE)
         count <- count+1
         if (count==20) {          
-          cat("\n")
+          message("")
           count <- 0
         }
       }    
       varlist <- c()
       altmodel <- cur ## HA: altmodel, H0: cur
-      for (j in 1:k) {
+      for (j in seq_len(k)) {
         myvar <- restricted[restrictedcomb[j,i],]
         if (any(wx <- V[myvar]%in%X)) {
           altmodel <- regression(altmodel,V[myvar][which(!wx)],V[myvar][which(wx)])
-##          exogenous(altmodel,xfree=FALSE) <- setdiff(X,V[myvar])
         } else {
-          covariance(altmodel) <- V[myvar]
+          covariance(altmodel,pairwise=TRUE) <- V[myvar]
         }
         varlist <- rbind(varlist, V[myvar])
       }
       altmodel$parpos <- NULL
-##      altmodel <- updatelvm(altmodel,deriv=TRUE,zeroones=TRUE,mean=FALSE)
       altmodel <- updatelvm(altmodel,deriv=TRUE,zeroones=TRUE,mean=TRUE)
       cc <- coef(altmodel, mean=TRUE,silent=TRUE,symbol=c("->","<->"))
       cc0 <- coef(cur, mean=TRUE,silent=TRUE,symbol=c("->","<->"))
-      ##          pos <- match(paste(V[i], "<->", V[j], sep=""),cc)
-      ##          if (is.na(pos)) ## Should not be necessary 
-      ##            pos <- match(paste(V[i], "<->", V[j], sep=""),cc)
-      ###      p1 <- numeric(length(pp$p)+k) ## New parameter basically p1 = (p0, 0)
       p1 <- numeric(length(p)+k)
       ## Need to be sure we place 0 at the correct position
       for (ic in 1:length(cc)) {
         idx <- match(cc[ic],cc0)
         if (!is.na(idx))
-##            p1[ic] <- pp$p[idx]
           p1[ic] <- p[idx]
       }
-#      Sc2 <- score(altmodel,p=p1,S=S,data=NULL,n=n)
       Sc2 <- score(altmodel,p=p1,data=model.frame(x),model=x$estimator,weight=Weight(x))
-##      browser()
-##      rmidx <- NULL
-##      if (!is.null(pp$meanpar)) {
-##        rmidx <- 1:length(pp$meanpar)
-##      } 
-      ##      myidx <- (length(Sc2)-altmodel$index$npar+1):length(Sc2)
-##      Sc2 <- Sc2[-rmidx]
-##      I <- information(altmodel,p1,n=x$data$n,data=NULL) ##[-rmidx,-rmidx]
-      I <- information(altmodel,p1,n=x$data$n,data=model.frame(x),weight=Weight(x),estimator=x$estimator) ##[-rmidx,-rmidx]
+      I <- information(altmodel,p=p1,n=x$data$n,data=model.frame(x),weight=Weight(x),estimator=x$estimator) ##[-rmidx,-rmidx]    
+  
       iI <- try(Inverse(I), silent=TRUE)
-##      browser()      
       Q <- ifelse (inherits(iI, "try-error"), NA, ## Score test
-                   ## rbind(Sc)%*%iI%*%cbind(Sc)
                    (Sc2)%*%iI%*%t(Sc2)
                    )
       Tests <- c(Tests, Q)
-##      print(Q)
       Vars <- c(Vars, list(varlist))
     }
 
@@ -245,7 +228,7 @@ forwardsearch <- function(x,k=1,silent=FALSE,...) {
   Vars0 <- Vars
 
   if (!silent)
-    cat("\n")
+    message("")
   ord <- order(Tests);
   Tests <- cbind(Tests, 1-pchisq(Tests,k)); colnames(Tests) <- c("Test Statistic", "P-value")
   Tests <- Tests[ord,,drop=FALSE]
@@ -259,7 +242,7 @@ forwardsearch <- function(x,k=1,silent=FALSE,...) {
     }
   }
   if (is.null(PM)) {
-    cat("Saturated model\n")
+    message("Saturated model")
     return(invisible(NULL))
   }
   colnames(PM) <- c("Score: S", "P(S>s)", "Index"); rownames(PM) <- rep("",nrow(PM))

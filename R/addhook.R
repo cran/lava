@@ -1,4 +1,5 @@
-##' Set global options for \code{lava}
+
+##' ##' Set global options for \code{lava}
 ##' 
 ##' Extract and set global parameters of \code{lava}. In particular optimization
 ##' parameters for the \code{estimate} function.
@@ -57,6 +58,9 @@ assign("plot.post.hooks",c(),envir=lava.env)
 assign("plot.hooks",c(),envir=lava.env)
 assign("options", list(
                     trace=0,
+                    tol=1e-6,
+                    gamma=0.05,
+                    ngamma=0,
                     iter.max=300,
                     eval.max=250,
                     constrain=FALSE,
@@ -71,4 +75,3 @@ assign("options", list(
                     exogenous=TRUE,
                     Rgraphviz=TRUE,
                     debug=FALSE), envir=lava.env)
-       

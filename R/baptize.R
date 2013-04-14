@@ -2,7 +2,7 @@
 ##'
 ##' @title Label elements of object
 ##' @param x Object
-##' @param ... Additional arguments
+##' @param \dots Additional arguments
 ##' @author Klaus K. Holst
 ##' @export
 `baptize` <- function(x,...) UseMethod("baptize")
@@ -41,6 +41,7 @@ baptize.lvm <- function(x,labels,overwrite=FALSE,unique=FALSE,...) {
       }
     } else { ## Mean parameter
       curfix <- MeanFix[[p0]]
+      if (length(curfix)>0)
       if (is.na(curfix) | overwrite) {
         count <- count+1
         st <- ifelse(missing(labels),p0,labels[count]) 
@@ -49,6 +50,10 @@ baptize.lvm <- function(x,labels,overwrite=FALSE,unique=FALSE,...) {
       }
     }
   }
+  if (index(x)$npar.ex>0) {
+    x$exfix[is.na(x$exfix)] <- names(x$exfix)[is.na(x$exfix)]
+    index(x) <- reindex(x)
+  } 
   return(x)
 }
 

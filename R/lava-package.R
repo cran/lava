@@ -1,3 +1,4 @@
+
 ##' Estimation and simulation of latent variable models
 ##' 
 ##' Framwork for estimating parameters and simulate data from Latent Variable
@@ -182,15 +183,15 @@ NULL
 ##' @author Klaus K. Holst
 ##' @keywords utilities
 ##' @export
-##' @aliases startvalues2 startvalues3 starter.multigroup modelPar
-##' modelVar matrices pars pars.lvm pars.lvmfit pars.glm score.glm
-##' procdata.lvmfit modelPar modelVar matrices reorderdata graph2lvm
-##' igraph.lvm subgraph finalize index.lvm index.lvmfit index reindex
-##' index<- survival survival<- randomslope randomslope<- lisrel
-##' variances offdiags describecoef parlabels stdcoef CoefMat
-##' CoefMat.multigroupfit deriv updatelvm checkmultigroup profci
-##' estimate.MAR missingModel frobnorm getoutcome decomp.specials
-##' Specials Inverse gaussian_logLik.lvm addhook gethook multigroup
-##' Weight fixsome parfix parfix<- %+% makemissing merge IV tr
-##' whichentry mdist meq parameter
+##' @aliases addattr startvalues2 startvalues3 starter.multigroup
+##' modelPar modelVar matrices pars pars.lvm pars.lvmfit pars.glm
+##' score.glm procdata.lvmfit modelPar modelVar matrices reorderdata
+##' graph2lvm igraph.lvm subgraph finalize index.lvm index.lvmfit
+##' index reindex index<- survival survival<- randomslope
+##' randomslope<- lisrel variances offdiags describecoef parlabels
+##' stdcoef CoefMat CoefMat.multigroupfit deriv updatelvm
+##' checkmultigroup profci estimate.MAR missingModel Inverse
+##' gaussian_logLik.lvm addhook gethook multigroup Weight fixsome
+##' parfix parfix<- merge IV parameter
+##' Specials decomp.specials getoutcome
 NULL

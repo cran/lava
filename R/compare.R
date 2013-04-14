@@ -49,7 +49,7 @@ compare.default <- function(object,...,par,contrast,null,scoretest,Sigma) {
   ### Wald test
   if (!missing(contrast)) {
     B <- contrast    
-    p <- pars(object)
+    p <- coef(object)
     pname <- names(p)
     if (is.vector(B)) { B <- rbind(B); colnames(B) <- names(contrast) }
     if (missing(Sigma)) {
@@ -75,8 +75,9 @@ compare.default <- function(object,...,par,contrast,null,scoretest,Sigma) {
       msg <- c()
       for (i in seq_len(nrow(B))) {
         Bidx <- which(B[i,]!=0)
-        Bval <- B[i,Bidx]; Bval[Bval==1] <- ""
-        msg <- c(msg,paste(paste(Bval,paste("[",pname[Bidx],"]",sep=""),collapse=" + ",sep="")," = ",null[i],sep=""))
+        Bval <- abs(B[i,Bidx]); Bval[Bval==1] <- ""
+        sgn  <- rep(" + ",length(Bval)); sgn[sign(B[i,Bidx])==-1] <- " - "; if (sgn[1]==" + ") sgn[1] <- ""
+        msg <- c(msg,paste(paste(sgn,Bval,paste("[",pname[Bidx],"]",sep=""),collapse="",sep="")," = ",null[i],sep=""))
       }
       method <- c(method,"","Null Hypothesis:",msg)
       method <- c(method,"","Observed:",paste(formatC(as.vector(Bp)),collapse=" "))
@@ -125,6 +126,12 @@ compare.default <- function(object,...,par,contrast,null,scoretest,Sigma) {
   ### Likelihood ratio test
   objects <- list(object,...)
   if (length(objects)<2) {
+    if (!("lvmfit"%in%class(object))) {
+      cc <- rbind(logLik(object),AIC(object))
+      rownames(cc) <- c("logLik","AIC")
+      colnames(cc) <-  ""
+      return(cc)
+    }
     L0 <- logLik(object)
     L1 <- satmodel(object,logLik=TRUE)
     df <- attributes(L1)$df-attributes(L0)$df; names(df) <- "df"

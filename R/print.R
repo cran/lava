@@ -23,7 +23,8 @@ function(x, ...) {
       {
         col1 <- as.character(oneline)
         D <- attributes(distribution(x)[[y]])$family
-        col2 <- "Normal"
+        col2 <- x$attributes$type[y]
+        if (is.null(col2) || is.na(col2)) col2 <- "Normal"
         if (!is.null(D$family)) col2 <- paste(D$family,sep="")
         if (!is.null(D$link)) col2 <- paste(col2,"(",D$link,")",sep="")
         if (!is.null(D$par)) col2 <- paste(col2,"(",paste(D$par,collapse=","),")",sep="")
@@ -36,7 +37,7 @@ function(x, ...) {
       print(R,quote=FALSE,...)
     }
     cat("\n")
-    cat("Number of free parameters: ", index(x)$npar, " (+", index(x)$npar.mean, " intercepts)\n", sep="")
+    cat("Number of free parameters: ", with(index(x),npar+npar.mean+npar.ex),"\n", sep="")
 
 ##      oneline <- as.character(f); 
 ##      cat(as.character(oneline),"\n")
@@ -90,9 +91,6 @@ print.multigroupfit <- function(x,groups=NULL,...)  {
       cumsumgroup <- cumsum(c(0,groupn))
       groups <- unlist(lapply(orggroup,function(i)
                               which.min(nmis[which(modelclass==i)])+cumsumgroup[i])) ##  groups with max. number of variables
-                       ##      suppressMessages(browser())
-                       ## if (length(groups)==0)
-                       ##   groupedDataps <- seq_len(x$model0$ngroup)      
       for (i in seq_len(length(groups))) {
         if (nmis[groups[i]]>0) warning("No complete cases in group ",i,". Showing results of group with max number of variables. All coefficients can be extracted with 'coef'. All missing pattern groups belonging to this sub-model can be extracted by calling: coef(..., groups=c(",paste(which(modelclass==i),collapse=","),"))")
       }
@@ -102,7 +100,7 @@ print.multigroupfit <- function(x,groups=NULL,...)  {
       groups <- seq_len(length(x$model$lvm))
     }  
   }  
-  res <- coef(x,groups=groups,...)
+  res <- coef(x,level=2,groups=groups,...)
   counter <- 0
   dots <- list(...)
   dots$groups <- groups
@@ -110,7 +108,6 @@ print.multigroupfit <- function(x,groups=NULL,...)  {
     dots$level <- 2
 ##    dots$level <- ifelse("lvmfit.randomslope"%in%class(x),2,9)
   }
-  ##  suppressMessages(browser())
   myargs <- c(list(x=x), dots)
   myargs$groups <- groups
   CC <- do.call("CoefMat.multigroupfit",myargs)  
@@ -121,7 +118,8 @@ print.multigroupfit <- function(x,groups=NULL,...)  {
     myname <- x$model$names[counter]
     if (!is.null(myname) && !is.na(myname))
       cat(": ",myname,sep="")
-    cat(" (n=",nrow(Model(x)$data[[groups[counter]]]), ")\n", sep="")
+    if (!x$model$missing) cat(" (n=",nrow(Model(x)$data[[groups[counter]]]), ")", sep="")
+    cat("\n")
     print(CC[[counter]],quote=FALSE,right=TRUE)
   }
   cat("\n")

@@ -4,14 +4,27 @@
 `summary.lvm` <-
 function(object,...) {
   k <- length(vars(object))
-  cat("Latent Variable Model \n\twith: ", k, " variables.\n", sep="");
+  ## cat("Latent Variable Model \n\twith: ", k, " variables.\n", sep="");
+  print(object)
   if (k==0)
     return()
-  cat("Npar=", index(object)$npar, "+", index(object)$npar.mean, "\n", sep="")
+##  cat("Npar=", index(object)$npar, "+", index(object)$npar.mean, "\n", sep="")
   cat("\n")
   print(regression(object))
   print(covariance(object))
   print(intercept(object))
+  if (length(object$exfix)>0) {
+    cat("Additional parameters:\n")    
+    val <- unlist(object$exfix)
+    M <- rbind(val); colnames(M) <- names(val)
+    rownames(M) <- "   "
+    print(M,quote=FALSE)
+  }
+  if (length(constrain(object))>0) {
+    cat("Non-linear constraints:\n")
+    print(constrain(object),quote=FALSE)
+  }
+    
   ## printmany(object$cov, printmany(object$covpar, object$covfix, name1="Labels:", name2="Fixed:", print=FALSE), name1="covariance:")
 
   cat("\n")
@@ -107,8 +120,8 @@ summary.multigroupfit <- function(object,groups=NULL,...) {
       groups <- seq_len(object$model$ngroup)
     }    
   }
-  cc <- CoefMat.multigroupfit(object,groups=groups,...) 
-  res <- list(coef=coef(object,groups=groups,...), object=object, coefmat=cc, gof=gof(object), object=object, opt=object$opt, latent=object$latent, estimator=object$estimator)
+  cc <- CoefMat.multigroupfit(object,groups=groups,...)
+  res <- list(coef=coef(object,level=2,groups=groups,...), object=object, coefmat=cc, gof=gof(object), object=object, opt=object$opt, latent=object$latent, estimator=object$estimator)
   class(res) <- "summary.multigroupfit"
   res
 }

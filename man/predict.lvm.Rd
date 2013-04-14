@@ -1,0 +1,50 @@
+\name{predict.lvm}
+\alias{predict.lvm}
+\alias{predict.lvmfit}
+\title{Prediction in structural equation models}
+\usage{
+  \method{predict}{lvm} (object, x = NULL,
+    residual = FALSE, p, data, path = FALSE,
+    quick = is.null(x) & !(residual | path), ...)
+}
+\arguments{
+  \item{object}{Model object}
+
+  \item{x}{optional list of (endogenous) variables to
+  condition on}
+
+  \item{residual}{If true the residuals are predicted}
+
+  \item{p}{Parameter vector}
+
+  \item{data}{Data to use in prediction}
+
+  \item{path}{Path prediction}
+
+  \item{quick}{If TRUE the conditional mean and variance
+  given covariates are returned (and all other calculations
+  skipped)}
+
+  \item{\dots}{Additional arguments to lower level
+  function}
+}
+\description{
+  Prediction in structural equation models
+}
+\examples{
+m <- lvm(list(c(y1,y2,y3)~u,u~x)); latent(m) <- ~u
+d <- sim(m,100)
+e <- estimate(m,d)
+
+## Conditional mean (and variance as attribute) given covariates
+r <- predict(e)
+## Best linear unbiased predictor (BLUP)
+r <- predict(e,vars(e))
+##  Conditional mean of y3 giving covariates and y1,y2
+r <- predict(e,y3~y1+y2)
+##  Conditional mean  gives covariates and y1
+r <- predict(e,~y1+y2)
+##  Predicted residuals (conditional on all observed variables)
+r <- predict(e,vars(e),residual=TRUE)
+}
+

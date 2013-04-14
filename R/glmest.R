@@ -96,22 +96,32 @@ GLMscore <- function(x,p,data,indiv=FALSE,...) {
 
 
 ##' @S3method score glm
-score.glm <- function(x,p=coef(x),indiv=FALSE,
+score.glm <- function(x,p=coef(x),data,indiv=FALSE,
                       y,X,link,dispersion,offset=NULL,...) {
-  if (!missing(x)) {
+
+
+  response <- all.vars(formula(x))[1]
+  if (inherits(x,"glm")) {
     link <- family(x)
     a.phi <- 1
     if (tolower(family(x)$family)%in%c("gaussian","gamma","inverse.gaussian")) {
       a.phi <- summary(x)$dispersion
     }
-    response <- all.vars(formula(x))[1]
-    X <- model.matrix(x)
-    y <- model.frame(x)[,1]
-    n <- nrow(X)
+    if (missing(data)) {
+      X <- model.matrix(x)
+      y <- model.frame(x)[,1]      
+    } else {
+      X <- model.matrix(formula(x),data=data)
+      y <- model.frame(formula(x),data=data)[,1]
+    }    
     offset <- x$offset
   } else {
-    
+    if (missing(link)) stop("Family needed")
+    if (missing(data)) stop("data needed")
+    X <- model.matrix(formula(x),data=data)
+    y <- model.frame(formula(x),data=data)[,1]
   }
+  n <- nrow(X)  
   g <- link$linkfun
   ginv <- link$linkinv
   dginv <- link$mu.eta ## D[linkinv]
@@ -124,7 +134,7 @@ score.glm <- function(x,p=coef(x),indiv=FALSE,
   ##gmu <- function(x) g(caninvlink(x))
   ##invgmu <- function(z) canlink(ginv(z))
   h <- function(z) Dcanlink(ginv(z))*dginv(z)                                
-  if(any(is.na(p))) stop("Over-parametrized model")
+  if(any(is.na(p))) stop("Over-parameterized model")
   Xbeta <- X%*%p
   if (!is.null(offset)) Xbeta <- Xbeta+offset
   pi <- ginv(Xbeta)  
@@ -175,6 +185,9 @@ hessian.glm <- function(x,p=coef(x),...) {
   jacobian(function(theta) score.glm(x,p=theta,...),p)
 }
 
+##' @S3method information glm
+information.glm <- function(x,...) hessian.glm(x,...)
+
 robustvar <- function(x,id=NULL,...) {
   U <- score(x,indiv=TRUE)
   II <- unique(id)
@@ -188,8 +201,6 @@ robustvar <- function(x,id=NULL,...) {
     }
     J <- K/(K-1)*J
   }
-  ##I <- -hessian(x)
-  ##iI <- solve(I)
   iI <- vcov(x)
   V <- iI%*%J%*%iI
   return(V)  

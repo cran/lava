@@ -7,7 +7,10 @@ function(x,...) UseMethod("information")
 ##' @S3method information lvm
 information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
                                     c("E","hessian","varS","outer","sandwich","robust","num"),"outer"),
-                            data,weight=NULL,model="gaussian",method=lava.options()$Dmethod,
+                            data,weight=NULL,
+                            data2=NULL,
+                            model="gaussian",
+                            method=lava.options()$Dmethod,
                             inverse=FALSE, pinv=TRUE,
                             score=TRUE,...) {
   if (missing(n))
@@ -24,7 +27,7 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
   }
   if (type[1]%in%c("num","hessian","obs")  | (type[1]%in%c("E","hessian") & model!="gaussian")) {
     require("numDeriv")
-    myf <- function(p0) score(x, p=p0, model=model,data=data, weight=weight,indiv=FALSE,n=n) ##...)
+    myf <- function(p0) score(x, p=p0, model=model,data=data, weight=weight,data2=data2,indiv=FALSE,n=n) ##...)
     ##    I <- -hessian(function(p0) logLik(x,p0,dd),p)
     I <- -jacobian(myf,p,method=method)
     res <- (I+t(I))/2 # Symmetric result
@@ -38,7 +41,7 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
     return(res)
   }
   if (type[1]=="varS" | type[1]=="outer") {
-    S <- score(x,p=p,data=na.omit(data),model=model,weight=weight,indiv=TRUE,...)
+    S <- score(x,p=p,data=na.omit(data),model=model,weight=weight,data2=data2,indiv=TRUE,...)
     ##    print("...")
     res <- t(S)%*%S
     if (inverse) {
@@ -68,7 +71,6 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
           for (j in 1:length(myfix$col[[i]])) 
             regfix(x0, from=vars(x0)[myfix$row[[i]]][j],to=vars(x0)[myfix$col[[i]]][j]) <-
               data[1,myfix$var[[i]]]
-        ##rep(data[1,myfix$var[[i]]],length(myfix$row[[i]]))
         index(x0) <- reindex(x0,zeroones=TRUE,deriv=TRUE)
       }
       pp <- modelPar(x0,p)
@@ -100,7 +102,7 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
   }
 
   if (!is.null(weight) && is.matrix(weight)) {
-    L <- lapply(1:nrow(weight),function(y) information(x,p=p,n=1,type=type,weight=weight[y,]))
+    L <- lapply(seq_len(nrow(weight)),function(y) information(x,p=p,n=1,type=type,weight=weight[y,]))
     val <- apply(array(unlist(L),dim=c(length(p),length(p),nrow(weight))),c(1,2),sum)
     if (inverse) {
       if (pinv)
@@ -133,28 +135,14 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
     diag(iW) <- 1/diag(iW)
   }
 
-  ## if (NCOL(D$dS)>500) {
-  ##   I <- matrix(0,NCOL(D$dS),NCOL(D$dS))
-  ##   for (i in 1:NCOL(D$dS)) {
-  ##     for (j in i:NCOL(D$dS)) {
-  ##       if (is.null(weight)) {
-  ##         I[i,j] <- I[j,i] <- 
-  ##           sum(diag(matrix(D$dS[,i],NCOL(iC))%*%iC%*%matrix(D$dS[,j],NCOL(iC))%*%iC))        
-  ##       } else {
-  ##         I[i,j] <- I[j,i] <- 
-  ##           sum(diag(matrix(D$dS[,i],NCOL(iC))%*%iC%*%W%*%matrix(D$dS[,j],NCOL(iC))%*%iC))
-  ##       }
-  ##     }
-  ##   }
-  ##   information_Sigma <- n/2*I
-      
-  ## } else
-  
+
   {
     if (is.null(weight)) {
-      information_Sigma <-  n/2*t(D$dS)%*%((iC)%x%(iC))%*%(D$dS)
+      ## information_Sigma <-  n/2*t(D$dS)%*%((iC)%x%(iC))%*%(D$dS)
+      information_Sigma <- n/2*t(D$dS)%*%kronprod(iC,iC,D$dS)
     } else {
-      information_Sigma <-  n/2*t(D$dS)%*%((iC)%x%(iC%*%W))%*%(D$dS)
+      ## information_Sigma <-  n/2*t(D$dS)%*%((iC)%x%(iC%*%W))%*%(D$dS)
+      information_Sigma <- n/2*t(D$dS)%*%kronprod(iC,iC%*%W,D$dS)
     }
   }
   if (is.null(pp$meanpar)) {
@@ -179,13 +167,6 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
   }
   
   information <- information_Sigma + information_mu
-  ##browser()
-  ## if (score) {
-  ##   vec.iC <- as.vector(iC)  
-  ##   Grad <- n/2*crossprod(D$dS, as.vector(iC%*%T%*%iC)-vec.iC)
-  ##   if (!is.null(mu)) # & mp$npar.mean>0)
-  ##     Grad <- Grad - n/2*crossprod(D$dT,vec.iC)
-  ## }
   if (inverse) {
     if (pinv)
       iI <- Inverse(information)
@@ -201,8 +182,15 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
 ###{{{ information.lvmfit
 
 ##' @S3method information lvmfit
-information.lvmfit <- function(x,p=pars(x),n=x$data$n,data=model.frame(x),model=x$estimator,weight=Weight(x),...) {
-  information(x$model0,p=p,n=n,data=data,model=model,weight=weight,...)
+information.lvmfit <- function(x,p=pars(x),n=x$data$n,data=model.frame(x),model=x$estimator,weight=Weight(x),
+                               data2=x$data$data2,
+                               ...) {
+  I <- information(x$model0,p=p,n=n,data=data,model=model,
+                   weight=weight,data2=data2,...)
+  if (ncol(I)<length(p)) {
+    I <- blockdiag(I,matrix(0,length(p)-ncol(I),length(p)-ncol(I)))
+  }
+  I
 }
 
 ###}}} information.lvmfit
@@ -228,11 +216,11 @@ information.multigroup <- function(x,data=x$data,weight=NULL,p,indiv=FALSE,...) 
   parord <- modelPar(rm$model,1:with(rm$model,npar+npar.mean))$p
   I <- matrix(0,nrow=length(p),ncol=length(p))
   if (!indiv) {
-    for (i in 1:x$ngroup)
+    for (i in seq_len(x$ngroup))
       I[parord[[i]],parord[[i]]] <- I[parord[[i]],parord[[i]]] + information(x$lvm[[i]],p=pp[[i]],data=data[[i]],weight=weight[[i]],...)
   } else {
     I <- list()
-    for (i in 1:x$ngroup)
+    for (i in seq_len(x$ngroup))
       I <- c(I, list(information(x$lvm[[i]],p=pp[[i]],data=data[[i]],weight=weight[[i]],...)))
   }
   return(I)  

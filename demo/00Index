@@ -1,1 +1,5 @@
 lava		All demos
+model		Model specfication
+simulation	Simulation
+estimation	Estimation
+inference	Inference

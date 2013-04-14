@@ -1,10 +1,5 @@
-###
-### All lava-demos:
-###
-
-m <- lvm(y~x)
-d <- sim(m,100)
-
-e <- estimate(y~x,d)
-e
+demo(lava:::model)
+demo(lava:::simulation)
+demo(lava:::estimation)
+demo(lava:::inference)
 

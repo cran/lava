@@ -48,7 +48,7 @@ estimate <- function(x,...) UseMethod("estimate")
 ##' @param weight Optional weights to used by the chosen estimator.
 ##' @param weightname Weight names (variable names of the model) in case
 ##' \code{weight} was given as a vector of column names of \code{data}
-##' @param weight2 Optional second set of weights to used by the chosen
+##' @param data2 Optional additional dataset used by the chosen
 ##' estimator.
 ##' @param cluster Vector (or name of column in \code{data}) that identifies
 ##' correlated groups of observations in the data leading to variance estimates
@@ -67,67 +67,93 @@ estimate <- function(x,...) UseMethod("estimate")
 ##' additional information such as standard errors are skipped
 ##' @param silent Logical argument indicating whether information should be
 ##' printed during estimation
+##' @param param set parametrization (see \code{help(lava.options)})
 ##' @param \dots Additional arguments to be passed to the low level functions
 ##' @return A \code{lvmfit}-object.
 ##' @author Klaus K. Holst
-##' @seealso \code{\link{score}}, \code{\link{information}}, ...
+##' @seealso \code{score}, \code{information}, ...
 ##' @keywords models regression
 ##' @S3method estimate lvm
 ##' @method estimate lvm
 ##' @examples
 ##' 
 ##' m <- lvm(list(y~v1+v2+v3+v4,c(v1,v2,v3,v4)~x))
+##' covariance(m) <- v1~v2+v3+v4
 ##' \donttest{
 ##' plot(m)
 ##' }
 ##' dd <- sim(m,10000) ## Simulate 10000 observations from model
 ##' e <- estimate(m, dd) ## Estimate parameters
 ##' e
-##'
+##' 
+##' e <- estimate(m,data=list(S=cov(dd),mu=colMeans(dd),n=nrow(dd)))
+##' 
+##' 
+##' ## Multiple group analysis
+##' m <- lvm()
+##' regression(m) <- c(y1,y2,y3)~u
+##' regression(m) <- u~x
+##' d1 <- sim(m,100,p=c("u<->u"=1,"u<-x"=1))
+##' d2 <- sim(m,100,p=c("u<->u"=2,"u<-x"=-1))
+##' 
+##' mm <- baptize(m)
+##' regression(mm,u~x) <- NA
+##' covariance(mm,~u) <- NA
+##' intercept(mm,~u) <- NA
+##' ee <- estimate(list(mm,mm),list(d1,d2))
+##' 
+##' ## Missing data
+##' d0 <- makemissing(d1,cols=1:2)
+##' e0 <- estimate(m,d0,missing=TRUE)
+##' e0
 `estimate.lvm` <-
-function(x, data=parent.frame(),
-         estimator="gaussian",
-         control=list(),
-         missing=FALSE,
-         weight,
-         weightname,
-         weight2,
-         cluster,
-         fix,
-         index=TRUE,
-         graph=FALSE,
-         silent=lava.options()$silent,
-         quick=FALSE,
-         ...) { 
-
+  function(x, data=parent.frame(),
+           estimator="gaussian",
+           control=list(),
+           missing=FALSE,
+           weight, weightname,
+           data2,
+           cluster,
+           fix,
+           index=TRUE,
+           graph=FALSE,
+           silent=lava.options()$silent,
+           quick=FALSE,
+           param,
+           ...) { 
+  
   if (length(exogenous(x)>0)) {
     catx <- categorical2dummy(x,data)
     x <- catx$x; data <- catx$data
-  }
-  
+  }  
   cl <- match.call()
+  if (!missing(param)) {
+    oldparam <- lava.options()$param
+    lava.options(param=param)
+    on.exit(lava.options(param=oldparam))
+  }
 
   optim <- list(
-                iter.max=lava.options()$iter.max,
-                trace=ifelse(lava.options()$debug,3,0),
-                gamma=1,
-                gamma2=1,
-                ngamma=NULL,
-                lambda=0.05,
-                abs.tol=1e-9,
-                epsilon=1e-10,
-                delta=1e-10,
-                rel.tol=1e-10,
-                S.tol=1e-5,
-                stabil=FALSE,
-                start=NULL,
-                constrain=lava.options()$constrain,
-                method=NULL,
-                starterfun="startvalues",
-                information="E",
-                meanstructure=TRUE,
-                sparse=FALSE,
-                tol=1e-9)
+    iter.max=lava.options()$iter.max,
+    trace=ifelse(lava.options()$debug,3,0),
+    gamma=lava.options()$gamma,
+    gamma2=1,
+    ngamma=lava.options()$ngamma,             
+    lambda=0.05,
+    abs.tol=1e-9,
+    epsilon=1e-10,
+    delta=1e-10,
+    rel.tol=1e-10,
+    S.tol=1e-5,
+    stabil=FALSE,
+    start=NULL,
+    constrain=lava.options()$constrain,
+    method=NULL,
+    starterfun="startvalues",
+    information="E", 
+    meanstructure=TRUE,
+    sparse=FALSE,
+    tol=lava.options()$tol)
 
   defopt <- lava.options()[]
   defopt <- defopt[intersect(names(defopt),names(optim))]
@@ -157,7 +183,7 @@ function(x, data=parent.frame(),
   if (!missing & (is.matrix(data) | is.data.frame(data))) {
     includelist <- c(manifest(x),xfix)
     if (!missing(weight) && is.character(weight)) includelist <- c(includelist,weight)
-    if (!missing(weight2) && is.character(weight2)) includelist <- c(includelist,weight2)
+    if (!missing(data2) && is.character(data2)) includelist <- c(includelist,data2)
     if (!missing(cluster) && is.character(cluster)) includelist <- c(includelist,cluster)    
     data <- na.omit(data[,intersect(colnames(data),includelist),drop=FALSE])
   }
@@ -179,12 +205,12 @@ function(x, data=parent.frame(),
   } else {
     weight <- NULL
   }
-  if (!missing(weight2)) {
-    if (is.character(weight2)) {
-      weight2 <- data[,weight2]
+  if (!missing(data2)) {
+    if (is.character(data2)) {
+      data2 <- data[,data2]
     }
   } else {
-    weight2 <- NULL
+    data2 <- NULL
   }
   ## Correlated clusters...
   if (!missing(cluster)) {
@@ -196,13 +222,7 @@ function(x, data=parent.frame(),
   }
   
   Debug("procdata")
-  ## if (missing) { ## Remove rows with missing covariates
-  ##   xmis <- apply(data[,exogenous(x),drop=FALSE],1,function(x) any(is.na(x)))
-  ##   data <- data[which(!xmis),]
-  ## }
   
-  ## e1<- estimate(m1,testdata[which(!xmis),-1],missing=TRUE)
-
   dd <- procdata.lvm(x,data=data)
   S <- dd$S; mu <- dd$mu; n <- dd$n
   Debug(list("n=",n))  
@@ -218,19 +238,35 @@ function(x, data=parent.frame(),
         x <- latent(x, new.lat)
     }
   }
- 
+    
   ## Run hooks (additional lava plugins)
   myhooks <- gethook()
-  for (f in myhooks) {    
-    res <- do.call(f, list(x=x,data=data,weight=weight,weight2=weight2,estimator=estimator,optim=optim))
+  for (f in myhooks) {
+    res <- do.call(f, list(x=x,data=data,weight=weight,data2=data2,estimator=estimator,optim=optim))
     if (!is.null(res$x)) x <- res$x
     if (!is.null(res$data)) data <- res$data
     if (!is.null(res$weight)) weight <- res$weight
-    if (!is.null(res$weight2)) weight2 <- res$weight2
+    if (!is.null(res$data2)) data2 <- res$data2
     if (!is.null(res$optim)) optim <- res$optim
     if (!is.null(res$estimator)) estimator <- res$estimator
+    rm(res)
   }
- 
+
+  checkestimator <- function(x,...) {
+    ffname <- paste(x,c("_objective","_gradient"),".lvm",sep="")
+    exists(ffname[1])||exists(ffname[2])
+  }
+  if (!checkestimator(estimator)) { ## Try down/up-case version
+    estimator <- tolower(estimator)
+    if (!checkestimator(estimator)) {
+      estimator <- toupper(estimator)
+    }
+  }
+  ObjectiveFun  <- paste(estimator, "_objective", ".lvm", sep="")
+  GradFun  <- paste(estimator, "_gradient", ".lvm", sep="")
+  if (!exists(ObjectiveFun) & !exists(GradFun))
+    stop("Unknown estimator.") 
+  
   Method <-  paste(estimator, "_method", ".lvm", sep="")
   if (!exists(Method)) {
     Method <- "nlminb1"
@@ -250,11 +286,11 @@ function(x, data=parent.frame(),
       x <- updatelvm(x,sparse=optim$sparse,zeroones=TRUE,deriv=TRUE,mean=TRUE)
     }
   }
-
   if (is.null(estimator) || estimator==FALSE) {
     return(x)
-  }  
-  k <- length(manifest(x))
+  }
+
+  if (length(index(x)$endogenous)==0) stop("No observed outcome variables. Check variable names in model and data.")
   Debug(list("S=",S))
   if (!optim$meanstructure) {
     mu <- NULL
@@ -269,7 +305,7 @@ function(x, data=parent.frame(),
   }
   if (sum(paragree)>=length(myparnames))
     optim$start <- optim$start[which(paragree.2)]
-
+  
  
   if (! (length(optim$start)==length(myparnames) & sum(paragree)==0)) 
   if (is.null(optim$start) || sum(paragree)<length(myparnames)) {
@@ -282,11 +318,12 @@ function(x, data=parent.frame(),
     }
     optim$start <- start
   }
-
+  if (!is.null(x$expar)) optim$start <- c(optim$start,rep(0,index(x)$npar.ex))
+  
   ## Missing data
   if (missing) {
     control$start <- optim$start
-    return(estimate.MAR(x=x,data=data,fix=fix,control=control,debug=lava.options()$debug,silent=silent,estimator=estimator,weight=weight,weight2=weight2,cluster=cluster,...))
+    return(estimate.MAR(x=x,data=data,fix=fix,control=control,debug=lava.options()$debug,silent=silent,estimator=estimator,weight=weight,data2=data2,cluster=cluster,...))
   }
 
   ## Non-linear parameter constraints involving observed variables? (e.g. nonlinear regression)
@@ -304,7 +341,6 @@ function(x, data=parent.frame(),
         }
       }
     }  
-  ##  xconstrain <- intersect(unlist(lapply(constrain(x),function(z) attributes(z)$args)),manifest(x))
     if (xconstrainM & ( (is.null(control$method) || optim$method=="nlminb0") & (lava.options()$test & estimator=="gaussian") ) ) {
       XconstrStdOpt <- FALSE
       optim$method <- "nlminb0"
@@ -334,7 +370,7 @@ function(x, data=parent.frame(),
   ## Fix problems with starting values? 
   optim$start[is.nan(optim$start)] <- 0  
   Debug(list("lower=",lower))
-  
+
   ObjectiveFun  <- paste(estimator, "_objective", ".lvm", sep="")
   GradFun  <- paste(estimator, "_gradient", ".lvm", sep="")
   if (!exists(ObjectiveFun) & !exists(GradFun)) stop("Unknown estimator.")
@@ -366,7 +402,7 @@ function(x, data=parent.frame(),
       yvars <- endogenous(x0)
       
       ## Alter start-values/constraints:
-      new.par.idx <- coef(mymodel,mean=TRUE)%in%coef(x0,mean=TRUE)
+      new.par.idx <- coef(mymodel,mean=TRUE,fix=FALSE)%in%coef(x0,mean=TRUE,fix=FALSE)
       if (length(optim$start)>sum(new.par.idx))
         optim$start <- optim$start[new.par.idx]
       lower <- lower[new.par.idx]
@@ -386,11 +422,11 @@ function(x, data=parent.frame(),
         for (i in 1:length(myfix$var)) {          
             x0$fix[cbind(rowpos[[i]],colpos[[i]])] <- index(x0)$A[cbind(rowpos[[i]],colpos[[i]])] <- data[ii,xfix[i]]
         }
-        if (is.list(weight2)) {
-          res <- do.call(ObjectiveFun, list(x=x0, p=pp, data=mydata[ii,], n=1, weight=weight[ii,], weight2=weight2[ii,]))
+        if (is.list(data2)) {
+          res <- do.call(ObjectiveFun, list(x=x0, p=pp, data=mydata[ii,], n=1, weight=weight[ii,], data2=data2[ii,]))
         } else
         {
-          res <- do.call(ObjectiveFun, list(x=x0, p=pp, data=mydata[ii,], n=1, weight=weight[ii,], weight2=weight2))
+          res <- do.call(ObjectiveFun, list(x=x0, p=pp, data=mydata[ii,], n=1, weight=weight[ii,], data2=data2))
         }
         return(res)
       }           
@@ -406,11 +442,11 @@ function(x, data=parent.frame(),
         for (i in 1:length(myfix$var)) {
           x0$fix[cbind(rowpos[[i]],colpos[[i]])] <- index(x0)$A[cbind(rowpos[[i]],colpos[[i]])] <- data[ii,xfix[i]]
         }
-        if (is.list(weight2)) {
-          rr <- do.call(GradFun, list(x=x0, p=pp, data=mydata[ii,,drop=FALSE], n=1, weight=weight[ii,], weight2=weight2))
+        if (is.list(data2)) {
+          rr <- do.call(GradFun, list(x=x0, p=pp, data=mydata[ii,,drop=FALSE], n=1, weight=weight[ii,], data2=data2))
         } else
         {
-          rr <- do.call(GradFun, list(x=x0, p=pp, data=mydata[ii,,drop=FALSE], n=1, weight=weight[ii,], weight2=weight2[ii,]))
+          rr <- do.call(GradFun, list(x=x0, p=pp, data=mydata[ii,,drop=FALSE], n=1, weight=weight[ii,], data2=data2[ii,]))
         }
         return(rr)        
       }
@@ -422,18 +458,18 @@ function(x, data=parent.frame(),
     }
 
     
-    myInfo <- function(pp,...) {
+    myInfo <- function(pp) {
       myfun <- function(ii) {
         if (length(xfix)>0)
         for (i in 1:length(myfix$var)) {
           x0$fix[cbind(rowpos[[i]],colpos[[i]])] <- index(x0)$A[cbind(rowpos[[i]],colpos[[i]])] <- data[ii,xfix[i]]
         }
-        if (is.list(weight2)) {
+        if (is.list(data2)) {
           res <- do.call(InformationFun, list(p=pp, obj=myObj, x=x0, data=data[ii,],
-                                              n=1, weight=weight[ii,], weight2=weight2))
+                                              n=1, weight=weight[ii,], data2=data2))
         } else {
           res <- do.call(InformationFun, list(p=pp, obj=myObj, x=x0, data=data[ii,],
-                                              n=1, weight=weight[ii,], weight2=weight2[ii,]))
+                                              n=1, weight=weight[ii,], data2=data2[ii,]))
         }
         return(res)
       }      
@@ -498,17 +534,16 @@ function(x, data=parent.frame(),
       if (!is.null(offset)) {
         x0$constrain[iconstrain] <- NULL        
         data0 <- data[,manifest(x0)]
-        ##        data0[,yconstrain] <- data0[,yconstrain]-offset
         data0[,endogenous(x)] <- data0[,endogenous(x)]-offset        
         pd <- procdata.lvm(x0,data=data0)
         S0 <- pd$S; mu0 <- pd$mu
         x0$mean[yconstrain] <- 0
       }
       do.call(ObjectiveFun, list(x=x0, p=pp, data=data, S=S0, mu=mu0, n=n, weight=weight
-                                ,weight2=weight2, offset=offset
-                                ))
+                                 ,data2=data2, offset=offset
+                                 ))
     }
-    
+
     myGrad <- function(pp) {
       if (optim$constrain)
         pp[constrained] <- exp(pp[constrained])
@@ -521,53 +556,35 @@ function(x, data=parent.frame(),
       ##   pd <- procdata.lvm(x0,data=data0)
       ##   S0 <- pd$S; mu0 <- pd$mu
       ## }
-      ##      browser()
       S <- do.call(GradFun, list(x=x, p=pp, data=data, S=S, mu=mu, n=n, weight=weight
-                                 , weight2=weight2##, offset=offset
+                                 , data2=data2##, offset=offset
                                  ))
       if (optim$constrain) {
         S[constrained] <- S[constrained]*pp[constrained]
       }
       if (is.null(mu) & index(x)$npar.mean>0) {
         return(S[-c(1:index(x)$npar.mean)])
-      }      
+      }
+      if (length(S)<length(pp))  S <- c(S,rep(0,length(pp)-length(S)))
+
       return(S)
     }
-    myInfo <- function(pp,...) {
-      I <- do.call(InformationFun, list(p=pp, obj=myObj, x=x, data=data,
-                                        S=S, mu=mu, n=n,
-                                        weight=weight, weight2=weight2,
-                                        type=optim$information))
-      if (is.null(mu) & index(x)$npar.mean>0) {
-        return(I[-c(1:index(x)$npar.mean),-c(1:index(x)$npar.mean)])
+    myInfo <- function(pp) {
+      I <- do.call(InformationFun, list(p=pp,
+                                        obj=myObj,
+                                        x=x, data=data,
+                                        S=S, mu=mu,
+                                        n=n,
+                                        weight=weight, data2=data2,
+                                        type=optim$information
+                                        ))
+      if (is.null(mu) && index(x)$npar.mean>0) {
+        return(I[-seq_len(index(x)$npar.mean),-seq_len(index(x)$npar.mean)])
       }
       return(I)
     }
     
   }
-
-  ## if (!exists(GradFun) & !is.null(optim$method)) {
-  ##   message("Using numerical derivatives...\n")
-  ##   myGrad <- function(pp) {
-  ##     if (optim$constrain)
-  ##       pp[constrained] <- exp(pp[constrained])
-  ##     if (!require("numDeriv")) {        
-  ##       S <- naiveGrad(myObj, pp)
-  ##     } else {
-  ##       S <- grad(myObj, pp, method=lava.options()$Dmethod)
-  ##     }
-  ##     if (optim$constrain) {
-  ##       S[constrained] <- S[constrained]*pp[constrained]
-  ##     }
-  ##     return(S)        
-  ##   }
-  ##  }
-##   if (!exists(InformationFun) & !is.null(optim$method)) {
-##     if (!require("numDeriv")) stop("I do not know how to calculate the asymptotic variance of this estimator.
-## For numerical approximation please install the library 'numDeriv'.")
-##     message("Using a numerical approximation of hessian...\n");
-##     myInfo <- function(pp,...) hessian(myObj, opt$estimate, method="Richardson")
-##   }
   
   myHess <- function(pp) {
     p0 <- pp
@@ -591,13 +608,13 @@ function(x, data=parent.frame(),
     }
     return(I0)
   }   
-  
   if (is.null(tryCatch(get(InformationFun),error = function (x) NULL)))
     myInfo <- myHess <- NULL
   if (is.null(tryCatch(get(GradFun),error = function (x) NULL)))
     myGrad <- NULL
 
-  coefname <- coef(x,mean=optim$meanstructure);
+  coefname <- coef(x,mean=optim$meanstructure,fix=FALSE);
+  
   if (!silent) message("Optimizing objective function...")
   if (optim$trace>0 & !silent) message("\n")
   ## Optimize with lower constraints on the variance-parameters
@@ -611,9 +628,9 @@ function(x, data=parent.frame(),
     if (optim$constrain) {
       opt$estimate[constrained] <- exp(opt$estimate[constrained])
     }
-    names(opt$estimate) <- coefname
+  ##  names(opt$estimate) <- coefname
 
-    if (XconstrStdOpt)
+    if (XconstrStdOpt & !is.null(myGrad))
       opt$gradient <- as.vector(myGrad(opt$par))
     else {
       opt$gradient <- grad(myObj,opt$par)
@@ -637,16 +654,15 @@ function(x, data=parent.frame(),
   if (!exists(asVarFun)) {
     if (is.null(myInfo)) {
       if (!is.null(myGrad))
-        myInfo <- function(pp,...)
+        myInfo <- function(pp)
           jacobian(myGrad,pp,method=lava.options()$Dmethod)
       else
-        myInfo <- function(pp,...)
-          -hessian(myObj,pp,method=lava.options()$Dmethod)
+        myInfo <- function(pp)
+          hessian(myObj,pp)
     }
     I <- myInfo(opt$estimate)
     asVar <- tryCatch(solve(I),
                       error=function(e) matrix(NA, length(opt$estimate), length(opt$estimate)))
-##    diag(asVar)[(diag(asVar)==0)] <- NA
   } else {
     asVar <- tryCatch(do.call(asVarFun,
                               list(x=x,p=opt$estimate,data=data,opt=opt)),
@@ -660,18 +676,19 @@ function(x, data=parent.frame(),
 
   Debug("did that") 
 
-  nparall <- index(x)$npar + ifelse(optim$meanstructure, index(x)$npar.mean,0)
+  nparall <- index(x)$npar + ifelse(optim$meanstructure, index(x)$npar.mean+index(x)$npar.ex,0)
   mycoef <- matrix(NA,nrow=nparall,ncol=4)
-
-  mycoef[pp.idx,1] <- opt$estimate
+  mycoef[pp.idx,1] <- opt$estimate ## Will be finished during post.hooks
   
   ### OBS: v = t(A)%*%v + e
-  res <- list(model=x, call=cl, coef=mycoef, vcov=asVar, mu=mu, S=S, ##A=A, P=P,
+  res <- list(model=x, call=cl, coef=mycoef,
+              vcov=asVar, mu=mu, S=S, ##A=A, P=P,
               model0=mymodel, ## Random slope hack
-              estimator=estimator, opt=opt,
-              data=list(model.frame=data, S=S, mu=mu, C=mom$C, v=mom$v, n=n,
-                m=length(latent(x)), k=k),
-              weight=weight, weight2=weight2,
+              estimator=estimator, opt=opt,expar=x$expar,
+              data=list(model.frame=data, S=S, mu=mu,
+                C=mom$C, v=mom$v, n=n,                
+                m=length(latent(x)), k=length(index(x)$manifest), data2=data2),
+              weight=weight, data2=data2,
               cluster=cluster,
               pp.idx=pp.idx,
               graph=NULL, control=optim)
@@ -731,13 +748,4 @@ estimate.formula <- function(x,data=parent.frame(),pred.norm=c(),unstruct=FALSE,
 }
 
 ###}}} estimate.formula
-
-###{{{ estimate.lm
-
-##' @S3method estimate lm
-estimate.lm <- function(x,data=model.frame(x),...) {
-  estimate(formula(x),data,...)
-}
-
-###}}} estimate.lm
 

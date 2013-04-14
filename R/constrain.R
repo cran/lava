@@ -142,11 +142,10 @@ Range.lvm <- function(a=0,b=1) {
 ##' 
 ##' ## Specify model and estimate parameters
 ##' constrain(m, mu ~ x + alpha + nu + gamma) <- function(x) x[4]*pnorm(x[3]+x[1]*x[2])
+##' \donttest{
 ##' e <- estimate(m,d,control=list(trace=1,constrain=TRUE))
 ##' constraints(e,data=d)
-##' 
 ##' ## Plot model-fit
-##' \donttest{
 ##' plot(y1~x,d,pch=16); points(y2~x,d,pch=16,col="gray")
 ##' x0 <- seq(-4,4,length.out=100)
 ##' lines(x0,coef(e)["nu"] + coef(e)["gamma"]*pnorm(coef(e)["alpha"]*x0))
@@ -164,24 +163,25 @@ Range.lvm <- function(a=0,b=1) {
 ##' ### Add 'non'-linear parameter constraint
 ##' constrain(m2,psi ~ beta2) <- function(x) x
 ##' ## Add parameter beta2 to model 2, now beta2 exists in both models
-##' parameter(m2) <- ~ beta2  
+##' parameter(m2) <- ~ beta2
+##' \donttest{
 ##' ee <- estimate(list(m1,m2),list(d1,d2),control=list(method="NR"))
 ##' summary(ee)
 ##' 
 ##' m3 <- lvm(y ~ f(x,beta)+f(z,beta2))
 ##' m4 <- lvm(y ~ f(x,beta2) + z)
 ##' e2 <- estimate(list(m3,m4),list(d1,d2),control=list(method="NR"))
-##'
+##' }
 ##' @export
 ##' @usage
 ##' 
 ##' \method{constrain}{default}(x,par,args,...) <- value
 ##' 
-##'  \method{constrain}{multigroup}(x,par,k=1,...) <- value
+##' \method{constrain}{multigroup}(x,par,k=1,...) <- value
 ##'
 ##' constraints(object,data=model.frame(object),vcov=object$vcov,level=0.95,
 ##'                         p=pars.default(object),k,idx,...)
-##'
+##' 
 ##' @param x \code{lvm}-object
 ##' @param par Name of new parameter. Alternatively a formula with lhs
 ##' specifying the new parameter and the rhs defining the names of the
@@ -205,19 +205,43 @@ Range.lvm <- function(a=0,b=1) {
 "constrain" <- function(x,...) UseMethod("constrain")
 
 ##' @S3method constrain default
-constrain.default <- function(x,estimate=FALSE,...) {
+constrain.default <- function(x,fun, idx, level=0.95, vcov, estimate=FALSE, ...) {
   if (estimate) {
     return(constraints(x,...))
   }
-  if (class(Model(x))[1]=="multigroup" ) {
-    res <- list()
-    for (m in Model(x)$lvm) {
-      if (length(constrain(m))>0)
-        res <- c(res, constrain(m))
-    }
-    return(res)
-  }  
-  return(Model(x)$constrain)
+  if (missing(fun)) {
+    if (class(Model(x))[1]=="multigroup" ) {
+      res <- list()
+      for (m in Model(x)$lvm) {
+        if (length(constrain(m))>0)
+          res <- c(res, constrain(m))
+      }
+      return(res)
+    }  
+    return(Model(x)$constrain)
+  }
+  require(numDeriv)
+  if (is.numeric(x)) {
+     b <- x
+   } else {
+     b <- pars(x)
+   }
+  if (missing(vcov)) {
+    S <- stats::vcov(x)
+  } else {
+    S <- vcov
+  }
+  if (!missing(idx)) {
+    b <- b[idx]; S <- S[idx,idx,drop=FALSE]
+  }
+  fb <- fun(b)
+  pl <- 1-(1-level)/2
+  D <- rbind(grad(fun,b))
+  se <- (D%*%S%*%t(D))^0.5
+  res <- c(fb,se,fb+c(-1,1)*qnorm(pl)*se)
+  pstr <- paste(format(c(round(1000-1000*pl),round(pl*1000))/10),"%",sep="")
+  names(res) <- c("Estimate","Std.Err",pstr)
+  res
 }
 
 ##' @S3method constrain<- multigroupfit

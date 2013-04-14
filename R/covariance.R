@@ -1,3 +1,4 @@
+
 ##' Add covariance structure to Latent Variable Model
 ##' 
 ##' Define covariances between residual terms in a \code{lvm}-object.
@@ -64,14 +65,15 @@
 ##' 
 ##' @aliases covariance covariance<- covariance.lvm covariance<-.lvm covfix<- covfix covfix<-.lvm covfix.lvm
 ##' @param object \code{lvm}-object
-##' @param var1 Vector of variables names between (or formula)
+##' @param var1 Vector of variables names (or formula)
 ##' @param var2 Vector of variables names (or formula) defining pairwise
 ##' covariance between \code{var1} and \code{var2})
 ##' @param constrain Define non-linear parameter constraints to ensure positive definite structure
+##' @param pairwise If TRUE and \code{var2} is omitted then pairwise correlation is added between all variables in \code{var1}
 ##' @param \dots Additional arguments to be passed to the low level functions
 ##' @param value List of parameter values or (if \code{var1} is unspecified) 
 ##' @usage
-##' \method{covariance}{lvm}(object, var1=NULL, var2=NULL, constrain=FALSE, ...) <- value
+##' \method{covariance}{lvm}(object, var1=NULL, var2=NULL, constrain=FALSE, pairwise=FALSE,...) <- value
 ##' @return A \code{lvm}-object
 ##' @author Klaus K. Holst
 ##' @seealso \code{\link{regression<-}}, \code{\link{intercept<-}},
@@ -94,7 +96,7 @@
 "covariance<-" <- function(object,...,value) UseMethod("covariance<-")
 
 ##' @S3method covariance<- lvm
-"covariance<-.lvm" <- function(object, var1=NULL, var2=NULL, constrain=FALSE, ..., value) {
+"covariance<-.lvm" <- function(object, var1=NULL, var2=NULL, constrain=FALSE, pairwise=FALSE, ..., value) {
 
   if (!is.null(var1)) {
     if (class(var1)[1]=="formula") {
@@ -102,29 +104,32 @@
       xf <- attributes(terms(var1))$term.labels
       xx <- unlist(lapply(xf, function(x) x[1]))
       if (length(lhs)==0) {
-        covfix(object,var1,var2,...) <- value
+        covfix(object,var1,var2,pairwise=pairwise,...) <- value
         object$parpos <- NULL
         return(object)
       }
       else {
         yy <- decomp.specials(lhs)
-##        xx <- setdiff(all.vars(var1),yy)
-        ##        xx <- var2
-##        covfix(object,var1=yy,var2=xx,...) <- value
-##        object$parpos <- NULL
-##        return(object)
       }
     } else {
       yy <- var1; xx <- var2
     }
-    covfix(object,var1=yy,var2=xx,...) <- value
+    covfix(object,var1=yy,var2=xx,pairwise=pairwise,...) <- value
     object$parpos <- NULL
     return(object)
   }
+
+  if (is.list(value)) {
+    for (v in value) {
+        covariance(object,pairwise=pairwise,constrain=constrain,...) <- v 
+      }
+      return(object)
+  }
+  
   if (class(value)[1]=="formula") {
     lhs <- getoutcome(value)
     if (length(lhs)==0) {
-      return(covariance(object,all.vars(value),constrain=constrain,...))
+      return(covariance(object,all.vars(value),constrain=constrain,pairwise=pairwise,...))
     }
     yy <- decomp.specials(lhs)
 
@@ -135,12 +140,11 @@
     if (nx==1) {
       if(is.null(attr(tt,"specials")$f) | length(res[[1]])<2) {
         if(is.null(attr(tt,"specials")$v) & is.null(attr(tt,"specials")$f))
-##          if(is.null(attr(tt,"specials")$v) | is.null(attr(tt,"specials")$f))
-                    
+                  
           {
             for (i in yy)
               for (j in res[[1]])
-                object <- covariance(object, c(i,j), constrain=constrain, ...)
+                object <- covariance(object, c(i,j), pairwise=TRUE, constrain=constrain, ...)
           } else {
             covfix(object,var1=yy,var2=NULL) <- res[[1]]
           }
@@ -159,60 +163,49 @@
         } else if ((i+1)%in%attr(tt,"specials")$f | (i+1)%in%attr(tt,"specials")$v) {
           covfix(object, var1=y, var2=NULL) <- res[[i]]
         } else {
-          object <- covariance(object,c(y,xx[i]),...)
+          object <- covariance(object,c(y,xx[i]),pairwise=TRUE,...)
         }
       }
 
     object$parpos <- NULL
     return(object)
-    ##       yx <- all.vars(value)
-    ##       xx <- attributes(terms(value))$term.labels
-    ##       yy <- setdiff(yx,xx)
-    ##       return(regression(model,to=yy,from=xx,...))
   }
-  ##  if (is.null(var1)) {
-  else
-    covariance(object,value,...)
-##  } else  {
-##    covfix(object,var1,var2,...) <- value
-##  }
+  else covariance(object,value,pairwise=pairwise,...)
 }
 
 ##' @S3method covariance lvm
 `covariance.lvm` <-
-function(object,var=NULL,var2,exo=FALSE,constrain=FALSE,...) {
-  if (!is.null(var)) {
-    if (class(var)[1]=="formula") {
-      covariance(object,constrain=constrain,...) <- var
+function(object,var1=NULL,var2,exo=FALSE,pairwise=FALSE,constrain=FALSE,...) {
+  if (!is.null(var1)) {
+    if (class(var1)[1]=="formula") {
+      covariance(object,constrain=constrain,
+                 pairwise=pairwise,exo=exo,...) <- var1
       return(object)
     }
-    allvars <- var    
+    allvars <- var1
     if (!missing(var2)) {
       if (class(var2)[1]=="formula")
         var2 <- all.vars(var2)
       allvars <- c(allvars,var2)
     }  
-    
     if (constrain) {
       if (length(var)!=2) stop("Constraints only implemented for pairs")
-      return(covarianceconst(object,var[1],var[2],...))
+      return(covarianceconst(object,var1[1],var1[2],...))
     }
-    
+
+    object <- addvar(object, allvars, silent=TRUE, reindex=FALSE)
+
     xorg <- exogenous(object)
     exoset <- setdiff(xorg,allvars) 
     if (!exo & length(exoset)<length(xorg)) {
-##      exogenous(object,mom=TRUE) <- exoset
-##      if (length(exoset)==0) exoset <- NA
       exogenous(object) <- exoset
     }
-
+    
     if (!missing(var2)) {
-      for (i in 1:length(var)) {
-        c1 <- var[i]
-        for (j in 1:length(var2)) {
+      for (i in seq_len(length(var1))) {
+        c1 <- var1[i]
+        for (j in seq_len(length(var2))) {
           c2 <- var2[j]
-          object <- addvar(object, c(c1,c2), silent=TRUE, reindex=FALSE)
-          ##        cancel(object) <- c(c1,c2)
           object$cov[c1,c2] <- object$cov[c2,c1] <- 1
           object$parpos <- NULL
           index(object) <- reindex(object)
@@ -220,29 +213,20 @@ function(object,var=NULL,var2,exo=FALSE,constrain=FALSE,...) {
       }
     }
     else {
-      for (i in 1:length(var)) {
-        c1 <- var[i]
-        for (j in i:length(var)) {
-          c2 <- var[j]
-          object <- addvar(object, c(c1,c2), silent=TRUE, reindex=FALSE)
-          ##        cancel(object) <- c(c1,c2)
-          object$cov[c1,c2] <- object$cov[c2,c1] <- 1
-          object$parpos <- NULL
-          index(object) <- reindex(object)
+      if (pairwise) {
+        for (i in seq_len(length(var1))) {
+          c1 <- var1[i]
+            for (j in seq_len(length(var1))) {
+              c2 <- var1[j]
+              object$cov[c1,c2] <- object$cov[c2,c1] <- 1
+              object$parpos <- NULL
+              index(object) <- reindex(object)
+            } 
         }
       }
     }
     return(object)
   }
-  ##   for (c1 in var)
-  ##     for (c2 in var) {
-  ##       object <- addvar(object, c(c1,c2), silent=TRUE)
-  ##       cancel(object) <- c(c1,c2)
-  ##       object$cov[c1,c2] <- object$cov[c2,c1] <- 1
-  ##       index(object) <- reindex(object)
-  ##     }
-  ##   return(object)
-  ## }
   else
     return(covfix(object))
 }
@@ -267,7 +251,6 @@ covarianceconst <- function(object,var1,var2,cname=NA,rname=NA,vname=NA,v2name=v
   nvarname <- c("rname","cname","vname","v2name","lname","l2name")[is.na(c(rname,cname,vname,v2name,lname,l2name))]
   
   nprefix <- sapply(nvarname, function(x) substr(x,1,1))
-  ##  if (!is.na(lname)) nprefix[length(nprefix)-1:0] <- lname
   for (i in seq_len(length(nvarname))) {    
     count <- 0
     repeat {
@@ -290,3 +273,4 @@ covarianceconst <- function(object,var1,var2,cname=NA,rname=NA,vname=NA,v2name=v
   
   return(structure(object,rname=rname,cname=cname))
 }
+

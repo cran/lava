@@ -1,5 +1,5 @@
 \name{startvalues}
-\alias{\%+\%}
+\alias{addattr}
 \alias{addhook}
 \alias{checkmultigroup}
 \alias{CoefMat}
@@ -10,7 +10,6 @@
 \alias{estimate.MAR}
 \alias{finalize}
 \alias{fixsome}
-\alias{frobnorm}
 \alias{gaussian_logLik.lvm}
 \alias{gethook}
 \alias{getoutcome}
@@ -23,10 +22,7 @@
 \alias{Inverse}
 \alias{IV}
 \alias{lisrel}
-\alias{makemissing}
 \alias{matrices}
-\alias{mdist}
-\alias{meq}
 \alias{merge}
 \alias{missingModel}
 \alias{modelPar}
@@ -57,11 +53,9 @@
 \alias{subgraph}
 \alias{survival}
 \alias{survival<-}
-\alias{tr}
 \alias{updatelvm}
 \alias{variances}
 \alias{Weight}
-\alias{whichentry}
 \title{For internal use}
 \description{
   For internal use

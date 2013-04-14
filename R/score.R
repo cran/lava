@@ -5,14 +5,17 @@ function(x,...) UseMethod("score")
 ###{{{ score.lvm
 
 ##' @S3method score lvm
-score.lvm <- function(x, data, p, model="gaussian", S, n, mu=NULL, weight=NULL, debug=FALSE, reindex=FALSE, mean=TRUE, constrain=TRUE, indiv=TRUE,...) {
+score.lvm <- function(x, data, p, model="gaussian", S, n, mu=NULL, weight=NULL, data2=NULL, debug=FALSE, reindex=FALSE, mean=TRUE, constrain=TRUE, indiv=TRUE,...) {
 
   cl <- match.call()
   lname <- paste(model,"_score.lvm",sep="")
   if (!exists(lname)) {
     lname <- paste(model,"_gradient.lvm",sep="")
-    mygrad <- get(lname)
+    mygrad <- get(lname)    
     scoreFun <- function(...) -mygrad(...)
+    if (is.null(mygrad)) {
+      stop("Missing gradient")
+    }      
   } else {
     scoreFun <- get(lname)
   }
@@ -44,8 +47,6 @@ score.lvm <- function(x, data, p, model="gaussian", S, n, mu=NULL, weight=NULL, 
       rowpos <- lapply(xpos, function(y) (y-1)%%nrow+1)
       myfix <- list(var=xfix, col=colpos, row=rowpos)
       for (i in 1:length(myfix$var))
-                                        #      regfix(x0, from=vars(x0)[myfix$row[[i]][]],to=vars(x0)[myfix$col[[i]][j]]) <
-                                        #          (data[1,myfix$var[[i]]])
         for (j in 1:length(myfix$col[[i]])) {
           regfix(x0, from=vars(x0)[myfix$row[[i]][j]],to=vars(x0)[myfix$col[[i]][j]]) <-
             data[1,myfix$var[[i]]]
@@ -55,23 +56,27 @@ score.lvm <- function(x, data, p, model="gaussian", S, n, mu=NULL, weight=NULL, 
     pp <- modelPar(x0,p)
     p0 <- with(pp, c(meanpar,p))
     k <- length(index(x0)$manifest)
-    
+
     myfun <- function(ii) {
       if (length(xfix)>0)
         for (i in 1:length(myfix$var)) {
           index(x0)$A[cbind(myfix$row[[i]],myfix$col[[i]])] <- data[ii,myfix$var[[i]]]
         }
-      return(scoreFun(x0,data=data[ii,], p=with(pp,c(meanpar,p)),weight=weight[ii,,drop=FALSE],model=model,debug=debug,indiv=indiv,...))
+      return(scoreFun(x0,data=data[ii,], p=with(pp,c(meanpar,p)),weight=weight[ii,,drop=FALSE],data2=data2[ii,,drop=FALSE],model=model,debug=debug,indiv=indiv,...))
     }
     score <- t(sapply(1:nrow(data),myfun))
     if (!indiv) {
       score <- colSums(rbind(score))
     }
+    if (length(score)<length(p))  score <- c(score,rep(0,length(p)-length(score)))
     return(score)
   }
   cl$constrain <- FALSE
   cl[[1]] <- scoreFun
   score <- eval.parent(cl)
+  if (is.null(dim(score))) score <- rbind(score)
+  if (NCOL(score)<length(p))  score <- cbind(rbind(score),rep(0,length(p)-NCOL(score)))
+
 #  score <- eval(cl,parent.frame())
   return(score)
 }
@@ -143,8 +148,8 @@ score.multigroup <- function(x,data=x$data,weight=NULL,p,indiv=FALSE,...) {
 ###{{{ score.lvmfit
 
 ##' @S3method score lvmfit
-score.lvmfit <- function(x, data=model.frame(x), p=pars(x), model=x$estimator, weight=Weight(x), ...) {
-  score(x$model0,data=data,p=p,model=model,weight=weight,...)
+score.lvmfit <- function(x, data=model.frame(x), p=pars(x), model=x$estimator, weight=Weight(x), data2=x$data$data2, ...) {
+  score(x$model0,data=data,p=p,model=model,weight=weight,data2=data2,...)
 }
 
 ###}}} score.lvmfit
@@ -178,7 +183,6 @@ score2.lvm <- function(x, data, p, S, n, mu=NULL, weight=NULL, debug=FALSE, rein
             for (j in 1:length(myfix$col[[i]])) 
               regfix(x0, from=vars(x0)[myfix$row[[i]][j]],to=vars(x0)[myfix$col[[i]][j]]) <-
                 data[1,myfix$var[[i]]]
-          ##rep(data[1,myfix$var[[i]]],length(myfix$row[[i]]))
           index(x0) <- reindex(x0,zeroones=TRUE,deriv=TRUE)
           yvars <- endogenous(x0)
         }
@@ -208,7 +212,6 @@ score2.lvm <- function(x, data, p, S, n, mu=NULL, weight=NULL, debug=FALSE, rein
       iC <- Inverse(C,0,det=FALSE)
       D <- with(pp, deriv(x, meanpar=meanpar, p=p, mom=mp, mu=NULL)) ##, all=length(constrain(x))>0))
 
-      ##      D <- with(pp, deriv(x, meanpar=meanpar, mom=mp, mu=NULL))
       Debug("after deriv.", debug)
       myvars <- (index(x)$manifest)
       if (NCOL(data)!=length(myvars)) {

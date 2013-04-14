@@ -11,6 +11,8 @@
 \alias{functional.lvm}
 \alias{functional<-}
 \alias{functional<-.lvm}
+\alias{Gamma.lvm}
+\alias{gaussian.lvm}
 \alias{heavytail}
 \alias{heavytail<-}
 \alias{logit.lvm}
@@ -20,6 +22,8 @@
 \alias{sim}
 \alias{sim.lvm}
 \alias{sim.lvmfit}
+\alias{simulate.lvm}
+\alias{simulate.lvmfit}
 \alias{student.lvm}
 \alias{transform.lvm}
 \alias{transform<-}
@@ -66,6 +70,56 @@
   E.g. \eqn{ E(y|x) = 2*x^2 } could be specified as
 
   \code{regression(m, "y3", fn=function(x) x^2) <- "x$2"}
+}
+\examples{
+##################################################
+## Logistic regression
+##################################################
+m <- lvm(y~x+z)
+regression(m) <- x~z
+distribution(m,~y+z) <- binomial.lvm("logit")
+d <- sim(m,1e3)
+head(d)
+
+e <- estimate(m,d,estimator="glm")
+e
+## Simulate a few observation from estimated model
+sim(e,n=5)
+
+##################################################
+## Poisson
+##################################################
+distribution(m,~y) <- poisson.lvm()
+d <- sim(m,1e4,p=c(y=-1,"y<-x"=2,z=1))
+head(d)
+estimate(m,d,estimator="glm")
+mean(d$z); lava:::expit(1)
+
+summary(lm(y~x,sim(lvm(y[1:2]~4*x),1e3)))
+
+##################################################
+### Gamma distribution
+##################################################
+m <- lvm(y~x)
+distribution(m,~y+x) <- list(Gamma.lvm(shape=2),binomial.lvm())
+intercept(m,~y) <- 0.5
+d <- sim(m,1e4)
+summary(g <- glm(y~x,family=Gamma(),data=d))
+\dontrun{MASS::gamma.shape(g)}
+
+args(lava::Gamma.lvm)
+distribution(m,~y) <- Gamma.lvm(shape=2,log=TRUE)
+sim(m,10,p=c(y=0.5))[,"y"]
+
+##################################################
+### Transform
+##################################################
+
+m <- lvm()
+transform(m,xz~x+z) <- function(x) x[1]*(x[2]>0)
+regression(m) <- y~x+z+xz
+d <- sim(m,1e3)
+summary(lm(y~x+z + x*I(z>0),d))
 }
 \author{
   Klaus K. Holst
