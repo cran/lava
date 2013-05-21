@@ -189,8 +189,8 @@ function(object,var1=NULL,var2,exo=FALSE,pairwise=FALSE,constrain=FALSE,...) {
       allvars <- c(allvars,var2)
     }  
     if (constrain) {
-      if (length(var)!=2) stop("Constraints only implemented for pairs")
-      return(covarianceconst(object,var1[1],var1[2],...))
+      if (length(allvars)!=2) stop("Constraints only implemented for pairs")
+      return(covarianceconst(object,allvars[1],allvars[2],...))
     }
 
     object <- addvar(object, allvars, silent=TRUE, reindex=FALSE)

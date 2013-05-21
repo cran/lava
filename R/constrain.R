@@ -104,7 +104,6 @@ Range.lvm <- function(a=0,b=1) {
 ##' \code{\link{covariance}}
 ##' @keywords models regression
 ##' @examples
-##' 
 ##' ##############################
 ##' ### Non-linear parameter constraints 1
 ##' ##############################
@@ -115,7 +114,7 @@ Range.lvm <- function(a=0,b=1) {
 ##' ## Define slope of x2 to be the square of the residual variance of y
 ##' ## Estimate both restricted and unrestricted model
 ##' e <- estimate(m,d,control=list(method="NR"))
-##' e1 <- estimate(m1,d,control=list(method="NR"))
+##' e1 <- estimate(m1,d)
 ##' p1 <- coef(e1)
 ##' p1 <- c(p1[1:2],p1[3]^2,p1[3])
 ##' ## Likelihood of unrestricted model evaluated in MLE of restricted model
@@ -275,20 +274,21 @@ constrain.default <- function(x,fun, idx, level=0.95, vcov, estimate=FALSE, ...)
     return(x)
   }
   for (i in args) {
-##    if (!(i%in%c(parlabels(Model(x)),exogenous(Model(x))))) {
-#    if (!(i%in%c(parlabels(Model(x)),exogenous(Model(x)),names(constrain(x))))) {
-    if (!(i%in%c(parlabels(Model(x)),vars(Model(x)),##index(Model(x))$exogenous,
+    if (!(i%in%c(parlabels(Model(x)),vars(Model(x)),
                  names(constrain(x))))) {
-      ##    if (!(i%in%c(parlabels(x))))
       if (!lava.options()$silent)
         message("\tAdding parameter '", i,"'\n",sep="")
       parameter(x,silent=TRUE) <- i
     }
   }
   if (i%in%endogenous(x)) {
-    Model(x)$constrainY[[par]] <- structure(value,args=args)    
-  } else { 
-    Model(x)$constrain[[par]] <- value
+    Model(x)$constrainY[[par]] <- list(fun=value,args=args)
+  } else {
+    ## Wrap around do.call, since functions are not really
+    ## parsed as call-by-value in R, and hence setting
+    ## attributes to e.g. value=cos, will be overwritten
+    ## if value=cos is used again later with new args.
+    Model(x)$constrain[[par]] <- function(x) do.call(value,list(x))
     attributes(Model(x)$constrain[[par]])$args <- args
     index(Model(x)) <- reindex(Model(x))
   }
@@ -298,9 +298,6 @@ constrain.default <- function(x,fun, idx, level=0.95, vcov, estimate=FALSE, ...)
 ##' @export
 constraints <- function(object,data=model.frame(object),vcov=object$vcov,level=0.95,
                         p=pars.default(object),k,idx,...) {
-##  if (class(object)[1]=="lvm") {
-##    return(constrain(object,estimate=FALSE))
-##    }
   if (class(object)[1]=="multigroupfit") {
     if (!missing(k)) {
       if (class(data)[1]=="list") data <- data[[k]]
@@ -337,13 +334,10 @@ constraints <- function(object,data=model.frame(object),vcov=object$vcov,level=0
       return(parpos$v[attributes(x)$m.idx[1]])
     } else NA
   }))
-##  myidx <- na.myidx)
   names(myidx) <- names(parpos$parval)    
   mynames <- c()
   N <- length(index(object)$constrain.par)
   if (N>0)
-    ##    if (!require("numDeriv")) stop("package numDeriv not available")
-##  res <- matrix(nrow=N,ncol=6)
   res <- c()
   count <- 0
   mydata <- rbind(numeric(length(manifest(object))))
@@ -393,7 +387,6 @@ constraints <- function(object,data=model.frame(object),vcov=object$vcov,level=0
     mycoef[3] <- mycoef[1]/mycoef[2]
     mycoef[4] <- 2*(1-pnorm(abs(mycoef[3])))
     mycoef[5:6] <- mycoef[1] + c(1,-1)*qnorm((1-level)/2)*mycoef[2]
-##    res[count,] <- mycoef
     res <- rbind(res,mycoef)
     mynames <- c(mynames,pp)
     if (!is.null(attributes(fval)$inv)){

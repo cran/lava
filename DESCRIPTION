@@ -1,14 +1,14 @@
 Package: lava
 Type: Package
 Title: Linear Latent Variable Models
-Version: 1.2.0
-Date: 2013-04-14
+Version: 1.2.1
+Date: 2013-05-21
 Author: Klaus K. Holst
 Maintainer: Klaus K. Holst <kkho@biostat.ku.dk>
 Description: Estimation and simulation of latent variable models
 Depends: R (>= 2.14), numDeriv
 Suggests: graph, Rgraphviz, igraph (>= 0.6), Matrix, lme4, geepack, gof
-        (>= 0.8), foreach, survival, testthat
+        (>= 0.9), foreach, survival, testthat
 License: GPL-3
 LazyLoad: yes
 Collate: 'addattr.R' 'addvar.R' 'baptize.R' 'bootstrap.R' 'cancel.R'
@@ -34,7 +34,7 @@ Collate: 'addattr.R' 'addvar.R' 'baptize.R' 'bootstrap.R' 'cancel.R'
         'zplotConf.R' 'zrevdiag.R' 'ztr.R' 'zoperators.R' 'zmypal.R'
         'ztoformula.R' 'zdevcoords.R' 'curereg.R' 'estimate.default.R'
         'iid.R' 'transform.R'
-Packaged: 2013-04-23 11:25:02 UTC; klaus
+Packaged: 2013-05-21 17:06:29 UTC; klaus
 NeedsCompilation: no
 Repository: CRAN
-Date/Publication: 2013-04-24 22:56:37
+Date/Publication: 2013-05-21 20:01:15

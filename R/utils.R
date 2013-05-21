@@ -1,16 +1,23 @@
 ###{{{ contrmat
 
 ##' @export
-contrmat <- function(npar,ngroup,...) {
- B <- matrix(0,ncol=npar*ngroup,nrow=npar*(ngroup-1))
- pos <- 0
- for (i in seq_len(npar)) {
-   for (j in seq_len(ngroup-1)) {
-     pos <- pos+1
-     B[pos,i] <- 1;  B[pos,j*npar+i] <- -1
-   }   
- }
- return(B)
+contr <- function(p,n,...) {
+  if (length(p)==1) {
+    B <- matrix(0,ncol=p*n,nrow=p*(n-1))
+    pos <- 0
+    for (i in seq_len(p)) {
+      for (j in seq_len(n-1)) {
+        pos <- pos+1
+        B[pos,i] <- 1;  B[pos,j*p+i] <- -1
+      }   
+    }
+    return(B)
+  }  
+  if (missing(n)) n <- max(p)
+  B <- matrix(0,ncol=n,nrow=length(p)-1)
+  B[,p[1]] <- 1
+  B[cbind(seq(nrow(B)),p[-1])] <- -1
+  B
 }
 
 ###}}} contr
@@ -105,7 +112,7 @@ procrandomslope <- function(object,data=object$data,...) {
 ## ' @param Y 
 ## ' @author Klaus K. Holst
 kronprod <- function(A,B,Y) {
-  apply(cbind(Y),2,function(x) B%*%matrix(x,nrow=ncol(B))%*%t(A))
+  rbind(apply(Y,2,function(x) B%*%matrix(x,nrow=ncol(B))%*%t(A)))
 }
 
 ###}}} kronprod
@@ -186,6 +193,7 @@ categorical2dummy <- function(x,data,silent=TRUE,...) {
       obs <- setdiff(intersect(vars(x), colnames(data)),latent(x))
       Debug(obs)
       mydata <- subset(data, select=obs)
+      if (NROW(mydata)==0) stop("No observations")
       for (i in 1:ncol(mydata)) {
         if (inherits(mydata[,i],"Surv"))
           mydata[,i] <- mydata[,i][,1]
