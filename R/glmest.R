@@ -146,6 +146,9 @@ score.glm <- function(x,p=coef(x),data,indiv=FALSE,
     X <- model.matrix(formula(x),data=data)
     y <- model.frame(formula(x),data=data)[,1]
   }
+  if (is.character(y) || is.factor(y)) {
+      y <- as.numeric(as.factor(y))-1
+  }
   n <- nrow(X)  
   g <- link$linkfun
   ginv <- link$linkinv
@@ -207,7 +210,7 @@ logL.glm <- function(x,p=pars.glm(x),indiv=FALSE,...) {
 }
 
 hessian.glm <- function(x,p=coef(x),...) {  
-  jacobian(function(theta) score.glm(x,p=theta,...),p)
+  numDeriv::jacobian(function(theta) score.glm(x,p=theta,...),p)
 }
 
 ##' @S3method information glm

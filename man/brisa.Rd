@@ -1,10 +1,13 @@
 \docType{data}
 \name{brisa}
 \alias{brisa}
-\title{Data}
-\format{data.frame containing ...}
+\title{Simulated data}
+\format{data.frame}
+\source{
+  Simulated
+}
 \description{
-  Description
+  Simulated data
 }
 \keyword{datasets}
 

@@ -1,16 +1,18 @@
 Package: lava
 Type: Package
 Title: Linear Latent Variable Models
-Version: 1.2.2
-Date: 2013-07-10
+Version: 1.2.3
+Date: 2013-10-27
 Author: Klaus K. Holst
 Maintainer: Klaus K. Holst <kkho@biostat.ku.dk>
 Description: Estimation and simulation of latent variable models
-Depends: R (>= 2.14), numDeriv
-Suggests: graph, Rgraphviz, igraph (>= 0.6), Matrix, lme4, geepack, gof
-        (>= 0.9), foreach, survival, testthat
+URL: http://lava.r-forge.r-project.org/
 License: GPL-3
 LazyLoad: yes
+Depends: R (>= 2.15)
+Imports: numDeriv
+Suggests: mets, graph, Rgraphviz, igraph (>= 0.6), Matrix, lme4,
+        geepack, gof (>= 0.9), foreach, survival, testthat, ascii
 Collate: 'addattr.R' 'addvar.R' 'baptize.R' 'bootstrap.R' 'cancel.R'
         'children.R' 'cluster.hook.R' 'coef.R' 'compare.R' 'confint.R'
         'constrain.R' 'copy.R' 'correlation.R' 'covariance.R' 'deriv.R'
@@ -33,8 +35,8 @@ Collate: 'addattr.R' 'addvar.R' 'baptize.R' 'bootstrap.R' 'cancel.R'
         'zblockdiag.R' 'zCol.R' 'zcommutation.R' 'zconfband.R' 'zId.R'
         'zplotConf.R' 'zrevdiag.R' 'ztr.R' 'zoperators.R' 'zmypal.R'
         'ztoformula.R' 'zdevcoords.R' 'curereg.R' 'estimate.default.R'
-        'iid.R' 'transform.R' 'By.R' 'Expand.R'
-Packaged: 2013-07-12 09:04:13 UTC; klaus
+        'iid.R' 'transform.R' 'By.R' 'Expand.R' 'zorg.R'
+Packaged: 2013-10-27 19:34:47 UTC; klaus
 NeedsCompilation: no
 Repository: CRAN
-Date/Publication: 2013-07-12 12:55:04
+Date/Publication: 2013-10-28 00:15:04

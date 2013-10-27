@@ -2,30 +2,32 @@
 \alias{estimate.default}
 \title{Estimation of functional of parameters}
 \usage{
-  \method{estimate}{default} (x, f, data = model.frame(x),
-    id, id2, score.deriv, level = 0.95, iid = FALSE,
-    contrast, null, vcov, coef, ...)
+  \method{estimate}{default} (x, f = NULL,
+    data = model.frame(x), id, subset, score.deriv,
+    level = 0.95, iid = FALSE, contrast, null, vcov, coef,
+    ...)
 }
 \arguments{
   \item{x}{model object (\code{glm}, \code{lvmfit}, ...)}
 
   \item{f}{transformation of model parameters and
-  (optionally) data}
+  (optionally) data, or contrast matrix (or vector)}
 
   \item{data}{\code{data.frame}}
 
   \item{id}{(optional) id-variable corresponding to iid
-  decomposition of model parameters}
+  decomposition of model parameters.}
 
-  \item{id2}{(optional) id-variable of data.frame}
+  \item{subset}{(optional) subset of data.frame on which to
+  condition (logical expression or variable name)}
 
   \item{score.deriv}{(optional) derivative of mean score
   function}
 
   \item{level}{Level of confidence limits}
 
-  \item{iid}{If TRUE the iid decompositions are returned
-  instead of variance estimates}
+  \item{iid}{If TRUE the iid decompositions are also
+  returned (extract with \code{iid} method)}
 
   \item{contrast}{(optional) Contrast matrix for final Wald
   test}
@@ -60,9 +62,9 @@ estimate(g)
 
 ## Testing contrasts
 estimate(g,null=0)
-estimate(g,contrast=rbind(c(1,1,0),c(1,0,2)))
-estimate(g,contrast=rbind(c(1,1,0),c(1,0,2)),null=c(1,2))
-estimate(g,contrast=2:3) ## same as rbind(c(0,1,0),c(0,0,1))
+estimate(g,rbind(c(1,1,0),c(1,0,2)))
+estimate(g,rbind(c(1,1,0),c(1,0,2)),null=c(1,2))
+estimate(g,2:3) ## same as rbind(c(0,1,0),c(0,0,1))
 
 ## Transformations
 estimate(g,function(p) p[1]+p[2])
@@ -82,6 +84,10 @@ f <- function(p,data)
 e <- estimate(g, f)
 e
 estimate(e,diff)
-estimate(e,contrast=cbind(1,1))
+estimate(e,cbind(1,1))
+
+## Clusters and subset (conditional marginal effects)
+d$id <- rep(seq(nrow(d)/4),each=4)
+estimate(g,function(p,data) list(p0=lava:::expit(p[1] + p["z"]*data[,"z"])), subset=z>0, id=d$id)
 }
 
