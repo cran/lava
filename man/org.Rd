@@ -4,14 +4,14 @@
 \usage{
   org(x, ..., ncol, include.rownames = TRUE,
     include.colnames = TRUE, header = TRUE,
-    frame = "topbot", rownames, type = "org", tab = FALSE,
-    margins = TRUE, print = TRUE, html, latex)
+    frame = "topbot", rownames = NULL, colnames = NULL,
+    type = "org", tab = FALSE, margins = TRUE,
+    print = TRUE, html, latex)
 }
 \arguments{
   \item{x}{R object}
 
-  \item{\dots}{additional arguments to lower level
-  functions}
+  \item{...}{additional arguments to lower level functions}
 
   \item{ncol}{If \code{x} is a vector and \code{ncol} is
   given as argument, the resulting output will be a
@@ -28,6 +28,8 @@
   \item{frame}{Frame argument (see \code{ascii})}
 
   \item{rownames}{Optional vector of row names}
+
+  \item{colnames}{Optional vector of column names}
 
   \item{type}{Type argument (see \code{ascii})}
 

@@ -20,6 +20,7 @@ logLik.lvm <- function(object,p,data,model="gaussian",indiv=FALSE,S,mu,n,debug=F
   Debug(xfix,debug)
   if (missing(n)) {
     n <- nrow(data)
+    if (is.null(n)) n <- data$n
   }
   lname <- paste(model,"_logLik.lvm",sep="")
   logLikFun <- get(lname)
@@ -107,7 +108,7 @@ logLik.lvm <- function(object,p,data,model="gaussian",indiv=FALSE,S,mu,n,debug=F
     cl[[1]] <- logLikFun          
     loglik <- eval.parent(cl)
   }
-    
+
   if (is.null(attr(loglik,"nall")))
     attr(loglik, "nall") <- n
   if (is.null(attr(loglik,"nobs")))
@@ -126,7 +127,6 @@ logLik.lvm <- function(object,p,data,model="gaussian",indiv=FALSE,S,mu,n,debug=F
 gaussian_logLik.lvm <- function(object,p,data,
                           type=c("cond","sim","exo","sat","cond2"),
                           weight=NULL, indiv=FALSE, S, mu, n, offset=NULL, debug=FALSE, meanstructure=TRUE,...) { 
-  
   exo.idx <- with(index(object), exo.obsidx)##match(exogenous(object),manifest(object))
   endo.idx <- with(index(object), endo.obsidx)##match(endogenous(object),manifest(object))
   if (type[1]=="exo") {
@@ -158,7 +158,7 @@ gaussian_logLik.lvm <- function(object,p,data,
     if (missing(S)) {
       d0 <- procdata.lvm(object,data=data)
       S <- d0$S; mu <- d0$mu; n <- d0$n
-      
+          
     }
     if (missing(p)) p <- rep(1,length(coef(object)))
     L1 <- logLik(object,p,data,type="exo",meanstructure=meanstructure)

@@ -44,10 +44,12 @@
 \alias{randomslope<-}
 \alias{reindex}
 \alias{reorderdata}
+\alias{rsq}
 \alias{score.glm}
 \alias{Specials}
 \alias{starter.multigroup}
 \alias{startvalues}
+\alias{startvalues0}
 \alias{startvalues2}
 \alias{startvalues3}
 \alias{stdcoef}

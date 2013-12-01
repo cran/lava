@@ -18,24 +18,26 @@ function(x, ...) {
     R <- c()
     for (f in ff) {
       oneline <- as.character(f);
-      y <- gsub(" ","",strsplit(f,"~")[[1]][1])
-##      if (!(y %in% endogenous(m)))
+      y <- strsplit(f,"~")[[1]][1]
+      y <- trim(y)
       {
         col1 <- as.character(oneline)
-        
         D <- attributes(distribution(x)[[y]])$family
         col2 <- x$attributes$type[y]
-        if (is.null(col2) || is.na(col2)) col2 <- "Gaussian"
-        if (!is.null(D$family)) col2 <- paste(D$family,sep="")
+        if (is.null(col2) || is.na(col2)) col2 <- "gaussian"
+        if (!is.null(D$family)) {
+            col2 <- paste(D$family,sep="")            
+        }        
         if (!is.null(D$link)) col2 <- paste(col2,"(",D$link,")",sep="")
         if (!is.null(D$par)) col2 <- paste(col2,"(",paste(D$par,collapse=","),")",sep="")
-        if (L[y]) col2 <- paste(col2,", Latent",sep="")  
-        R <- rbind(R,c(col1,"  ",col2))
+        
+        if (L[y]) col2 <- paste(col2,", latent",sep="")  
+        R <- rbind(R,c(col1,col2))
       }
     }
-    if (length(R)>0) {
-      rownames(R) <- rep("",nrow(R)); colnames(R) <- rep("",ncol(R))
-      print(R,quote=FALSE,...)
+    if (length(R)>0) {        
+        rownames(R) <- paste(" ",R[,1]," "); colnames(R) <- rep("",ncol(R))
+        print(R[,2,drop=FALSE],quote=FALSE,...)
     }
     cat("\n")
     cat("Number of free parameters: ", with(index(x),npar+npar.mean+npar.ex),"\n", sep="")
