@@ -1,5 +1,5 @@
 
-##' ##' Set global options for \code{lava}
+##' Set global options for \code{lava}
 ##' 
 ##' Extract and set global parameters of \code{lava}. In particular optimization
 ##' parameters for the \code{estimate} function.
@@ -47,6 +47,14 @@ addhook <- function(x,hook="estimate.hooks",...) {
   invisible(newhooks)
 }
 
+versioncheck <- function(pkg,geq,sep=".",...) {
+    xyz <- tryCatch(
+        as.numeric(strsplit(as.character(packageVersion(pkg)),sep,fixed=TRUE)[[1]]),
+        error=function(x) NULL)
+    if (is.null(xyz)) return(FALSE)
+    all(xyz[seq(length(geq))]>=geq)
+}
+
 lava.env <- new.env()
 assign("init.hooks",c(),envir=lava.env)
 assign("estimate.hooks",c(),envir=lava.env)
@@ -59,13 +67,15 @@ assign("plot.hooks",c(),envir=lava.env)
 assign("options", list(
     trace=0,
     tol=1e-6,
-    gamma=0.05,
+    gamma=1,
+    backtrace=TRUE,
     ngamma=0,
     iter.max=300,
     eval.max=250,
     constrain=FALSE,
     silent=TRUE,            
-    itol=1e-9,
+    itol=0,##1e-9,
+    cluster.index=versioncheck("mets",c(0,2,7)),
     Dmethod="simple", ##Richardson"
     parallel=TRUE,
     param="relative",

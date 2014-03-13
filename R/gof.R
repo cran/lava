@@ -1,13 +1,110 @@
 ##' @export
-rsq <- function(x) {
-    v <- c(endogenous(x),latent(x))
-    res <- 1-coef(x,9,std="yx")[paste(v,lava.options()$symbol[2],v,sep=""),5]
-    names(res) <- v
+rsq <- function(x,stderr=FALSE) {
+
+    if (stderr) {
+        v <- endogenous(x)
+        vpar <- paste(v,v,sep=lava.options()$symbol[2])
+        iid.v <- iid(model.frame(x)[,v])    
+        iid.mod <- iid(x)        
+        coef0 <- c(attributes(iid.v)$coef[vpar],
+                   coef(x)[vpar])
+        iid0 <- cbind(iid.v[,vpar],iid.mod[,vpar])
+        p <- length(v)
+        idx <- seq_len(p);         
+        ee <- estimate(NULL,data=NULL,
+                       function(x) {
+                           res <- (x[idx]-x[idx+p])/x[idx]
+                           names(res) <- v
+                           as.list(res)
+                       },
+                       print=function(x,...) {
+                           cat("\nR-squared:\n\n")
+                           print(x$coefmat)
+                       },
+                       coef=coef0, iid=iid0)
+
+        res <- ee
+        ##res <- list(ee)
+        ## for (lat in latent(x)) {
+
+        ##     v <- intersect(children(x,lat),endogenous(x))
+        ##     vpar <- paste(v,v,sep=lava.options()$symbol[2])
+        ##     lpar <- paste(lat,lat,sep=lava.options()$symbol[2])
+        ##     rpar <- paste(v,lat,sep=lava.options()$symbol[1])
+        ##     fix <- c(x$model$fix[lat,v,drop=TRUE],x$model$covfix[lat,lat])
+        ##     pp <- coef(x)
+        ##     idx <- x$model$parpos$A[lat,v]
+        ##     idx2 <- x$model$parpos$P[lat,lat]
+        ##     p0 <- c(idx,idx2)
+        ##     p1 <- setdiff(unique(p0),0)
+        ##     p2 <- match(p0,p1)
+            
+        ##     k <- length(v)
+        ##     coef0 <- c(pp[p1],attributes(iid.v)$coef[vpar])
+        ##     iid0 <- cbind(iid.mod[,p1],iid.v[,vpar])
+        ##     ee <- estimate(NULL,data=NULL,
+        ##                    function(p) {
+        ##                        p. <- p[p2]
+        ##                        p.[is.na(p.)] <- fix[is.na(p.)]
+        ##                        res <- p.[seq_len(k)]^2*p.[k+1]/tail(p,k)
+        ##                        names(res) <- v
+        ##                        as.list(res)
+        ##                    },
+        ##                    print=function(x,...) {
+        ##                        cat("\nVariance explained by '", lat,"':\n\n",sep="")
+        ##                        print(x$coefmat)
+        ##                    },coef=coef0,iid=iid0)
+        ##     res <- c(res,list(ee))
+        ## }
+        
+        return(res)
+    }
+        
+
+    
+    v <- c(endogenous(x),setdiff(latent(x),parameter(Model(x))))
+    res <- coef(x,9,std="yx")
+    idx <- with(attributes(res),
+                which(type=="variance" & (var==from)))
+    nam <- attributes(res)$var[idx]
+    res <- 1-res[idx,5]
+    names(res) <- nam
+    res <- list("R-squared"=res)
+    ## M <- moments(x,coef(x))
+    ## v <- setdiff(vars(x),exogenous(x))
+    ## vvar <- M$Cfull[cbind(v,v)]
+    ## rsq <- (vvar-M$P[cbind(v,v)])/vvar
+    
+    if (length(latent(x))>0) {
+        M <- moments(x,coef(x))
+        nn <- names(res)
+        for (lat in latent(x)) {
+            v <- intersect(children(x,lat),endogenous(x))
+            varl <- M$Cfull[lat,lat]
+            varv <- M$Cfull[cbind(v,v)]
+            rpar <- paste(v,lat,sep=lava.options()$symbol[1])
+            fix <- c(x$model$fix[lat,v,drop=TRUE])
+            pp <- coef(x)
+            idx1 <- x$model$parpos$A[lat,v]
+            ##idx2 <- x$model$parpos$P[lat,lat]
+            ##idx3 <- x$model$parpos$P[cbind(v,v)]
+            p0 <- c(idx1)
+            p1 <- setdiff(unique(p0),0)
+            p2 <- match(p0,p1)
+            p <- coef(x)[p1]
+            p. <- p[p2]
+            p.[is.na(p.)] <- fix[is.na(p.)]
+            k <- length(v)
+            val <- (p.^2*varl)/varv; names(val) <- v
+            res <- c(res,list(val))
+            nn <- c(nn,paste("Variance explained by '",lat,"'",sep=""))
+        }
+        names(res) <- nn
+    }   
     res
 }
 
 satmodel <- function(object,logLik=TRUE,data=model.frame(object),
-##                     control=list(start=coef(object),trace=1),
                      control=list(trace=1),
                      weight=Weight(object),estimator=object$estimator,
                      missing="lvm.missing"%in%class(object),
@@ -120,9 +217,22 @@ condition <- function(A) {
 ##' @examples
 ##' m <- lvm(list(y~v1+v2+v3+v4,c(v1,v2,v3,v4)~x))
 ##' set.seed(1)
-##' dd <- sim(m,1000) 
+##' dd <- sim(m,1000)
 ##' e <- estimate(m, dd)
 ##' gof(e,all=TRUE,rmsea.threshold=0.05,level=0.9)
+##' 
+##' 
+##' set.seed(1)
+##' m <- lvm(list(c(y1,y2,y3)~u,y1~x)); latent(m) <- ~u
+##' regression(m,c(y2,y3)~u) <- "b"
+##' d <- sim(m,1000)
+##' e <- estimate(m,d)
+##' rsq(e)
+##' ##'
+##' rr <- rsq(e,TRUE)
+##' rr
+##' estimate(rr,contrast=rbind(c(1,-1,0),c(1,0,-1),c(0,1,-1)))
+##' 
 `gof` <-
   function(object,...) UseMethod("gof")
 

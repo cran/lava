@@ -32,6 +32,7 @@
 ##' m <- eventTime(m,cens.otime~min(T1,T2=E2,C=0),"event")
 ##' sim(m,10)
 ##' @export
+##' @aliases eventTime<-
 ##' @param object Model object
 ##' @param formula Formula (see details)
 ##' @param eventName Event names
@@ -74,6 +75,7 @@ eventTime <- function(object,formula,eventName,...) {
   }
 
   addvar(object) <- timeName
+  #distribution(object,timeName) <- NA
   ## m <- regression(m,formula(paste("~",timeName,sep="")))
   if (missing(eventName)) eventName <- "Event"
   eventTime <- list(names=c(timeName,eventName),
@@ -89,6 +91,10 @@ eventTime <- function(object,formula,eventName,...) {
   return(object)
 }
 
+##' @export
+"eventTime<-" <- function(object,...,value) {
+    eventTime(object,value,...)
+}
 
 ## addhook("color.eventHistory","color.hooks")
 ## color.eventHistory <- function(x,subset=vars(x),...) {
@@ -103,40 +109,54 @@ plothook.eventHistory <- function(x,...) {
     x <- regression(x,to=f$names[1],from=f$latentTimes)
     latent(x) <- f$latentTimes
   }
+  timedep <- x$attributes$timedep  
+  for (i in seq_len(length(timedep))) {
+      x <- regression(x,to=names(timedep)[i],from=timedep[[i]])
+  }
   return(x)
 }
 
+addhook("colorhook.eventHistory","color.hooks")
+colorhook.eventHistory <- function(x,subset=vars(x),...) {
+  return(list(vars=intersect(subset,unlist(x$attributes$timedep)),col="lightblue4"))
+}
 
 addhook("print.eventHistory","print.hooks")
-print.eventHistory <- function(x,...) { 
-  if (is.null(eh <- x$attributes$eventHistory)) return(NULL)
-  ehnames <- unlist(lapply(eh,function(x) x$names))
-  cat("Event History Model\n")
-  ff <- formula(x,TRUE)
-  R <- c()
-  for (f in ff) {
-    oneline <- as.character(f);
-    y <- gsub(" ","",strsplit(f,"~")[[1]][1])
-    if (!(y %in% ehnames)) {
-      col1 <- as.character(oneline)
-      D <- attributes(distribution(x)[[y]])$family
-      col2 <- "Normal"
-      if (!is.null(D$family)) col2 <- paste(D$family,sep="")
-      if (!is.null(D$link)) col2 <- paste(col2,"(",D$link,")",sep="")
-      if (!is.null(D$par)) col2 <- paste(col2,"(",paste(D$par,collapse=","),")",sep="")      
-      R <- rbind(R,c(col1,"  ",col2))
+print.eventHistory <- function(x,...) {
+    eh <- x$attributes$eventHistory
+    timedep <- x$attributes$timedep
+    if (is.null(eh) & is.null(timedep)) return(NULL)
+    ehnames <- unlist(lapply(eh,function(x) x$names))
+    cat("Event History Model\n")
+    ff <- formula(x,TRUE)
+    R <- c()
+    for (f in ff) {
+        oneline <- as.character(f);
+        y <- gsub(" ","",strsplit(f,"~")[[1]][1])
+        if (!(y %in% ehnames)) {
+            col1 <- as.character(oneline)
+            D <- attributes(distribution(x)[[y]])$family
+            col2 <- "Normal"
+            if (!is.null(D$family)) col2 <- paste(D$family,sep="")
+            if (!is.null(D$link)) col2 <- paste(col2,"(",D$link,")",sep="")
+            if (!is.null(D$par)) col2 <- paste(col2,"(",paste(D$par,collapse=","),")",sep="")      
+            R <- rbind(R,c(col1,"  ",col2))
+        }
     }
-  }
-  for (y in names(eh)) {
-    col1 <- paste(y, " = min(",paste(eh[[y]]$latentTimes,collapse=","),")",sep="")
-    eh[[y]]$names[2]
-    col2 <- paste(eh[[y]]$names[2], " := {",paste(eh[[y]]$events,collapse=","),"}",sep="")
-    R <- rbind(R,c(col1,"",col2))
-  }
-  rownames(R) <- rep("",nrow(R)); colnames(R) <- rep("",ncol(R))
-  print(R,quote=FALSE,...)
-  cat("\n")
-  TRUE
+    for (y in names(eh)) {
+        col1 <- paste(y, " = min(",paste(eh[[y]]$latentTimes,collapse=","),")",sep="")
+        eh[[y]]$names[2]
+        col2 <- paste(eh[[y]]$names[2], " := {",paste(eh[[y]]$events,collapse=","),"}",sep="")
+        R <- rbind(R,c(col1,"",col2))
+    }
+    rownames(R) <- rep("",nrow(R)); colnames(R) <- rep("",ncol(R))
+    print(R,quote=FALSE,...)
+    cat("\n")
+    for (i in seq_len(length(timedep))) {
+        cat("Time-dependent covariates:\n\n")
+        cat(paste("",names(timedep)[i],"~", paste(timedep[[i]],collapse="+")),"\n")
+    }
+    TRUE
 }
 
 addhook("simulate.eventHistory","sim.hooks")
@@ -173,12 +193,16 @@ simulate.eventHistory <- function(x,data,...){
 
 
 ##' @export
-coxWeibull.lvm <- function(shape=1,scale,rate=1/scale) {
-  f <- function(n,mu,var,...) {
-    (- (log(runif(n)) * rate * exp(-mu)))^(1/shape)
-  }
-  attr(f,"family") <- list(family="weibull",par=c(shape,scale))
-  return(f)
+coxWeibull.lvm <- function(nu=1,lambda,shape=nu,scale,rate) {
+    ## nu, lambda parameter according to Bender et al 2005, Stat.Med.
+    ## Note different compared to usual shape,scale parametrization
+    if (!missing(rate)) lambda <- rate^(shape)
+    if (!missing(scale)) lambda <- (1/scale)^(shape)
+    f <- function(n,mu,var,...) {
+        (- (log(runif(n)) / lambda * exp(-mu)))^(1/shape)
+    }
+    attr(f,"family") <- list(family="weibull",par=c(shape=shape,scale=lambda^(-1/shape)))
+    return(f)
 }
 
 
@@ -187,7 +211,11 @@ coxWeibull.lvm <- function(shape=1,scale,rate=1/scale) {
 ##' @title Time-dependent parameters
 ##' @param object Model
 ##' @param formula Formula with rhs specifying time-varying covariates
-##' @param rate Optional (log)-rate(ratio) parameters
+##' @param rate Optional rate parameters. If given as a vector this
+##' parameter is interpreted as the raw (baseline-)rates within each
+##' time interval defined by \code{timecut}.  If given as a matrix the
+##' parameters are interpreted as log-rates (and log-rate-ratios for
+##' the time-varying covariates defined in the formula).
 ##' @param timecut Time intervals
 ##' @param type Type of model (default piecewise constant intensity)
 ##' @param ... Additional arguments to lower level functions
@@ -214,7 +242,7 @@ coxWeibull.lvm <- function(shape=1,scale,rate=1/scale) {
 ##' 
 ##' \dontrun{
 ##' d <- sim(m,1e4); d$status <- TRUE
-##' dd <- lifetable(Surv(y,status)~z1,data=d,breaks=c(3,5));
+##' dd <- mets::lifetable(Surv(y,status)~z1,data=d,breaks=c(3,5));
 ##' exp(coef(glm(events ~ offset(log(atrisk)) + -1 + interval+z1:interval, dd, family=poisson)))
 ##' }
 ##' 
@@ -234,7 +262,7 @@ coxWeibull.lvm <- function(shape=1,scale,rate=1/scale) {
 ##' 
 ##' \dontrun{
 ##' d <- sim(m,1e5); d$status <- TRUE
-##' dd <- lifetable(Surv(y,status)~z1,data=d,breaks=c(5))
+##' dd <- mets::lifetable(Surv(y,status)~z1,data=d,breaks=c(5))
 ##' exp(coef(glm(events ~ offset(log(atrisk)) + -1 + interval + interval:z1, dd, family=poisson)))
 ##' }
 timedep <- function(object,formula,rate,timecut,type="coxExponential.lvm",...) {
@@ -245,8 +273,10 @@ timedep <- function(object,formula,rate,timecut,type="coxExponential.lvm",...) {
     if (is.null(object$attributes$simvar)) {
         object$attributes$simvar <- list(simvars)
         names(object$attributes$simvar) <- ff
+        object$attributes$timedep <- object$attributes$simvar
     } else {
         object$attributes$simvar[[ff]] <- simvars
+        object$attributes$timedep[[ff]] <- simvars
     }
     if (missing(rate)) rate <- rep(1,length(timecut))
     args <- list(timecut=timecut,rate=rate,...)

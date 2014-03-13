@@ -8,6 +8,7 @@
 \alias{decomp.specials}
 \alias{deriv}
 \alias{describecoef}
+\alias{dmvn}
 \alias{estimate.MAR}
 \alias{finalize}
 \alias{fixsome}
@@ -30,6 +31,8 @@
 \alias{modelVar}
 \alias{multigroup}
 \alias{offdiags}
+\alias{ordinal}
+\alias{ordinal<-}
 \alias{parameter}
 \alias{parfix}
 \alias{parfix<-}
@@ -44,12 +47,14 @@
 \alias{randomslope<-}
 \alias{reindex}
 \alias{reorderdata}
+\alias{rmvn}
 \alias{rsq}
 \alias{score.glm}
 \alias{Specials}
 \alias{starter.multigroup}
 \alias{startvalues}
 \alias{startvalues0}
+\alias{startvalues1}
 \alias{startvalues2}
 \alias{startvalues3}
 \alias{stdcoef}

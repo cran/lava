@@ -20,18 +20,16 @@ modelPar.lvm <- function(x,p, ...) {
   if (length(p)!=npar) { ## if meanstructure
     meanpar <- p[seq_len(npar.mean)]
     p. <- p
-    if (length(meanpar)>0)
-      p. <- p[-seq_len(npar.mean)]
-    else
-      meanpar <- NULL
+    if (length(meanpar)>0) {
+        p. <- p[-seq_len(npar.mean)]
+    } else meanpar <- NULL
     p <- p.[seq_len(npar)]
-    if (length(npar)>0)
-      p2 <- p.[-seq_len(npar)]
-    else
-      p2 <- p.
+    if (npar>0) {
+        p2 <- p.[-seq_len(npar)]
+    } else p2 <- p.    
   } else {
     meanpar <- NULL
-    p. <- p
+    p2 <- NULL
   }
   return(list(p=p,meanpar=meanpar,p2=p2))
 }
@@ -55,7 +53,6 @@ modelPar.multigroup <- function(x,p, ...) {
     res <- list(p=pp, par=pp, mean=NULL)
     return(res)
   }
-  
   Nmean <- unlist(lapply(x$meanposN,length))
   Npar <- unlist(lapply(x$parposN,length))
   ##ppos <- mapply("+",x$parposN,as.list(Nmean),SIMPLIFY=FALSE)

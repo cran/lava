@@ -1,6 +1,8 @@
 \name{sim}
 \alias{aalenExponential.lvm}
 \alias{binomial.lvm}
+\alias{categorical}
+\alias{categorical<-}
 \alias{coxExponential.lvm}
 \alias{coxGompertz.lvm}
 \alias{coxWeibull.lvm}
@@ -31,6 +33,7 @@
 \alias{simulate.lvm}
 \alias{simulate.lvmfit}
 \alias{student.lvm}
+\alias{threshold.lvm}
 \alias{transform.lvm}
 \alias{transform<-}
 \alias{transform<-.lvm}
@@ -161,11 +164,11 @@ distribution(m,~t) <- coxExponential.lvm(rate=rates,timecut=cuts)
 ##################################################
 
 m <- lvm(y~x+z)
-rates <- c(1,0.5); cuts <- c(0,5)
+rates <- c(0.3,0.5); cuts <- c(0,5)
 distribution(m,~y+z) <- list(coxExponential.lvm(rate=rates,timecut=cuts),
                              loggamma.lvm(rate=1,shape=1))
 \dontrun{
-    d <- sim(m,2e4,p=c("y~x"=0)); d$status <- TRUE
+    d <- sim(m,2e4,p=c("y~x"=0,"y~z"=0)); d$status <- TRUE
     plot(timereg::aalen(survival::Surv(y,status)~x,data=d,
                         resample.iid=0,robust=0),spec=1)
     L <- approxfun(c(cuts,max(d$y)),f=1,
@@ -187,8 +190,29 @@ rates <- c(1,0.5); cuts <- c(0,5)
 distribution(m,~y) <- aalenExponential.lvm(rate=rates,timecut=cuts)
 distribution(m,~z) <- loggamma.lvm(rate=1,shape=1)
 \dontrun{
-    mets::fast.reshape(sim(m,100),varying=t)
+    mets::fast.reshape(sim(m,100),varying="t")
 }
+
+##################################################
+### Categorical predictor
+##################################################
+
+##library(mets)
+m <- lvm()
+m <- categorical(m,y~x,K=4)
+d <- sim(m,1000,p=c('y~x:2'=4))
+lm(y~-1+factor(x),data=d)
+
+
+m <- lvm()
+regression(m) <- z~x
+m <- categorical(m,y~x,K=4,p=c(0.1,0.2,0.3))
+with(sim(m,1e4),table(x))/1e4
+
+m <- categorical(m,y~z,K=3)
+d <- sim(m,1e4,p=c('y~z:0'=3,'y~x:2'=4))
+lm(y~factor(z)+factor(x),data=d)
+with(d,table(x))/nrow(d)
 }
 \author{
   Klaus K. Holst

@@ -219,7 +219,6 @@ constrain.default <- function(x,fun, idx, level=0.95, vcov, estimate=FALSE, ...)
     }  
     return(Model(x)$constrain)
   }
-  ##  require(numDeriv)
   if (is.numeric(x)) {
      b <- x
    } else {
@@ -252,46 +251,50 @@ constrain.default <- function(x,fun, idx, level=0.95, vcov, estimate=FALSE, ...)
 
 ##' @S3method constrain<- default
 "constrain<-.default" <- function(x,par,args,...,value) {
-  if (class(par)[1]=="formula") {
-    lhs <- getoutcome(par)
-    xf <- attributes(terms(par))$term.labels
-    par <- lhs
+    if (class(par)[1]=="formula") {
+        lhs <- getoutcome(par)
+        xf <- attributes(terms(par))$term.labels
+        par <- lhs
+        if (par%in%vars(x)) {
+            if (is.na(x$mean[[par]])) {
+                intercept(x,par) <- par
+            } else {
+                par <- x$mean[[par]]
+            }
+        }
+        args <- xf
+    }
+    if (is.null(value) || suppressWarnings(is.na(value))) {
+        if (!is.null(par)) {
+            Model(x)$constrain[[par]] <- NULL
+        } else {
+            Model(x)$constrain[[args]] <- NULL
+        }
+        return(x)
+    }
+    for (i in args) {
+        if (!(i%in%c(parlabels(Model(x)),vars(Model(x)),
+                     names(constrain(x))))) {
+            if (!lava.options()$silent)
+                message("\tAdding parameter '", i,"'\n",sep="")
+            parameter(x,silent=TRUE) <- i
+        }
+    }
+
     if (par%in%vars(x)) {
-      if (is.na(x$mean[[par]])) {
-        intercept(x,par) <- par
-      } else {
-        par <- x$mean[[par]]
-      }
-    }
-    args <- xf
-  }
-  if (is.null(value) || suppressWarnings(is.na(value))) {
-    if (!is.null(par)) {
-      Model(x)$constrain[[par]] <- NULL
+        if (!"..."%in%names(formals(value))) {
+            formals(value) <- c(formals(value),alist(...=))
+        }
+        Model(x)$constrainY[[par]] <- list(fun=value,args=args)
     } else {
-      Model(x)$constrain[[args]] <- NULL
+        ## Wrap around do.call, since functions are not really
+        ## parsed as call-by-value in R, and hence setting
+        ## attributes to e.g. value=cos, will be overwritten
+        ## if value=cos is used again later with new args.
+        Model(x)$constrain[[par]] <- function(x) do.call(value,list(x))
+        attributes(Model(x)$constrain[[par]])$args <- args
+        index(Model(x)) <- reindex(Model(x))
     }
-    return(x)
-  }
-  for (i in args) {
-    if (!(i%in%c(parlabels(Model(x)),vars(Model(x)),
-                 names(constrain(x))))) {
-      if (!lava.options()$silent)
-        message("\tAdding parameter '", i,"'\n",sep="")
-      parameter(x,silent=TRUE) <- i
-    }
-  }
-  if (i%in%endogenous(x)) {
-    Model(x)$constrainY[[par]] <- list(fun=value,args=args)
-  } else {
-    ## Wrap around do.call, since functions are not really
-    ## parsed as call-by-value in R, and hence setting
-    ## attributes to e.g. value=cos, will be overwritten
-    ## if value=cos is used again later with new args.
-    Model(x)$constrain[[par]] <- function(x) do.call(value,list(x))
-    attributes(Model(x)$constrain[[par]])$args <- args
-    index(Model(x)) <- reindex(Model(x))
-  }
   return(x)    
 }
 
@@ -319,20 +322,22 @@ constraints <- function(object,data=model.frame(object),vcov=object$vcov,level=0
   if (length(index(object)$constrain.par)<1) return(NULL)
   parpos <- Model(object)$parpos
   if (is.null(parpos)) {
-    parpos <- with(index(object),matrices(Model(object),1:npar+npar.mean,meanpar=1:npar.mean))
-    parpos$A[index(object)$M0==0] <- 0
-    parpos$P[index(object)$P0==0] <- 0
-    parpos$v[index(object)$v1==0] <- 0
+      parpos <- with(index(object),matrices2(Model(object),seq_len(npar+npar.mean+npar.ex)))
+      parpos$A[index(object)$M0==0] <- 0
+      parpos$P[index(object)$P0==0] <- 0
+      parpos$v[index(object)$v1==0] <- 0
+      parpos$e[index(object)$e1==0] <- 0
   }
   myidx <- unlist(lapply(parpos$parval, function(x) {
     if (!is.null(attributes(x)$reg.idx)) {
       return(parpos$A[attributes(x)$reg.idx[1]])
     } else if (!is.null(attributes(x)$cov.idx)) {
       return(parpos$P[attributes(x)$cov.idx[1]])
-    }
-    else if (!is.null(attributes(x)$m.idx)) {
+    } else if (!is.null(attributes(x)$m.idx)) {
       return(parpos$v[attributes(x)$m.idx[1]])
-    } else NA
+    } else if (!is.null(attributes(x)$e.idx))
+        return(parpos$e[attributes(x)$e.idx[1]])
+    else NA
   }))
   names(myidx) <- names(parpos$parval)    
   mynames <- c()

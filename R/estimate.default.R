@@ -7,15 +7,19 @@
 ##' @param f transformation of model parameters and (optionally) data, or contrast matrix (or vector)
 ##' @param data \code{data.frame}
 ##' @param id (optional) id-variable corresponding to iid decomposition of model parameters. 
+##' @param iddata (optional) id-variable for 'data'
+##' @param stack If TRUE (default)  the i.i.d. decomposition is automatically stacked according to 'id'
 ##' @param subset (optional) subset of data.frame on which to condition (logical expression or variable name)
 ##' @param score.deriv (optional) derivative of mean score function
 ##' @param level Level of confidence limits
-##' @param iid If TRUE the iid decompositions are also returned (extract with \code{iid} method)
+##' @param iid If TRUE (default) the iid decompositions are also returned (extract with \code{iid} method)
 ##' @param contrast (optional) Contrast matrix for final Wald test
 ##' @param null (optional) Null hypothesis to test 
 ##' @param vcov (optional) covariance matrix of parameter estimates (e.g. Wald-test)
 ##' @param coef (optional) parameter coefficient
+##' @param print (optional) print function
 ##' @param ... additional arguments to lower level functions
+##' @export
 ##' @examples
 ##' 
 ##' ## Simulation from logistic regression model
@@ -47,6 +51,15 @@
 ##' 
 ##' ## Label new parameters
 ##' estimate(g,function(p) list("a1"=p[1]+p[2],"b1"=p[1]*p[2]))
+##'
+##' ## Multiple group
+##' m <- lvm(y~x)
+##' m <- baptize(m)
+##' d2 <- d1 <- sim(m,50)
+##' e <- estimate(list(m,m),list(d1,d2))
+##' estimate(e) ## Wrong
+##' estimate(e,id=rep(seq(nrow(d1)),2))
+##' estimate(lm(y~x,d1))
 ##' 
 ##' ## Marginalize
 ##' f <- function(p,data)
@@ -56,16 +69,43 @@
 ##' e
 ##' estimate(e,diff)
 ##' estimate(e,cbind(1,1))
-##'
+##' 
 ##' ## Clusters and subset (conditional marginal effects)
 ##' d$id <- rep(seq(nrow(d)/4),each=4)
 ##' estimate(g,function(p,data) list(p0=lava:::expit(p[1] + p["z"]*data[,"z"])), subset=z>0, id=d$id)
 ##' 
+##' ## More examples with clusters:
+##' m <- lvm(c(y1,y2,y3)~u+x)
+##' d <- sim(m,10)
+##' l1 <- glm(y1~x,data=d)
+##' l2 <- glm(y2~x,data=d)
+##' l3 <- glm(y3~x,data=d)
+##' 
+##' ## Some random id-numbers
+##' id1 <- c(1,1,4,1,3,1,2,3,4,5)
+##' id2 <- c(1,2,3,4,5,6,7,8,1,1)
+##' id3 <- seq(10)
+##' 
+##' ## Un-stacked and stacked i.i.d. decomposition
+##' iid(estimate(l1,id=id1,stack=FALSE))
+##' iid(estimate(l1,id=id1))
+##' 
+##' ## Combined i.i.d. decomposition
+##' e1 <- estimate(l1,id=id1)
+##' e2 <- estimate(l2,id=id2)
+##' e3 <- estimate(l3,id=id3)
+##' (a2 <- merge(e1,e2,e3))
+##' 
+##' ## Same:
+##' iid(a1 <- merge(l1,l2,l3,id=list(id1,id2,id3)))
+##' 
+##' iid(merge(l1,l2,l3,id=TRUE)) # one-to-one (same clusters)
+##' iid(merge(l1,l2,l3,id=FALSE)) # independence
 ##' @method estimate default
 ##' @S3method estimate default
-estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
-                             score.deriv,level=0.95,iid=FALSE,
-                             contrast,null,vcov,coef,...) {
+estimate.default <- function(x,f=NULL,data=model.frame(x),id,iddata,stack=TRUE,subset,
+                             score.deriv,level=0.95,iid=TRUE,
+                             contrast,null,vcov,coef,print=NULL,...) {
     if (!is.null(f) && !is.function(f)) {
         if (!(is.matrix(f) | is.vector(f))) return(compare(x,f,...))
         contrast <- f; f <- NULL
@@ -76,7 +116,12 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
     nn <- NULL
     if (missing(vcov)) { ## If user supplied vcov, then don't estimate IC
         if (missing(score.deriv)) {
-            suppressWarnings(iidtheta <- iid(x))
+            if (!is.logical(iid)) {
+                iidtheta <- iid
+                iid <- TRUE
+            } else {
+                suppressWarnings(iidtheta <- iid(x))
+            }
         } else {
             suppressWarnings(iidtheta <- iid(x,score.deriv=score.deriv))
         }
@@ -87,21 +132,35 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
         if (is.character(subset)) subset <- data[,subset]
         if (is.numeric(subset)) subset <- subset==1
     }
+    idstack <- NULL
     if (!missing(id)) {
         if (is.null(iidtheta)) stop("'iid' method needed")
-        e <- substitute(id)
-        id <- eval(e, data, parent.frame())
-        if (is.character(id) && length(id)==1) id <- data[,id,drop=TRUE]
-        if (length(id)!=nrow(data)) stop("Dimensions of 'data' and 'id' does not agree")
         nprev <- nrow(iidtheta)
-        clidx <- NULL
-        if (inherits(try(find.package("mets"),silent=TRUE),"try-error")) {
-            iidtheta <- matrix(unlist(by(iidtheta,id,colSums)),byrow=TRUE,ncol=ncol(iidtheta))
-        } else {
-            clidx <- mets::cluster.index(id)
-            iidtheta <- t(rbind(apply(clidx$idclustmat+1,1,function(x) colSums(iidtheta[na.omit(x),,drop=FALSE]))))            
+        e <- substitute(id)        
+        id <- eval(e, data, parent.frame())
+        if (is.logical(id) && length(id)==1) {
+            id <- if(is.null(iidtheta)) seq(nrow(data)) else seq(nprev)
+            stack <- FALSE
         }
+        if (is.character(id) && length(id)==1) id <- data[,id,drop=TRUE]
+        if (!is.null(iidtheta)) {
+            if (length(id)!=nprev) stop("Dimensions of i.i.d decomposition and 'id' does not agree")
+        } else {
+            if (length(id)!=nrow(data)) stop("Dimensions of 'data' and 'id' does not agree")
+        }
+        if (stack) {
+            clidx <- NULL
+            if (!lava.options()$cluster.index) {
+                iidtheta <- matrix(unlist(by(iidtheta,id,colSums)),byrow=TRUE,ncol=ncol(iidtheta))
+                idstack <- sort(unique(id))
+            } else { 
+                clidx <- mets::cluster.index(id,mat=iidtheta,return.all=TRUE)
+                iidtheta <- clidx$X
+                idstack <- id[as.vector(clidx$firstclustid)+1]
+            } 
+        } else idstack <- id
     }
+    if (!is.null(iidtheta)) rownames(iidtheta) <- idstack
 
     if (!is.null(iidtheta) && missing(vcov)) {
         n <- NROW(iidtheta)
@@ -126,6 +185,7 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
         dots <- ("..."%in%names(form))
         form0 <- setdiff(form,"...")
         parname <- "p"
+        parname <- form[1]
         if (length(form0)==1 && !(form0%in%c("object","data"))) {
             ##names(formals(f))[1] <- "p"
             parname <- form0
@@ -144,14 +204,16 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
         newf <- NULL
         if (length(form)==0) {
             arglist <- list(pp)
-            newf <- function(p,...) do.call("f",list(p,...))
+            ##newf <- function(p,...) do.call("f",list(p,...))
+            newf <- function(...) do.call("f",list(...))
             val <- do.call("f",arglist)
         } else {
             val <- do.call("f",arglist)
             if (is.list(val)) {
                 nn <- names(val)
                 val <- do.call("cbind",val)
-                newf <- function(p,...) do.call("cbind",f(p,...))
+                ##newf <- function(p,...) do.call("cbind",f(p,...))
+                newf <- function(...) do.call("cbind",f(...))
             }
         }
         k <- NCOL(val)
@@ -169,7 +231,7 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
             pp <- as.vector(val)
             V <- D%*%V%*%t(D)
         } else {
-            if (N<NROW(data)) { ## transformation not depending on data
+            if (N<NROW(data) || NROW(data)==0) { ## transformation not depending on data
                 pp <- as.vector(val)
                 iidtheta <- iidtheta%*%t(D)
                 V <- crossprod(iidtheta)
@@ -196,28 +258,27 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
                     iid2 <- iidtheta%*%D
                 }
                 pp <- as.vector(colMeans(cbind(val)))
-                iid1 <- (cbind(val)-rbind(pp)%x%cbind(rep(1,N)))/N
+                iid1 <- (cbind(val)-rbind(pp)%x%cbind(rep(1,N)))/N 
                 if (!missing(id)) {
-                    if (is.null(clidx)) 
+                    if (!lava.options()$cluster.index) 
                         iid1 <- matrix(unlist(by(iid1,id,colSums)),byrow=TRUE,ncol=ncol(iid1))
                     else {
-                        iid1 <- t(rbind(apply(clidx$idclustmat+1,1,function(x) colSums(iid1[na.omit(x),,drop=FALSE]))))
+                        iid1 <- mets::cluster.index(id,mat=iid1,return.all=FALSE)
                     }
                 }
                 if (!missing(subset)) { ## Conditional estimate
                     phat <- mean(subset)
                     iid3 <- cbind(-1/phat^2 * (subset-phat)/n)
                     if (!missing(id)) {
-                        if (is.null(clidx))
+                        if (!lava.options()$cluster.index)
                             iid3 <- matrix(unlist(by(iid3,id,colSums)),byrow=TRUE,ncol=ncol(iid3))
                         else
-                            iid3 <- cbind(apply(clidx$idclustmat+1,1,function(x) sum(iid3[na.omit(x)])))
-         
+                            iid3 <- mets::cluster.index(id,mat=iid3,return.all=FALSE)         
                     }
                     iidtheta <- (iid1+iid2)/phat + rbind(pp)%x%iid3
                     pp <- pp/phat
                     V <- crossprod(iidtheta)
-                } else { 
+                } else {
                     if (nrow(iid1)!=nrow(iid2)) {
                         message("Assuming independence between model iid decomposition and new data frame")
                         V <- crossprod(iid1) + crossprod(iid2)
@@ -230,8 +291,7 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
         }
     }
 
-    
-    res <- cbind(pp,diag(V)^0.5)
+    if (length(pp)==1) res <- rbind(c(pp,diag(V)^0.5)) else res <- cbind(pp,diag(V)^0.5)
     if (is.null(f) || missing(null))
         res <- cbind(res,res[,1]-qnorm(1-alpha/2)*res[,2],res[,1]+qnorm(1-alpha/2)*res[,2],(pnorm(abs(res[,1]/res[,2]),lower.tail=FALSE)*2))
     else 
@@ -244,7 +304,8 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,subset,
         if (!is.null(nn)) rownames(res) <- nn
         if (is.null(rownames(res))) rownames(res) <- paste("p",seq(nrow(res)),sep="")
     }
-    res <- structure(list(coef=res[,1],coefmat=res,vcov=V, iid=NULL),class="estimate")
+    coefs <- res[,1,drop=TRUE]; names(coefs) <- rownames(res)
+    res <- structure(list(coef=coefs,coefmat=res,vcov=V, iid=NULL, print=print, id=idstack),class="estimate")
     if (iid) res$iid <- iidtheta
     if (is.null(f) && (!missing(contrast) | !missing(null))) {
         p <- length(res$coef)    
@@ -276,7 +337,10 @@ estimate.glm <- function(x,...) {
 
 ##' @S3method print estimate
 print.estimate <- function(x,digits=3,width=25,...) {
-    ##  cat("\n")
+    if (!is.null(x$print)) {
+        x$print(x,...)
+        return(invisible(x))
+    }
     cc <- x$coefmat
     rownames(cc) <- make.unique(unlist(lapply(rownames(cc),
                                                function(x) toString(x,width=width))))
@@ -297,9 +361,12 @@ coef.estimate <- function(object,...) {
     object$coef
 }
 
+##' @S3method iid estimate
 iid.estimate <- function(x,...) {
     x$iid
 }
 
-
-
+##' @S3method model.frame estimate
+model.frame.estimate <- function(formula,...) {
+    NULL
+}

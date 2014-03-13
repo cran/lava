@@ -16,6 +16,7 @@
              trace=ifelse(lava.options()$debug,3,0),
              gamma=lava.options()$gamma,
              ngamma=lava.options()$ngamma,
+	     backtrace=TRUE,
              gamma2=1,
              lambda=0.05,
              abs.tol=1e-9,
@@ -26,14 +27,13 @@
              start=NULL,
              constrain=lava.options()$constrain,
              method=NULL,
-             starterfun=startvalues,
+             starterfun=startvalues0,
              information="E",
              meanstructure=TRUE,
              sparse=FALSE,
              lbound=1e-9,
              reindex=FALSE,
              tol=lava.options()$tol)
-
 
 
   if (!missing(param)) {
@@ -50,11 +50,14 @@
     optim[names(control)] <- control
   }
 
+
   Debug("Start values...")
   if (!is.null(optim$start) & length(optim$start)==(x$npar+x$npar.mean)) {
     mystart <- optim$start
   } else {
     if (!silent) cat("Obtaining starting value...")
+    if (is.null(control$starterfun) && lava.options()$param!="relative")
+        optim$starterfun <- startvalues0
     mystart <- with(optim, starter.multigroup(x,meanstructure=meanstructure,starterfun=starterfun,silent=FALSE,fix=FALSE))
     if (!is.null(optim$start)) {
       pname <- names(optim$start)
@@ -159,7 +162,9 @@
     Method <- "nlminb1"
   else
     Method <- get(Method)
-  if (is.null(optim$method)) optim$method <- Method
+  if (is.null(optim$method)) {      
+      optim$method <- Method
+  }
   
   ## Check for random slopes
   xXx <- exogenous(x)
@@ -539,7 +544,7 @@
   opt <- do.call(optim$method,
                  list(start=mystart, objective=myObj, gradient=myGrad, hessian=myInformation, lower=lower, control=optim))
 ##  if (!silent) cat("\n")
-  
+
   opt$estimate <- opt$par
   if (optim$constrain) {
     opt$estimate[constrained] <- exp(opt$estimate[constrained])
@@ -555,6 +560,10 @@
       opt$gradient <- myGrad(opt$estimate)
   }
 
+  if (!is.null(opt$convergence)) {
+      if (opt$convergence!=0) warning("Lack of convergence. Increase number of iteration or change starting values.") 
+  } else if (!is.null(opt$gradient) && mean(opt$gradient)^2>1e-3) warning("Lack of convergence. Increase number of iteration or change starting values.") 
+  
   if (!XconstrStdOpt) {
     myInformation <- function(theta) information(x,p=theta)
   } else {
@@ -624,7 +633,8 @@ function(x, data, silent=lava.options()$silent, fix, missing=FALSE,  ...) {
   if (missing(fix)) {
     fix <- ifelse(Xfix,FALSE,TRUE)
   }  
-  
+
+
   mg <- multigroup(x,data,fix=fix,missing=missing,...)
   res <- estimate(mg,...)
     

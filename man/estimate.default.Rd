@@ -3,9 +3,9 @@
 \title{Estimation of functional of parameters}
 \usage{
   \method{estimate}{default} (x, f = NULL,
-    data = model.frame(x), id, subset, score.deriv,
-    level = 0.95, iid = FALSE, contrast, null, vcov, coef,
-    ...)
+    data = model.frame(x), id, iddata, stack = TRUE,
+    subset, score.deriv, level = 0.95, iid = TRUE,
+    contrast, null, vcov, coef, print = NULL, ...)
 }
 \arguments{
   \item{x}{model object (\code{glm}, \code{lvmfit}, ...)}
@@ -18,6 +18,11 @@
   \item{id}{(optional) id-variable corresponding to iid
   decomposition of model parameters.}
 
+  \item{iddata}{(optional) id-variable for 'data'}
+
+  \item{stack}{If TRUE (default) the i.i.d. decomposition
+  is automatically stacked according to 'id'}
+
   \item{subset}{(optional) subset of data.frame on which to
   condition (logical expression or variable name)}
 
@@ -26,8 +31,8 @@
 
   \item{level}{Level of confidence limits}
 
-  \item{iid}{If TRUE the iid decompositions are also
-  returned (extract with \code{iid} method)}
+  \item{iid}{If TRUE (default) the iid decompositions are
+  also returned (extract with \code{iid} method)}
 
   \item{contrast}{(optional) Contrast matrix for final Wald
   test}
@@ -38,6 +43,8 @@
   estimates (e.g. Wald-test)}
 
   \item{coef}{(optional) parameter coefficient}
+
+  \item{print}{(optional) print function}
 
   \item{...}{additional arguments to lower level functions}
 }
@@ -77,6 +84,15 @@ vcov(e)
 ## Label new parameters
 estimate(g,function(p) list("a1"=p[1]+p[2],"b1"=p[1]*p[2]))
 
+## Multiple group
+m <- lvm(y~x)
+m <- baptize(m)
+d2 <- d1 <- sim(m,50)
+e <- estimate(list(m,m),list(d1,d2))
+estimate(e) ## Wrong
+estimate(e,id=rep(seq(nrow(d1)),2))
+estimate(lm(y~x,d1))
+
 ## Marginalize
 f <- function(p,data)
   list(p0=lava:::expit(p[1] + p[3]*data[,"z"]),
@@ -89,5 +105,33 @@ estimate(e,cbind(1,1))
 ## Clusters and subset (conditional marginal effects)
 d$id <- rep(seq(nrow(d)/4),each=4)
 estimate(g,function(p,data) list(p0=lava:::expit(p[1] + p["z"]*data[,"z"])), subset=z>0, id=d$id)
+
+## More examples with clusters:
+m <- lvm(c(y1,y2,y3)~u+x)
+d <- sim(m,10)
+l1 <- glm(y1~x,data=d)
+l2 <- glm(y2~x,data=d)
+l3 <- glm(y3~x,data=d)
+
+## Some random id-numbers
+id1 <- c(1,1,4,1,3,1,2,3,4,5)
+id2 <- c(1,2,3,4,5,6,7,8,1,1)
+id3 <- seq(10)
+
+## Un-stacked and stacked i.i.d. decomposition
+iid(estimate(l1,id=id1,stack=FALSE))
+iid(estimate(l1,id=id1))
+
+## Combined i.i.d. decomposition
+e1 <- estimate(l1,id=id1)
+e2 <- estimate(l2,id=id2)
+e3 <- estimate(l3,id=id3)
+(a2 <- merge(e1,e2,e3))
+
+## Same:
+iid(a1 <- merge(l1,l2,l3,id=list(id1,id2,id3)))
+
+iid(merge(l1,l2,l3,id=TRUE)) # one-to-one (same clusters)
+iid(merge(l1,l2,l3,id=FALSE)) # independence
 }
 

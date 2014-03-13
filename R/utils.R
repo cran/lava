@@ -299,10 +299,11 @@ Inverse <- function(X,tol=lava.options()$itol,det=TRUE,names=TRUE) {
   id0 <- numeric(n)
   id0[svdX$d>tol] <- 1/svdX$d[svdX$d>tol]
   res <- with(svdX, v%*%diag(id0)%*%t(u))
-  if (names && !is.null(colnames(X)))
-      dimnames(res) <- list(colnames(X),colnames(X))
+  if (names && !is.null(colnames(X))) dimnames(res) <- list(colnames(X),colnames(X))
   if (det)
-    attributes(res)$det <- prod(svdX$d[svdX$d>tol])  
+    attributes(res)$det <- prod(svdX$d[svdX$d>tol])
+  ##ee <- eigen(X)
+  ##attributes(res)$lambda <- ee$values
   return(res)
 }
 
@@ -372,7 +373,7 @@ acc <- function(M,v) {
 tr <- function(x) sum(diag(x))
 
 npar.lvm <- function(x) {
-  return(index(x)$npar+ index(x)$npar.mean)
+  return(index(x)$npar+ index(x)$npar.mean+index(x)$npar.ex)
 
 }
 
@@ -400,6 +401,7 @@ numberdup <- function(xx) { ## Convert to numbered list
   }
   return(xx.new)
 }
+
 
 logit <- function(p) log(p/(1-p))
 expit <- tigol <- function(z) 1/(1+exp(-z))

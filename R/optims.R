@@ -93,7 +93,7 @@ estfun0 <- function(start,objective,gradient,hessian,...) {
 
 ###{{{ Newton-Raphson/Scoring
 
-NR <- function(start,objective,gradient,hessian,debug=FALSE,control,...) {
+NR0 <- function(start,objective,gradient,hessian,debug=FALSE,control,...) {
     control0 <- list(trace=0,gamma=1,lambda=0,ngamma=0,gamma2=0,
                      iter.max=200,tol=1e-15,stabil=FALSE,epsilon=1e-15)
     if (!missing(control)) {
@@ -105,7 +105,7 @@ NR <- function(start,objective,gradient,hessian,debug=FALSE,control,...) {
     if (trace>0)
         cat("\nIter=0;\t\n",
             "\tp=", paste(formatC(start), collapse=" "),"\n",sep="")
-
+ 
     if (missing(gradient) & missing(hessian)) {
         hessian <- function(p) {
             ff <- objective(p)
@@ -178,14 +178,13 @@ NR <- function(start,objective,gradient,hessian,debug=FALSE,control,...) {
 ###{{{ NR 2
 
 NR <- function(start,objective,gradient,hessian,debug=FALSE,control,...) {
-    control0 <- list(trace=0,gamma=1,lambda=0,ngamma=0,gamma2=0,
-                     iter.max=200,tol=1e-15,stabil=FALSE,epsilon=1e-15)
+    control0 <- list(trace=0,gamma=1,lambda=0,ngamma=0,gamma2=0,backtrace=FALSE,
+                     iter.max=200,tol=1e-9,stabil=FALSE,epsilon=1e-9)
     if (!missing(control)) {
         control0[names(control)] <- control
     }
-    trace <- control0$trace
 
-    if (trace>0)
+    if (control0$trace>0)
         cat("\nIter=0;\t\n",
             "\tp=", paste(formatC(start), collapse=" "),"\n",sep="")
 
@@ -198,7 +197,7 @@ NR <- function(start,objective,gradient,hessian,debug=FALSE,control,...) {
             return(res)
         }
     }
-    oneiter <- function(p.orig,return.mat=FALSE) {
+    oneiter <- function(p.orig,Dprev,return.mat=FALSE) {
         if (is.null(hessian)) {
             cat(".")
             I <- -numDeriv::jacobian(gradient,p.orig,method=lava.options()$Dmethod)
@@ -224,38 +223,46 @@ NR <- function(start,objective,gradient,hessian,debug=FALSE,control,...) {
                 I <- I+control0$gamma2*(sigma)
             }
         }
+
         svdI <- svd(I); svdI$d0 <- numeric(length(svdI$d));
         svdI$d0[abs(svdI$d)>control0$epsilon] <-
             1/svdI$d[abs(svdI$d)>control0$epsilon]
         iI <- with(svdI,  (v)%*%diag(d0,nrow=length(d0))%*%t(u))
         Delta = control0$gamma*iI%*%D
-        mD = mD0 = mean(D^2)
+
         Lambda <- 1
-        while (mD>=mD0) {
-            p <- p.orig + Lambda*Delta
-            if (gradFun) {
-                D = gradient(p)                
-            } else {
-                DI <- oneiter(p,return.mat=TRUE)
-                D = DI$D
-            }
-            mD = mean(D^2)
-            if (is.nan(mD)) mD=mD0
-            Lambda <- Lambda/2
+        if (control0$backtrace) {
+            mD0 <- mean(Dprev^2)
+            mD <- mean(D^2)
+            while (mD>=mD0) {
+                p <- p.orig + Lambda*Delta
+                if (gradFun) {
+                    D = gradient(p)                
+                } else {
+                    DI <- oneiter(p,return.mat=TRUE)
+                    D = DI$D
+                }
+                mD = mean(D^2)
+                if (is.nan(mD)) mD=mD0
+                Lambda <- Lambda/2
             if (Lambda<1e-12) break;
-        }        
+            }
+        }
+        p <- p.orig + Lambda*Delta
         return(list(p=p,D=D,iI=iI))
-    } 
+    }
     
     count <- count2 <- 0  
     thetacur <- start
     gammacount <- 0
+    Dprev <- rep(Inf,length(start))
     for (jj in seq_len(control0$iter.max)) {
         gammacount <- gammacount+1
         count <-  count+1
         count2 <- count2+1
         oldpar <- thetacur
-        newpar <- oneiter(thetacur)
+        newpar <- oneiter(thetacur,Dprev)
+        Dprev <- newpar$D       
         thetacur <- newpar$p
         if (!is.null(control0$ngamma) && control0$ngamma>0) {
             if (control0$ngamma<=gammacount) {
@@ -263,7 +270,7 @@ NR <- function(start,objective,gradient,hessian,debug=FALSE,control,...) {
                 gammacount <- 0
             }
         }
-        if (count2==trace) {
+        if (count2==control0$trace) {
             cat("Iter=",count, ";\n\tD=", paste(formatC(newpar$D), collapse=" "),"\n",sep="")
             cat("\tp=", paste(formatC(thetacur), collapse=" "),"\n",sep="")      
             count2 <- 0
