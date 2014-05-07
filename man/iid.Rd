@@ -3,23 +3,23 @@
 \alias{iid.default}
 \title{Extract i.i.d. decomposition (influence function) from model object}
 \usage{
-  iid(x,...)
+iid(x,...)
 
-  \method{iid}{default}(x,score.deriv,id,...)
+\method{iid}{default}(x,bread,id,...)
 }
 \arguments{
   \item{x}{model object}
 
   \item{id}{id/cluster variable (optional)}
 
-  \item{score.deriv}{(optional) derivative of mean score
-  function}
+  \item{bread}{(optional) Inverse of derivative of mean
+  score function}
 
   \item{...}{additional arguments}
 }
 \description{
-  Extract i.i.d. decomposition (influence function) from
-  model object
+Extract i.i.d. decomposition (influence function) from
+model object
 }
 \examples{
 m <- lvm(y~x+z)

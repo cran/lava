@@ -6,12 +6,12 @@
 ##' 
 ##' iid(x,...)
 ##' 
-##' \method{iid}{default}(x,score.deriv,id,...)
+##' \method{iid}{default}(x,bread,id,...)
 ##' 
 ##' @aliases iid.default
 ##' @param x model object
 ##' @param id id/cluster variable (optional)
-##' @param score.deriv (optional) derivative of mean score function 
+##' @param bread (optional) Inverse of derivative of mean score function 
 ##' @param ... additional arguments
 ##' @examples
 ##' m <- lvm(y~x+z)
@@ -23,34 +23,35 @@
 iid <- function(x,...) UseMethod("iid")
 
 ##' @S3method iid default
-iid.default <- function(x,score.deriv,id,...) {
+iid.default <- function(x,bread,id,...) {
     if (!any(paste("score",class(x),sep=".") %in% methods("score"))) {
         warning("Not available for this class")
         return(NULL)
-    }    
+    }
     U <- score(x,indiv=TRUE,...)
     n <- NROW(U)
     pp <- pars(x)
-    if (missing(score.deriv)) {
-        iI <- vcov(x) 
-    } else {
-        if (!is.null(score.deriv) && is.function(score.deriv)) {
-            score.deriv <- score.deriv(x,p=pp,...)
-        } else if (!is.null(score.deriv) && is.matrix(score.deriv)) {
-            iI <- Inverse(score.deriv)
-        } else {
-            score.deriv <- -numDeriv::jacobian(function(p) score(x,p=p,...),pp,method=lava.options()$Dmethod)    
+    if (!missing(bread) && is.null(bread)) {
+        bread <- vcov(x)
+    }
+    if (missing(bread)) bread <- attributes(U)$bread
+    if (is.null(bread)) {
+        bread <- attributes(x)$bread
+        if (is.null(bread)) {
+            I <- -numDeriv::jacobian(function(p) score(x,p=p,indiv=FALSE,...),pp,method=lava.options()$Dmethod)
+            bread <- Inverse(I)
         }
     }
-    iid0 <- U%*%iI
+    iid0 <- U%*%bread
     if (!missing(id)) {
         if (!lava.options()$cluster.index) {
-            iid0 <- matrix(unlist(by(iid0,id,colSums)),byrow=TRUE,ncol=ncol(iI))
+            iid0 <- matrix(unlist(by(iid0,id,colSums)),byrow=TRUE,ncol=ncol(bread))
         } else {
             iid0 <- mets::cluster.index(id,mat=iid0,return.all=FALSE)
         }
     }
-  return(structure(iid0,iI=iI))
+    colnames(iid0) <- colnames(U)
+  return(structure(iid0,bread=bread))
 }
 
 

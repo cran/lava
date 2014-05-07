@@ -3,15 +3,13 @@
 \alias{plot.lvmfit}
 \title{Plot path diagram}
 \usage{
-  \method{plot}{lvm} (x, diag = FALSE, cor = TRUE,
-    labels = FALSE, intercept = FALSE, addcolor = TRUE,
-    plain = FALSE, cex, fontsize1 = 10, noplot = FALSE,
-    graph = list(rankdir = "BT"),
-    attrs = list(graph = graph), unexpr = FALSE,
-    addstyle = TRUE, Rgraphviz = lava.options()$Rgraphviz,
-    init = TRUE,
-    layout = c("dot", "fdp", "circo", "twopi", "neato", "osage"),
-    ...)
+\method{plot}{lvm}(x, diag = FALSE, cor = TRUE, labels = FALSE,
+  intercept = FALSE, addcolor = TRUE, plain = FALSE, cex,
+  fontsize1 = 10, noplot = FALSE, graph = list(rankdir = "BT"),
+  attrs = list(graph = graph), unexpr = FALSE, addstyle = TRUE,
+  Rgraphviz = lava.options()$Rgraphviz, init = TRUE, layout = c("dot",
+  "fdp", "circo", "twopi", "neato", "osage"),
+  edgecolor = lava.options()$edgecolor, ...)
 }
 \arguments{
   \item{x}{Model object}
@@ -59,19 +57,15 @@
   \item{layout}{Graph layout (see Rgraphviz or igraph
   manual)}
 
+  \item{edgecolor}{if TRUE plot style with colored edges}
+
   \item{\dots}{Additional arguments to be passed to the low
   level functions}
 }
 \description{
-  Plot the path diagram of a SEM
+Plot the path diagram of a SEM
 }
 \examples{
-\donttest{
-example(estimate)
-plot(m)
-plot(e)
-}
-
 \donttest{
 m <- lvm(c(y1,y2) ~ eta)
 regression(m) <- eta ~ z+x2
@@ -87,10 +81,22 @@ edgelabels(m, eta ~ z+x1+x2, cex=2, lwd=3,
 nodecolor(m, vars(m), border="white", labcol="darkblue") <- NA
 nodecolor(m, ~y1+y2+z, labcol=c("white","white","black")) <- NA
 plot(m,cex=1.5)
+
+d <- sim(m,100)
+e <- estimate(m,d)
+plot(e)
+}
+
+\donttest{
+m <- lvm(c(y1,y2) ~ eta)
+regression(m) <- eta ~ z+x2
+regression(m) <- c(eta,z) ~ x1
+latent(m) <- ~eta
+plot(lava:::beautify(m,edgecol=F))
 }
 }
 \author{
-  Klaus K. Holst
+Klaus K. Holst
 }
 \keyword{hplot}
 \keyword{regression}

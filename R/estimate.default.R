@@ -101,15 +101,18 @@
 ##' 
 ##' iid(merge(l1,l2,l3,id=TRUE)) # one-to-one (same clusters)
 ##' iid(merge(l1,l2,l3,id=FALSE)) # independence
+##' @aliases estimate.default estimate.estimate merge.estimate stack.estimate
 ##' @method estimate default
 ##' @S3method estimate default
-estimate.default <- function(x,f=NULL,data=model.frame(x),id,iddata,stack=TRUE,subset,
+estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
                              score.deriv,level=0.95,iid=TRUE,
                              contrast,null,vcov,coef,print=NULL,...) {
     if (!is.null(f) && !is.function(f)) {
         if (!(is.matrix(f) | is.vector(f))) return(compare(x,f,...))
         contrast <- f; f <- NULL
     }
+    if (missing(data)) data <- tryCatch(model.frame(x),error=function(...) NULL)
+    
     if (is.matrix(x) || is.vector(x)) contrast <- x
     alpha <- 1-level
     alpha.str <- paste(c(alpha/2,1-alpha/2)*100,"",sep="%")
@@ -136,8 +139,8 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,iddata,stack=TRUE,s
     if (!missing(id)) {
         if (is.null(iidtheta)) stop("'iid' method needed")
         nprev <- nrow(iidtheta)
-        e <- substitute(id)        
-        id <- eval(e, data, parent.frame())
+        e <- substitute(id)
+        if (!is.null(data)) id <- eval(e, data, parent.frame())
         if (is.logical(id) && length(id)==1) {
             id <- if(is.null(iidtheta)) seq(nrow(data)) else seq(nprev)
             stack <- FALSE
@@ -155,7 +158,11 @@ estimate.default <- function(x,f=NULL,data=model.frame(x),id,iddata,stack=TRUE,s
                 idstack <- sort(unique(id))
             } else { 
                 clidx <- mets::cluster.index(id,mat=iidtheta,return.all=TRUE)
+                atr <- attributes(iidtheta)
+                atr$dimnames <- NULL
+                atr$dim <- NULL
                 iidtheta <- clidx$X
+                attributes(iidtheta)[names(atr)] <- atr
                 idstack <- id[as.vector(clidx$firstclustid)+1]
             } 
         } else idstack <- id
@@ -335,6 +342,21 @@ estimate.glm <- function(x,...) {
     estimate.default(x,...)
 }
 
+
+
+estimate.lmerMod <- function(x,...) {
+    cc <- cbind(fixef(x),diag(vcov(x))^.5)
+    cc <- cbind(cc,cc[,1]-qnorm(0.975)*cc[,2],cc[,1]+qnorm(0.975)*cc[,2],
+                2*(1-pnorm(abs(cc[,1])/cc[,2])))
+    colnames(cc) <- c("Estimate","Std.Err","2.5%","97.5%","p-value")
+    res <- structure(list(coef=fixef(x), vcov=vcov(x),
+                          coefmat=cc,
+                          varcomp=as.numeric(VarCorr(x)),residual=attributes(VarCorr(x))$sc^2
+                          ),
+                     class="estimate")
+    res
+}
+
 ##' @S3method print estimate
 print.estimate <- function(x,digits=3,width=25,...) {
     if (!is.null(x$print)) {
@@ -363,10 +385,38 @@ coef.estimate <- function(object,...) {
 
 ##' @S3method iid estimate
 iid.estimate <- function(x,...) {
-    x$iid
+    dimn <- dimnames(x$iid)
+    if (!is.null(dimn)) {
+        dimn[[2]] <- names(coef(x))
+    } else {
+        dimn <- list(NULL,names(coef(x)))
+    }
+    structure(x$iid,dimnames=dimn)
 }
 
 ##' @S3method model.frame estimate
 model.frame.estimate <- function(formula,...) {
     NULL
+}
+
+##' @S3method stack estimate
+stack.estimate <- function(x,y,Ix,iIy,weight,dweight,...) {    
+    iid1 <- iid(x)
+    iid2 <- iid(y)
+    if (missing(iIy)) {
+        iIy <- attributes(iid2)$bread
+    }
+    if (!missing(dweight)) {
+        u2 <- apply(solve(iIy)%*%t(iid2),1,function(x) x/weight)
+        Ix <- colSums(
+            rbind(rep(1,ncol(dweight)))%x%u2*
+            rbind(rep(1,ncol(u2)))%x%dweight
+            )
+        Ix <- matrix(Ix,byrow=TRUE,ncol=ncol(iid1))
+    }
+    ii <- iid(merge(x,y))
+    iid1. <- ii[,seq_along(coef(x)),drop=FALSE]
+    iid2. <- ii[,length(coef(x))+seq_along(coef(y)),drop=FALSE] 
+    iid3 <- t(iIy%*%(Ix%*%t(iid1.)))
+    estimate(coef=c(coef(x),coef(y)),iid=cbind(iid1.,iid2.-iid3))
 }
