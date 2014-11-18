@@ -1,6 +1,6 @@
 ###{{{ estimate.multigroup
 
-##' @S3method estimate multigroup
+##' @export
 `estimate.multigroup` <- function(x, control=list(),
                                   estimator="gaussian",
                                   weight, weightname,
@@ -598,8 +598,7 @@
 
 ###{{{ estimate.list
 
-##' @S3method estimate list
-`estimate.list` <-
+estimate.lvmlist <-
 function(x, data, silent=lava.options()$silent, fix, missing=FALSE,  ...) {
   if (missing(data)) {
     return(estimate(x[[1]],x[[2]],missing=missing,...))

@@ -55,7 +55,7 @@
 ##' @export
 path <- function(object,...) UseMethod("path")
 
-##' @S3method path lvmfit
+##' @export
 path.lvmfit <- function(object,to=NULL,from,...) {
   mypath <- pathM(Model(object)$M,to,from,...)
   cc <- coef(object,level=9,labels=FALSE) ## All parameters (fixed and variable)
@@ -99,10 +99,10 @@ path.lvmfit <- function(object,to=NULL,from,...) {
   return(res)
 }
 
-##' @S3method path lvm
+##' @export
 path.lvm <- function(object,to=NULL,from,...) pathM(object$M,to=to,from=from,...)
 
-##' @S3method path graphNEL
+##' @export
 path.graphNEL <- function(object,to,from,...) {
   if (class(to)[1]=="formula") {
     fvar <- extractvar(to)
@@ -118,7 +118,7 @@ path.graphNEL <- function(object,to,from,...) {
     return(res)
   }
   ff <- function(g,from=1,to=NULL,res=list()) {    
-    M <- edgeMatrix(g)
+    M <- graph::edgeMatrix(g)
     i1 <- which(M[1,]==from)
     for (i in i1) {
       e <- M[,i]; newto <- e[2];
@@ -134,16 +134,16 @@ path.graphNEL <- function(object,to,from,...) {
     }
     return(res)
   }
-  idxfrom <- ifelse(is.numeric(from),from,which(from==nodes(object)))
-  reachable <- acc(object,nodes(object)[idxfrom])[[1]]
+  idxfrom <- ifelse(is.numeric(from),from,which(from==graph::nodes(object)))
+  reachable <- acc(object,graph::nodes(object)[idxfrom])[[1]]
 
   if (is.null(to)) {
     idxto <- reachable
   } else {
-    idxto <- ifelse(is.numeric(to),to,which(to==nodes(object)))
+    idxto <- ifelse(is.numeric(to),to,which(to==graph::nodes(object)))
   }
 
-  if (!(nodes(object)[idxto] %in% names(reachable)))
+  if (!(graph::nodes(object)[idxto] %in% names(reachable)))
 ##    return(structure(NULL,to=to[1],from=from[1]))
     return(NULL)
   ##    stop("No directional relationship between variables")
@@ -151,7 +151,7 @@ path.graphNEL <- function(object,to,from,...) {
   mypaths <- ff(object,idxfrom,idxto)
   res <- list()
   for (i in 1:length(mypaths)) {
-    res <- c(res, list(nodes(object)[mypaths[[i]]]))
+    res <- c(res, list(graph::nodes(object)[mypaths[[i]]]))
   }
   return(res)
 }

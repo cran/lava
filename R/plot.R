@@ -66,7 +66,7 @@
 ##' }
 ##'
 ##' 
-##' @S3method plot lvm
+##' @export
 ##' @method plot lvm
 `plot.lvm` <-
   function(x,diag=FALSE,cor=TRUE,labels=FALSE,intercept=FALSE,addcolor=TRUE,plain=FALSE,cex,fontsize1=10,noplot=FALSE,graph=list(rankdir="BT"),
@@ -97,7 +97,7 @@
       message("package 'Rgraphviz' or 'igraph' not available")
       return(NULL)
     }
-    L <- layout.sugiyama(g <- igraph.lvm(x,...))$layout
+    L <- igraph::layout.sugiyama(g <- igraph.lvm(x,...))$layout
     if (noplot) return(g)
     dots <- list(...)
     if (is.character(layout))
@@ -133,13 +133,12 @@
     
     g <- do.call("layoutGraph", dots)
     ## Temporary work around:
-    nodeRenderInfo(g)$fill <- nodeRenderInfo(dots$x)$fill
-    nodeRenderInfo(g)$col <- nodeRenderInfo(dots$x)$col
-    edgeRenderInfo(g)$col <- edgeRenderInfo(dots$x)$col
-    
+    graph::nodeRenderInfo(g)$fill <- graph::nodeRenderInfo(dots$x)$fill
+    graph::nodeRenderInfo(g)$col <- graph::nodeRenderInfo(dots$x)$col
+    graph::edgeRenderInfo(g)$col <- graph::edgeRenderInfo(dots$x)$col    
     if (noplot)
       return(g)    
-    res <- tryCatch(renderGraph(g),error=function(e) NULL)
+    res <- tryCatch(Rgraphviz::renderGraph(g),error=function(e) NULL)
     options(.savedOpt)
   }
   ## if (!is.null(legend)) {
@@ -162,7 +161,7 @@
 
 ###{{{ plot.lvmfit
 
-##' @S3method plot lvmfit
+##' @export
 `plot.lvmfit` <-
   function(x,diag=TRUE,cor=TRUE,type,noplot=FALSE,fontsize1=5,...) {
     .savedOpt <- options(warn=-1) ## Temporarily disable warnings as renderGraph comes with a stupid warning when labels are given as "expression"
@@ -193,16 +192,16 @@
       for (r in 1:(nrow(covariance(Model(x))$rel)-delta) ) {
         for (s in (r+delta):ncol(covariance(Model(x))$rel) ) {
           if (covariance(Model(x))$rel[r,s]==1) {
-            g <- removeEdge(var[r],var[s], g)
-            g <- removeEdge(var[s],var[r], g)
+            g <- graph::removeEdge(var[r],var[s], g)
+            g <- graph::removeEdge(var[s],var[r], g)
           }
         }
       }
     }
     if (!diag) {
       for (r in 1:(nrow(covariance(Model(x))$rel)) ) {
-        if (isAdjacent(g,var[r],var[r]))
-          g <- removeEdge(var[r],var[r],g)
+        if (graph::isAdjacent(g,var[r],var[r]))
+          g <- graph::removeEdge(var[r],var[r],g)
       }
     } 
     m <- Model(x); Graph(m) <- g
@@ -215,14 +214,14 @@
 
 ###{{{ plot.multigroup
 
-##' @S3method plot multigroup
+##' @export
 plot.multigroup <- function(x,diag=TRUE,labels=TRUE,...) {
   k <- x$ngroup
   for (i in 1:k)
     plot(x$lvm[[i]],diag=diag,labels=labels, ...)
 }
 
-##' @S3method plot multigroupfit
+##' @export
 plot.multigroupfit <- function(x,...) {
   plot(Model(x),...)
 }
@@ -242,24 +241,24 @@ igraph.lvm <- function(x,layout=igraph::layout.kamada.kawai,...) {
         x <- regression(x,vars(x)[j],vars(x)[i])
       }
     }
-  g <- graph.adjacency(x$M,mode="directed")
-  V(g)$color <- "lightblue"
-  V(g)$label <- vars(x)
-  V(g)$shape <- "rectangle"
-  for (i in match(latent(x),V(g)$name)) {
-      V(g)$shape[i] <- "circle"
-      V(g)$color[i] <- "green"
+  g <- igraph::graph.adjacency(x$M,mode="directed")
+  igraph::V(g)$color <- "lightblue"
+  igraph::V(g)$label <- vars(x)
+  igraph::V(g)$shape <- "rectangle"
+  for (i in match(latent(x),igraph::V(g)$name)) {
+      igraph::V(g)$shape[i] <- "circle"
+      igraph::V(g)$color[i] <- "green"
   }
   endo <- index(x)$endogenous
-  for (i in match(endo,V(g)$name)) {
-    V(g)$color[i] <- "orange"
+  for (i in match(endo,igraph::V(g)$name)) {
+      igraph::V(g)$color[i] <- "orange"
   }
-  E(g)$label <- as.list(rep("",length(E(g))))
+  igraph::E(g)$label <- as.list(rep("",length(igraph::E(g))))
   oE <- edgelabels(x)
-  for (i in 1:length(E(g))) {
+  for (i in 1:length(igraph::E(g))) {
     st <- as.character(oE[i])
     if (length(st)>0)
-      E(g)$label[[i]] <- st
+      igraph::E(g)$label[[i]] <- st
   }
   g$layout <- layout(g)
   return(g)  

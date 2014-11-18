@@ -70,11 +70,12 @@
 ##' simulation only).
 ##' @param silent Logical variable which indicates whether messages are turned
 ##' on/off.
+##' @param additive If FALSE and predictor is categorical a non-additive effect is assumed
 ##' @param quick Faster implementation without parameter constraints
 ##' @param \dots Additional arguments to be passed to the low level functions
 ##' @usage
 ##' \method{regression}{lvm}(object = lvm(), to, from, fn = NA,
-##' silent = lava.options()$silent, ...)
+##' silent = lava.options()$silent, additive=TRUE, ...)
 ##' \method{regression}{lvm}(object, to=NULL, quick=FALSE, ...) <- value
 ##' @return A \code{lvm}-object
 ##' @note Variables will be added to the model if not already present.
@@ -104,19 +105,25 @@
 ##' @export
 "regression<-" <- function(object,...,value) UseMethod("regression<-")
 
-##' @S3method regression<- lvm
+##' @export
 "regression<-.lvm" <- function(object, to=NULL, quick=FALSE, ..., value) {
-  if (!is.null(to)) {    
-    regfix(object, to=to, ...) <- value
-    return(object)
-  } else  {
-    if (is.list(value)) {
-      for (v in value) {
-        regression(object,...) <- v        
-      }
-      return(object)
+    dots <- list(...)
+    if (length(dots$additive)>0 && !dots$additive && !inherits(value,"formula")) {
+        regression(object,beta=value,...) <- to
+        return(object)
     }
-
+    
+    if (!is.null(to)) {    
+        regfix(object, to=to, ...) <- value
+        return(object)
+    } else  {
+        if (is.list(value)) {
+            for (v in value) {
+                regression(object,...) <- v        
+            }
+            return(object)
+        }
+    
     if (class(value)[1]=="formula") {
         yx <- lapply(strsplit(as.character(value),"~"),function(x) gsub(" ","",x))[-1]
         iscovar <- FALSE
@@ -176,8 +183,10 @@
           }
           val <- ifelse(xpar[1]=="NA",NA,xpar[1])
           valn <- suppressWarnings(as.numeric(val))
-          intercept(object,xs[i]) <- ifelse(is.na(valn),val,valn)
-          notexo <- c(notexo,xs[i])
+          if (val!=".") {
+              intercept(object,xs[i]) <- ifelse(is.na(valn),val,valn)
+              notexo <- c(notexo,xs[i])
+          }
         } else { exo <- c(exo,xs[i]) }
       }
 
@@ -205,7 +214,8 @@
           }
           val <- ifelse(ypar[1]=="NA",NA,ypar[1])
           valn <- suppressWarnings(as.numeric(val))
-          intercept(object,y) <- ifelse(is.na(valn),val,valn)
+          if (val!=".")
+              intercept(object,y) <- ifelse(is.na(valn),val,valn)
         }
         for (j in seq_len(length(xs))) {        
           if (length(res[[j]])>1) {
@@ -234,57 +244,75 @@
 `regression` <-
   function(object,to,from,...) UseMethod("regression")
 
-##' @S3method regression lvm
+##' @export
 `regression.lvm` <-
-  function(object=lvm(),to,from,fn=NA,silent=lava.options()$silent,
-           ...) {
-    if (missing(to)) {
-      return(regfix(object))
-    }        
-    if (class(to)[1]=="formula") {
-      regression(object,silent=silent,...) <- to
-      object$parpos <- NULL
-      return(object)
+    function(object=lvm(),to,from,fn=NA,silent=lava.options()$silent,
+             additive=TRUE, ...) {
+        if (!additive) {
+            if (!inherits(to,"formula")) to <- toformula(to,from)
+            x <- attributes(getoutcome(to))$x
+            K <- object$attributes$nordinal[x]
+            if (is.null(K) || is.na(K)) {
+                K <- list(...)$K
+                if (is.null(K)) stop("Supply number of categories, K (or use method 'categorical' before calling 'regression').")
+                object <- categorical(object,x,...)
+            }
+            dots <- list(...);
+            dots$K <- K
+            dots$x <- object
+            dots$formula <- to
+            dots$regr.only <- TRUE
+            object <- do.call("categorical",dots)
+            return(object)            
+        }
+        
+        if (missing(to)) {
+            return(regfix(object))
+        }        
+        if (class(to)[1]=="formula") {
+            regression(object,silent=silent,...) <- to
+            object$parpos <- NULL
+            return(object)
+        }
+        if (is.list(to)) {
+            for (t in to)
+                regression(object,silent=silent,...) <- t
+            object$parpos <- NULL
+            return(object)
+        }
+        
+        sx <- strsplit(from,"@")
+        xx <- sapply(sx, FUN=function(i) i[1])
+        ps <- sapply(sx, FUN=function(i) i[2])
+        sx <- strsplit(xx,"$",fixed=TRUE)
+        xs <- sapply(sx, FUN=function(i) i[1])    
+        fix <- as.numeric(sapply(sx, FUN=function(i) i[2]))
+        allv <- index(object)$vars
+        
+        object <- addvar(object, c(to,xs), silent=silent,reindex=FALSE)
+        
+        for (i in to)
+            for (j in xs) {
+                object$M[j,i] <- 1
+                if (!is.na(fn))
+                    functional(object,j,i) <- fn
+            }
+        
+        if (lava.options()$exogenous) {
+            newexo <- setdiff(xs,c(to,allv))
+            exo <- exogenous(object)
+            if (length(newexo)>0)
+                exo <- unique(c(exo,newexo))
+            exogenous(object) <- setdiff(exo,to)
+        }
+        
+        if (lava.options()$debug) {
+            print(object$fix)
+        } 
+        object$fix[xs,to] <- fix
+        object$par[xs,to] <- ps
+        object$parpos <- NULL
+        
+        index(object) <- reindex(object)   
+        return(object)
     }
-    if (is.list(to)) {
-      for (t in to)
-        regression(object,silent=silent,...) <- t
-      object$parpos <- NULL
-      return(object)
-    }
-    
-    sx <- strsplit(from,"@")
-    xx <- sapply(sx, FUN=function(i) i[1])
-    ps <- sapply(sx, FUN=function(i) i[2])
-    sx <- strsplit(xx,"$",fixed=TRUE)
-    xs <- sapply(sx, FUN=function(i) i[1])    
-    fix <- as.numeric(sapply(sx, FUN=function(i) i[2]))
-    allv <- index(object)$vars
-    
-    object <- addvar(object, c(to,xs), silent=silent,reindex=FALSE)
-    
-    for (i in to)
-      for (j in xs) {
-        object$M[j,i] <- 1
-        if (!is.na(fn))
-          functional(object,j,i) <- fn
-      }
-    
-    if (lava.options()$exogenous) {
-      newexo <- setdiff(xs,c(to,allv))
-      exo <- exogenous(object)
-      if (length(newexo)>0)
-        exo <- unique(c(exo,newexo))
-      exogenous(object) <- setdiff(exo,to)
-    }
-      
-    if (lava.options()$debug) {
-      print(object$fix)
-    } 
-    object$fix[xs,to] <- fix
-    object$par[xs,to] <- ps
-    object$parpos <- NULL
-    
-    index(object) <- reindex(object)   
-    return(object)
-  }

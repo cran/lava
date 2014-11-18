@@ -22,7 +22,7 @@
 ##'
 iid <- function(x,...) UseMethod("iid")
 
-##' @S3method iid default
+##' @export
 iid.default <- function(x,bread,id,...) {
     if (!any(paste("score",class(x),sep=".") %in% methods("score"))) {
         warning("Not available for this class")
@@ -37,6 +37,7 @@ iid.default <- function(x,bread,id,...) {
     if (missing(bread)) bread <- attributes(U)$bread
     if (is.null(bread)) {
         bread <- attributes(x)$bread
+        if (is.null(bread)) bread <- x$bread
         if (is.null(bread)) {
             I <- -numDeriv::jacobian(function(p) score(x,p=p,indiv=FALSE,...),pp,method=lava.options()$Dmethod)
             bread <- Inverse(I)
@@ -44,21 +45,23 @@ iid.default <- function(x,bread,id,...) {
     }
     iid0 <- U%*%bread
     if (!missing(id)) {
+        N <- nrow(iid0)
         if (!lava.options()$cluster.index) {
             iid0 <- matrix(unlist(by(iid0,id,colSums)),byrow=TRUE,ncol=ncol(bread))
         } else {
             iid0 <- mets::cluster.index(id,mat=iid0,return.all=FALSE)
         }
+        attributes(iid0)$N <- N
     }
     colnames(iid0) <- colnames(U)
   return(structure(iid0,bread=bread))
 }
 
 
-##' @S3method iid multigroupfit
+##' @export
 iid.multigroupfit <- function(x,...) iid.default(x,combine=TRUE,...)
 
-##' @S3method iid matrix
+##' @export
 iid.matrix <- function(x,...) {
     p <- ncol(x); n <- nrow(x)
     mu <- colMeans(x,na.rm=TRUE); S <- var(x,use="pairwise.complete.obs")*(n-1)/n
@@ -83,7 +86,7 @@ iid.matrix <- function(x,...) {
               mean=mu, var=S)
 }
 
-##' @S3method iid numeric
+##' @export
 iid.numeric <- function(x,...) {
     n <- length(x)
     mu <- mean(x); S <- var(x)*(n-1)/n
@@ -92,7 +95,7 @@ iid.numeric <- function(x,...) {
 }
 
 
-##' @S3method iid data.frame
+##' @export
 iid.data.frame <- function(x,...) {
     if (!all(apply(x[1,,drop=FALSE],2,function(x) inherits(x,c("numeric","integer")))))
         stop("Don't know how to handle data.frames of this type")

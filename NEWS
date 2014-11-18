@@ -1,3 +1,29 @@
+* Version 1.3 <2014-11-18 Tue>
+  - New syntax for categorical predictors (method 'categorical' and
+    argument 'additive=FALSE' with 'regression method)
+  - Argument 'intervals' added to 'ones.lvm' for piece-wise constant effects
+  - Argument 'average=TRUE' now needed for empirical averages in estimate.default
+  - Fixed a bug in score.glm (with weights and offset) introduced in version 1.2.6
+  - estimate.default:
+    - small-sample corrections
+    - Default id from row names in estimate.default (used with merge method)
+    - iid decompostion also returned for hypothesis contrasts 
+    - keep argument added to estimate.default and merge
+    - labels argument added to estimate.default
+  - 'images' function for visualization of tabular data added to namespace
+  - 'ksmooth' and 'surface' for surface estimation and visualization of bivariate data and functions
+  - 'dsort': Sort data.frames
+  - general multivariate distributions in simulations. see example in 'sim'
+  - 'or2prob', 'tetrachoric' for conversion from OR to probabilities
+    (and tetrachoric correlations).
+    'prob.normal': calculates probabilities from threshold model given thresholds and variance
+    See also mets:::assoc for calculations of kappa, gamma, uncer.coef.
+    'normal.threshold': returns thresholds,variance,mu from model with
+    categorical outcomes.
+  - Multiple testing routines: closed.testing, p.correct, ...
+  - 'Missing' method updated with a simple 'suffix' argument
+  - Back-tracing updated in Newton-Raphson routine
+
 * Version 1.2.6 <2014-05-07 Wed>
   - New 'stack' function for two-stage estimation (via 'estimate' objects)
   - New 'blocksample' function for resampling clustered data.
@@ -17,7 +43,7 @@
   - New function getSAS: Import SAS ODS
   - New 'edgecolor' argument of plot-function
 
-* TODO Version 1.2.5 <2014-03-13 Thu>
+* Version 1.2.5 <2014-03-13 Thu>
   - 'merge' method added for combining 'estimate' objects
   - Adjustments to starting values
   - Function 'categorical' for adding categorical predictors to

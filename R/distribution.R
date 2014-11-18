@@ -6,19 +6,87 @@
 ##' @export
 "distribution" <- function(x,...,value) UseMethod("distribution")
 
-##' @S3method distribution<- lvm
-"distribution<-.lvm" <- function(x,variable,...,value) {
-  if (class(variable)[1]=="formula")
-    variable <- all.vars(variable)  
+##' @export
+"distribution<-.lvm" <- function(x,variable,parname=NULL,init.par,...,value) {
+  if (inherits(variable,"formula")) variable <- all.vars(variable)
+  dots <- list(...)
+  
+  if (!is.null(parname) || length(dots)>0) {
+      if (length(parname)>1 || (is.character(parname))) {
+          if (missing(init.par)) {
+              parameter(x,start=rep(1,length(parname))) <- parname
+          } else {
+              parameter(x,start=init.par) <- parname
+          }
+          gen <- function(n,p,...) {
+              args <- c(n,as.list(p[parname]),dots)
+              names(args) <- names(formals(value))[seq(length(parname)+1)]
+              do.call(value,args)
+          }
+      } else {
+          gen <- function(n,p,...) {
+              args <- c(n=n,dots)
+              names(args)[1] <- names(formals(value))[1]
+              do.call(value,args)
+          }
+      }
+      distribution(x,variable) <- list(gen)
+      return(x)
+  }
+  
   if (length(variable)==1) {
-    addvar(x) <- as.formula(paste("~",variable))
-    if (is.numeric(value)) value <- list(value)
-    x$attributes$distribution[[variable]] <- value ##eval(parse(text=mytext))
-    return(x)
-  }    
+      addvar(x) <- as.formula(paste("~",variable))
+      if (is.numeric(value)) value <- list(value)
+      if (!is.null(attributes(value)$mean)) intercept(x,variable) <- attributes(value)$mean
+      if (!is.null(attributes(value)$variance)) variance(x,variable) <- attributes(value)$variance
+      x$attributes$distribution[[variable]] <- value
+      ## Remove from 'mdistribution'     
+      vars <- which(names(x$attributes$mdistribution$var)%in%variable)
+      for (i in vars) {
+          pos <- x$attributes$mdistribution$var[[i]]
+          x$attributes$mdistribution$fun[pos] <- NULL
+          x$attributes$mdistribution$var[which(x$attributes$mdistribution$var==pos)] <- NULL
+          above <- which(x$attributes$mdistribution$var>pos)
+          if (length(above)>0)
+              x$attributes$mdistribution$var[above] <- lapply(x$attributes$mdistribution$var[above],function(x) x-1)
+      }
+      return(x)    
+  }
+
+  if (is.list(value) && length(value)==1 && (is.function(value[[1]]) || is.null(value[[1]]))) {
+      addvar(x) <- variable
+      ## Multivariate distribution
+      if (is.null(x$attributes$mdistribution)) x$attributes$mdistribution <- list(var=list(), fun=list())
+      vars <- x$attributes$mdistribution$var
+
+      if (any(ii <- which(names(vars)%in%variable))) {
+          num <- unique(unlist(vars[ii]))
+          vars[which(unlist(vars)%in%num)] <- NULL
+          newfunlist <- list()
+          numleft <- unique(unlist(vars))
+          for (i in seq_along(numleft)) {
+              newfunlist <- c(newfunlist, x$attributes$mdistribution$fun[[numleft[i]]])
+              ii <- which(unlist(vars)==numleft[i])
+              vars[ii] <- i
+          }
+          K <- length(numleft)
+          x$attributes$mdistribution$var <- vars
+          x$attributes$mdistribution$fun <- newfunlist
+      } else {          
+          K <- length(x$attributes$mdistribution$fun)
+      }
+      if (length(distribution(x))>0)
+          distribution(x,variable) <- rep(list(NULL),length(variable))
+
+      x$attributes$mdistribution$var[variable] <- K+1
+      x$attributes$mdistribution$fun <- c(x$attributes$mdistribution$fun,value)
+
+      return(x)
+  }
+  
   if ((length(value)!=length(variable) & length(value)!=1))
     stop("Wrong number of values")
-  for (i in 1:length(variable))
+  for (i in seq_along(variable))
     if (length(value)==1) {
       distribution(x,variable[i],...) <- value
     } else {
@@ -28,8 +96,9 @@
   
 }
 
-##' @S3method distribution lvm
-"distribution.lvm" <- function(x,var,...) {
+##' @export
+"distribution.lvm" <- function(x,var,multivariate=FALSE,...) {
+    if (multivariate) return(x$attributes$mdistribution)
   x$attributes$distribution[var]
 }
 
@@ -41,12 +110,9 @@
 normal.lvm <- function(link="identity",mean,sd,log=FALSE,...) {
   rnormal <- if(log) rlnorm else rnorm
   fam <- gaussian(link); fam$link <- link
-  if (!missing(mean) & !missing(sd)) 
-    f <- function(n,mu,var,...) rnormal(n,fam$linkinv(mean),sd)
-  else
-    f <- function(n,mu,var,...) {      
-      rnormal(n,fam$linkinv(mu),sqrt(var))
-    }
+  f <- function(n,mu,var,...) rnormal(n,fam$linkinv(mu),sqrt(var))
+  if (!missing(mean)) attr(f,"mean") <- mean
+  if (!missing(sd)) attr(f,"variance") <- sd^2
   attr(f,"family") <- fam
   return(f)  
 }
@@ -64,19 +130,17 @@ lognormal.lvm <- function(...) normal.lvm(...,log=TRUE)
 
 ##' @export
 poisson.lvm <- function(link="log",lambda,...) {  
-  fam <- poisson(link); fam$link <- link
- if (!missing(lambda))
-    f <- function(n,mu,...) rpois(n,lambda)
- else
-   f <- function(n,mu,...) {
-     if (missing(n)) {
-       return(fam)
-     }
-     rpois(n,fam$linkinv(mu))
-   }
-  attr(f,"family") <- fam
-  attr(f,"var") <- FALSE
-  return(f)  
+    fam <- poisson(link); fam$link <- link
+    f <- function(n,mu,...) {
+        if (missing(n)) {
+            return(fam)
+        }
+        rpois(n,fam$linkinv(mu))
+    }
+    if (!missing(lambda)) attr(f,"mean") <- fam$linkfun(lambda)
+    attr(f,"family") <- fam
+    attr(f,"var") <- FALSE  
+    return(f)  
 } 
 
 ###}}} poisson
@@ -100,16 +164,16 @@ threshold.lvm <- function(p,labels=NULL,...) {
 
 ##' @export
 binomial.lvm <- function(link="logit",p,size=1) {
-  fam <- binomial(link); fam$link <- link
-  if (!missing(p))
-    f <- function(n,mu,var,...) rbinom(n,size,p)
-  else {
+    fam <- binomial(link); fam$link <- link
     f <- function(n,mu,var,...) {
       if (missing(n)) {
         return(fam)
       }
       rbinom(n,size,fam$linkinv(mu))
-    }
+  }
+    attr(f,"family") <- fam
+    attr(f,"var") <- FALSE
+    if (!missing(p)) attr(f,"mean") <- fam$linkfun(p)
     ## f <- switch(link,
     ##             logit = 
     ##             function(n,mu,var,...) rbinom(n,1,tigol(mu)),
@@ -118,9 +182,7 @@ binomial.lvm <- function(link="logit",p,size=1) {
     ##             function(n,mu,var=1,...) rbinom(n,1,pnorm(mu,sd=sqrt(var)))
     ##             ### function(n,mu=0,var=1,...) (rnorm(n,mu,sqrt(var))>0)*1
     ##             )    
-  }
-  attr(f,"family") <- fam
-  attr(f,"var") <- FALSE
+    ##}
   return(f)
 }
 
@@ -174,15 +236,21 @@ loggamma.lvm <- function(...) Gamma.lvm(...,log=TRUE)
 
 ###}}} Gamma
 
+###{{{ chisq
+##' @export
+chisq.lvm <- function(df=1,...) {
+    function(n,mu,var,...) mu + rchisq(n,df=df)
+}
+###}}} chisq
+
 ###{{{ student (t-distribution)
 
 ##' @export
 student.lvm <- function(df=2,mu,sigma,...) {
-  if (!missing(mu) & !missing(sigma)) 
-    f <- function(n,mu,var,...) mu+sigma*rt(n,df=df)
-  else
-    f <- function(n,mu,var,...) mu + sqrt(var)*rt(n,df=df)  
-  return(f)
+    f <- function(n,mu,var,...) mu + sqrt(var)*rt(n,df=df)
+    if (!missing(mu)) attr(f,"mean") <- mu
+    if (!missing(sigma)) attr(f,"variace") <- sigma^2
+    return(f)
 }
 
 ###}}} student (t-distribution)
@@ -192,7 +260,7 @@ student.lvm <- function(df=2,mu,sigma,...) {
 ##' @export
 uniform.lvm <- function(a,b) {
   if (!missing(a) & !missing(b)) 
-    f <- function(n,mu,var,...) runif(n,a,b)
+    f <- function(n,mu,var,...) mu+runif(n,a,b)
   else
     f <- function(n,mu,var,...)
       (mu+(runif(n,-1,1)*sqrt(12)/2*sqrt(var)))
@@ -222,9 +290,9 @@ weibull.lvm <- function(scale=100,shape=2) {
     ## PH regression
     ## scale = exp(b0+ b1*X)
     f <- function(n,mu,var,...) {
-        message("weibull.scale=",scale)
-        message("weibull.shape=",shape)
-        message("coxWeibull.scale=",exp(scale/shape))
+        ## message("weibull.scale=",scale)
+        ## message("weibull.shape=",shape)
+        ## message("coxWeibull.scale=",exp(scale/shape))
         (- log(runif(n)) * exp(scale/shape) * exp(mu/shape))^{shape}
         ## scale * (-log(1-runif(n)))^{1/shape}
         ## (- (log(runif(n)) / (1/scale)^(shape) * exp(-mu)))^(1/shape)
@@ -248,10 +316,21 @@ sequence.lvm <- function(a=0,b=1) {
 
 ###{{{ ones
 ##' @export
-ones.lvm <- function(fraction=0) {
+ones.lvm <- function(p=0,interval=NULL) {
     f <- function(n,...) {
+        if (!is.null(interval)) {
+            val <- rep(0,n)
+            if (!is.list(interval)) interval <- list(interval)
+            for (i in seq_along(interval)) {
+                ii <- interval[[i]]
+                lo <- round(ii[1]*n)
+                hi <- round(ii[2]*n)
+                val[seq(lo,hi)] <- 1
+            }
+            return(val)
+        }
         val <- rep(1,n)
-        if (fraction>0 && fraction<1) val[seq(n*(1-fraction))] <- 0
+        if (p>0 && p<1) val[seq(n*(1-p))] <- 0
         val
         }
   return(f)

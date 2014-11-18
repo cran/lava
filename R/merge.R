@@ -1,7 +1,7 @@
-##' @S3method %+% lvm
+##' @export
 `%+%.lvm` <- function(x,y) merge(x,y)
 
-##' @S3method merge lvm
+##' @export
 merge.lvm <- function(x,y,...) {  
   objects <- list(x,y,...)  
   if (length(objects)<2) return(x)
@@ -44,14 +44,33 @@ merge.lvm <- function(x,y,...) {
 }
   
 
-##' @S3method merge estimate
-merge.estimate <- function(x,y,...,id) {
+##' @export
+merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=NULL) {
     objects <- list(x,y, ...)
-    coefs <- unlist(lapply(objects,coef))
-    names(coefs) <- make.unique(names(coefs))
-
-    if (missing(id)) {
-        id <- lapply(objects,function(x) x$id)
+    if (length(nai <- names(objects)=="NA")>0)
+    names(objects)[which(nai)] <- ""
+    if (!missing(subset)) {
+        coefs <- unlist(lapply(objects, function(x) coef(x)[subset]))
+    } else {
+        coefs <- unlist(lapply(objects,coef))
+    }
+    if (!is.null(labels)) {
+        names(coefs) <- labels
+    } else {
+        names(coefs) <- make.unique(names(coefs))
+    }
+    if (!missing(id) && is.null(id)) { ## Independence between datasets in x,y,...
+        nn <- unlist(lapply(objects,function(x) nrow(x$iid)))
+        cnn <- c(0,cumsum(nn))
+        id <- list()
+        for (i in seq_along(nn)) id <- c(id,list(seq(nn[i])+cnn[i]))
+    }
+    if (missing(id)) {        
+        if (paired) { ## One-to-one dependence between observations in x,y,...
+            id <- rep(list(seq(nrow(x$iid))),length(objects))            
+        } else {
+            id <- lapply(objects,function(x) x$id)
+        }
     } else {
         nn <- unlist(lapply(objects,function(x) NROW(iid(x))))
         if (length(id)==1 && is.logical(id)) {            
@@ -76,12 +95,14 @@ merge.estimate <- function(x,y,...,id) {
         count <- count+1
         clidx <- NULL
         id0 <- id[[count]]
-        if (!lava.options()$cluster.index) {
-            iid0 <- matrix(unlist(by(iid(z),id0,colSums)),byrow=TRUE,ncol=length(coef(z)))
+        iidz <- iid(z)
+        if (!missing(subset)) iidz <- iidz[,subset,drop=FALSE]
+        if (!lava.options()$cluster.index) {        
+            iid0 <- matrix(unlist(by(iidz,id0,colSums)),byrow=TRUE,ncol=ncol(iidz))
             ids <- c(ids, list(sort(unique(id0))))
 
         } else {
-            clidx <- mets::cluster.index(id0,mat=iid(z),return.all=TRUE)
+            clidx <- mets::cluster.index(id0,mat=iidz,return.all=TRUE)
             iid0 <- clidx$X
             ids <- c(ids, list(id0[as.vector(clidx$firstclustid)+1]))
         }
@@ -91,21 +112,30 @@ merge.estimate <- function(x,y,...,id) {
     iid0 <- matrix(0,nrow=length(id),ncol=length(coefs))
     colpos <- 0
     for (i in seq(length(objects))) {
-        relpos <- seq(length(coef(objects[[i]])))
+        relpos <- seq_along(coef(objects[[i]]))
+        if (!missing(subset)) relpos <- seq_along(subset)
         iid0[match(ids[[i]],id),relpos+colpos] <- iidall[[i]]
         colpos <- colpos+tail(relpos,1)
     }
     rownames(iid0) <- id
-    estimate.default(NULL, coef=coefs, stack=FALSE, data=NULL, iid=iid0, id=id)
+    estimate.default(NULL, coef=coefs, stack=FALSE, data=NULL, iid=iid0, id=id, keep=keep)
 }
 
 
-##' @S3method merge lm
-merge.lm <- function(x,...) {
-    merge.estimate(x,...)
+##' @export
+merge.lm <- function(x,y,...) {
+    args <- c(list(x,y),list(...))
+    nn <- names(formals(merge.estimate)[-seq(3)])
+    idx <- na.omit(match(nn,names(args)))
+    models <- args; models[idx] <- NULL
+    mm <- lapply(models,estimate); names(mm)[1:2] <- c("x","y")
+    do.call("merge.estimate",c(mm,args[idx]))
 }
 
-##' @S3method merge glm
-merge.glm <- function(x,...) {
+##' @export
+merge.glm <- merge.lm
+
+##' @export
+merge.multinomial <- function(x,...) {
     merge.estimate(x,...)
 }

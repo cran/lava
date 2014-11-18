@@ -1,5 +1,3 @@
-##' @export
-estimate <- function(x,...) UseMethod("estimate")
 
 ###{{{ estimate.lvm
 
@@ -40,7 +38,7 @@ estimate <- function(x,...) UseMethod("estimate")
 ##' \item{tol:}{ Tolerance of optimization constraints on lower limit of
 ##' variance parameters.  } }
 ##'
-##' @aliases estimate.list estimate
+##' @aliases estimate
 ##' @param x \code{lvm}-object
 ##' @param data \code{data.frame}
 ##' @param estimator String defining the estimator (see details below)
@@ -73,10 +71,20 @@ estimate <- function(x,...) UseMethod("estimate")
 ##' @author Klaus K. Holst
 ##' @seealso \code{score}, \code{information}, ...
 ##' @keywords models regression
-##' @S3method estimate lvm
+##' @export
 ##' @method estimate lvm
 ##' @examples
+##' dd <- read.table(header=TRUE,
+##' text="x1 x2 x3
+##' 1.0 2.0 1.4
+##' 2.1 4.1 4.0
+##' 3.1 3.4 7.0
+##' 4.2 6.1 3.5
+##' 5.3 5.2 2.3
+##' 1.1 1.6 2.9")
+##' e <- estimate(lvm(c(x1,x2,x3)~u),dd)
 ##' 
+##' ## Simulation example
 ##' m <- lvm(list(y~v1+v2+v3+v4,c(v1,v2,v3,v4)~x))
 ##' covariance(m) <- v1~v2+v3+v4
 ##' dd <- sim(m,10000) ## Simulate 10000 observations from model
@@ -720,7 +728,7 @@ estimate <- function(x,...) UseMethod("estimate")
 
 ###{{{ estimate.formula
 
-##' @S3method estimate formula
+##' @export
 estimate.formula <- function(x,data=parent.frame(),pred.norm=c(),unstruct=FALSE,silent=TRUE,cluster=NULL,distribution=NULL,estimator="gaussian",...) {
   cl <- match.call()
   formulaId <- Specials(x,"cluster")

@@ -2,15 +2,27 @@ color.ordinal <- function(x,subset=vars(x),...) {
     return(list(vars=intersect(subset,ordinal(x)),col="indianred1"))
 }
 
-ordinal.sim.hook <- function(x,data,p,...) {
-    ovar <- ordinal(x)    
+ordinal.sim.hook <- function(x,data,p,modelpar,...) {
+    ovar <- ordinal(x)
+
     for (i in seq_len(length(ovar))) {
         if (attributes(ovar)$liability[i]) {
             idx <- attributes(ovar)$idx[[ovar[i]]]
-            breaks <- c(-Inf,ordreg_threshold(p[idx]),Inf)
+            if (length(idx)==0) {
+                breaks <- c(-Inf,0,Inf)
+            } else {
+                breaks <- c(-Inf,ordreg_threshold(modelpar$e[idx]),Inf)
+            }
             z <- cut(data[,ovar[i]],breaks=breaks)
             data[,ovar[i]] <- as.numeric(z)-1
         }
+        K <- attributes(ovar)$K[i]
+        lab <- attributes(ovar)$labels[ovar[i]][[1]]
+        if (!is.null(lab))
+            data[,ovar[i]] <- factor(data[,ovar[i]],
+                                     levels=seq(K)-1,
+                                     labels=lab)
+        
     }
     return(data)
 }
@@ -19,7 +31,7 @@ ordinal.sim.hook <- function(x,data,p,...) {
 ##' @export
 "ordinal<-" <- function(x,...,value) UseMethod("ordinal<-")
 
-##' @S3method ordinal<- lvm
+##' @export
 "ordinal<-.lvm" <- function(x,...,value) {
   if (class(value)[1]=="formula") {
     return(ordinal(x,all.vars(value),...))
@@ -30,7 +42,7 @@ ordinal.sim.hook <- function(x,data,p,...) {
 ##' @export
 "ordinal" <- function(x,...) UseMethod("ordinal")
 
-##' @S3method print ordinal.lvm
+##' @export
 print.ordinal.lvm <- function(x,...) {
   cat(rep("_",28),"\n",sep="")
   for (i in x) {
@@ -42,31 +54,39 @@ print.ordinal.lvm <- function(x,...) {
   }
 }
 
-##' @S3method ordinal lvm
-`ordinal.lvm` <- function(x,var=NULL,K=2, constrain, breaks=NULL, p, liability=TRUE, ...) {
+##' @export
+`ordinal.lvm` <- function(x,var=NULL,K=2, constrain, breaks=NULL, p, liability=TRUE, labels, ...) {
     if (is.null(var)) {
         ordidx <- unlist(x$attributes$ordinal)
         KK <- unlist(x$attributes$nordinal)
         idx <- x$attributes$ordinalparname
         fix <- lapply(idx,function(z) x$exfix[z])
         liability <- x$attributes$liability
+        labels <- x$attributes$labels
         if (length(ordidx)>0) {
             val <- names(ordidx)
-            return(structure(val,K=KK,idx=idx,fix=fix,liability=liability,class="ordinal.lvm"))
+            return(structure(val,K=KK,idx=idx,fix=fix,liability=liability,labels=labels,class="ordinal.lvm"))
         }
         else
             return(NULL)
     }
-    
     if (!missing(p)) breaks <- qnorm(cumsum(p))
-    if (!is.null(breaks)) breaks <- ordreg_ithreshold(breaks)
+    if (!is.null(breaks)) {
+        breaks <- ordreg_ithreshold(breaks)
+        K <- length(breaks)+1
+    }
+    if (!missing(labels)) K <- length(labels)
     if (length(var)>length(K)) K <- rep(K[1],length(var))
     if (length(var)==1 && !missing(constrain)) constrain <- list(constrain)
-
+    if (length(var)>1) {
+        if (!missing(labels) && !is.list(labels)) labels <- rep(list(labels),length(var))
+        if (!missing(breaks) && !is.list(breaks)) breaks <- rep(list(breaks),length(var))
+        if (!missing(constrain) && !is.list(constrain)) constrain <- rep(list(constrain),length(var))
+    }
+    
     addvar(x) <- var
     for (i in seq_len(length(var))) {
-        if (K[i]>2) {
-            ##suppressMessages(browser())
+        if (K[i]>2 || (K[i]==2 && !liability)) {
             parname <- paste(var[i],":",paste(seq(K[i]-1)-1,seq(K[i]-1),sep="|"),sep="")
             newpar <- if (is.null(breaks)) {
                 rep(-1,K[i]-1)
@@ -91,7 +111,7 @@ print.ordinal.lvm <- function(x,...) {
             mytr <- function(y,p,idx,...) {
                 breaks <- c(-Inf,ordreg_threshold(p[idx]),Inf)
                 as.numeric(cut(y,breaks=breaks))-1
-            }
+            }                
             myalist <- substitute(alist(y=,p=,idx=pp),
                                   list(pp=x$attributes$ordinalparname[[var[i]]]))
             formals(mytr) <- eval(myalist)
@@ -101,8 +121,13 @@ print.ordinal.lvm <- function(x,...) {
     }
     x$attributes$liability[var] <- liability
     x$attributes$ordinal[var] <- TRUE
+    if (!missing(labels)) {
+        if (length(var)==1) labels <- list(labels)
+        x$attributes$labels[var] <- labels
+    }
     x$attributes$nordinal[var] <- K
     x$attributes$normal[var] <- FALSE
     covfix(x,var,NULL) <- 1
+    if (is.null(index(x))) index(x) <- reindex(x)
     return(x)
 }

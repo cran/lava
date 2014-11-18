@@ -183,24 +183,32 @@ curereg <- function(formula,cureformula=~1,data,family=binomial(),offset=NULL,st
   beta <- op$par[beta.idx]; gamma <- op$par[gamma.idx]
   cc <- c(beta,gamma)
   names(cc) <- c(colnames(X),paste("pr:",colnames(Z),sep=""))
-  I <- curereg_information(beta,gamma,y,X,Z,offset,type=var,...)
-  V <- Inverse(I); colnames(V) <- rownames(V) <- names(cc)
+  bread <- Inverse(curereg_information(beta,gamma,y,X,Z,offset,type="hessian",...))
+  if (tolower(var[1])%in%c("robust","sandwich")) {
+      meat <- curereg_information(beta,gamma,y,X,Z,offset,family,type="outer",...)
+      V <- bread%*%meat%*%bread
+  } else {
+      V <- bread
+  }
+  colnames(V) <- rownames(V) <- names(cc)
   res <- list(coef=cc,opt=op,beta=beta,gamma=gamma,
-              beta.idx=beta.idx,gamma.idx=gamma.idx,
-              I=I,formula=formula,cureformula=cureformula, y=y, X=X, Z=Z, offset=offset, vcov=V, model.frame=md,family=family)
+              beta.idx=beta.idx,gamma.idx=gamma.idx,bread=bread,
+              formula=formula,cureformula=cureformula, y=y, X=X, Z=Z, offset=offset, vcov=V, model.frame=md,family=family)
   class(res) <- "curereg"
   res$fitted.values <- predict(res)
   return(res)
 }
 
-##' @S3method vcov curereg
+##' @export
 vcov.curereg <- function(object,...) object$vcov
-##' @S3method coef curereg
-coef.curereg <- function(object,...) object$coef
-##' @S3method family curereg
-family.curereg <- function(object,...) object$family
-##' @S3method predict curereg
 
+##' @export
+coef.curereg <- function(object,...) object$coef
+
+##' @export
+family.curereg <- function(object,...) object$family
+
+##' @export
 predict.curereg <- function(object,p=coef(object),gamma,newdata,link=TRUE,subdist=FALSE,...) {
   newf <- as.formula(paste("~",as.character(object$formula)[3]))
   if (missing(newdata)) {
@@ -241,7 +249,7 @@ predict.curereg <- function(object,p=coef(object),gamma,newdata,link=TRUE,subdis
   return(Pred)  
 }
 
-##' @S3method residuals curereg
+##' @export
 residuals.curereg <- function(object,newdata,...) {
   if (missing(newdata)) {
     y <- object$y
@@ -251,7 +259,7 @@ residuals.curereg <- function(object,newdata,...) {
   y-predict(object,newdata=newdata,...)
 }
 
-##' @S3method summary curereg
+##' @export
 summary.curereg <- function(object,level=0.95,pr.contrast,...) {
   alpha <- 1-level
   alpha.str <- paste(c(alpha/2,1-alpha/2)*100,"",sep="%")
@@ -286,19 +294,19 @@ summary.curereg <- function(object,level=0.95,pr.contrast,...) {
 }
 
 
-##' @S3method print summary.curereg
+##' @export
 print.summary.curereg <- function(x,...) {
   print(x$coef,...)
   cat("\nPrevalence probabilities:\n")
   print(x$prevalence,...)
 }
 
-##' @S3method print curereg
+##' @export
 print.curereg <- function(x,...) {
   print(summary(x,...))
 }
 
-##' @S3method logLik curereg
+##' @export
 logLik.curereg <- function(object,beta=object$beta,gamma=object$gamma,data,offset=object$offset,indiv=FALSE,...) {
   if (!missing(data)) {
     y <- model.frame(object$formula,data)[,1]
@@ -324,7 +332,7 @@ curereg_logL <- function(beta,gamma,y,X,Z,offset=NULL,family=binomial(),indiv=FA
   structure(loglik,nobs=n,df=length(beta)+length(gamma),class="logLik")
 }
 
-##' @S3method score curereg
+##' @export
 score.curereg <- function(x,beta=x$beta,gamma=x$gamma,data,offset=x$offset,indiv=FALSE,...) {
   if (!missing(data)) {
     y <- model.frame(x$formula,data)[,1]
@@ -358,7 +366,7 @@ curereg_score <- function(beta,gamma,y,X,Z,offset=NULL,family=binomial(),indiv=F
   colSums(ss)
 }
 
-##' @S3method information curereg
+##' @export
 information.curereg <- function(x,beta=x$beta,gamma=x$gamma,data,offset=x$offset,type=c("robust","outer","obs"),...) {
   if (!missing(data)) {
     y <- model.frame(x$formula,data)[,1]

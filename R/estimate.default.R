@@ -1,3 +1,13 @@
+##' @export
+estimate <- function(x,...) UseMethod("estimate")
+
+##' @export
+estimate.list <- function(x,...) {
+    if (inherits(x[[1]],"lvm")) return(estimate.lvmlist(x,...))
+    lapply(x,function(x) estimate(x,...))
+}
+
+
 ##' Estimation of functional of parameters 
 ##'
 ##' Estimation of functional of parameters.
@@ -9,15 +19,19 @@
 ##' @param id (optional) id-variable corresponding to iid decomposition of model parameters. 
 ##' @param iddata (optional) id-variable for 'data'
 ##' @param stack If TRUE (default)  the i.i.d. decomposition is automatically stacked according to 'id'
+##' @param average If TRUE averages are calculated
 ##' @param subset (optional) subset of data.frame on which to condition (logical expression or variable name)
 ##' @param score.deriv (optional) derivative of mean score function
 ##' @param level Level of confidence limits
 ##' @param iid If TRUE (default) the iid decompositions are also returned (extract with \code{iid} method)
+##' @param type Type of small-sample correction
+##' @param keep (optional) Index of parameters to keep
 ##' @param contrast (optional) Contrast matrix for final Wald test
 ##' @param null (optional) Null hypothesis to test 
 ##' @param vcov (optional) covariance matrix of parameter estimates (e.g. Wald-test)
 ##' @param coef (optional) parameter coefficient
 ##' @param print (optional) print function
+##' @param labels (optional) names of coefficients
 ##' @param ... additional arguments to lower level functions
 ##' @export
 ##' @examples
@@ -65,14 +79,16 @@
 ##' f <- function(p,data)
 ##'   list(p0=lava:::expit(p[1] + p[3]*data[,"z"]),
 ##'        p1=lava:::expit(p[1] + p[2] + p[3]*data[,"z"]))
-##' e <- estimate(g, f)
+##' e <- estimate(g, f, average=TRUE)
 ##' e
 ##' estimate(e,diff)
 ##' estimate(e,cbind(1,1))
 ##' 
 ##' ## Clusters and subset (conditional marginal effects)
 ##' d$id <- rep(seq(nrow(d)/4),each=4)
-##' estimate(g,function(p,data) list(p0=lava:::expit(p[1] + p["z"]*data[,"z"])), subset=z>0, id=d$id)
+##' estimate(g,function(p,data)
+##'          list(p0=lava:::expit(p[1] + p["z"]*data[,"z"])),
+##'          subset=d$z>0, id=d$id, average=TRUE)
 ##' 
 ##' ## More examples with clusters:
 ##' m <- lvm(c(y1,y2,y3)~u+x)
@@ -103,21 +119,23 @@
 ##' iid(merge(l1,l2,l3,id=FALSE)) # independence
 ##' @aliases estimate.default estimate.estimate merge.estimate stack.estimate
 ##' @method estimate default
-##' @S3method estimate default
-estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
+##' @export
+estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,average=FALSE,subset,
                              score.deriv,level=0.95,iid=TRUE,
-                             contrast,null,vcov,coef,print=NULL,...) {
+                             type=c("robust","df","mbn"),
+                             keep,
+                             contrast,null,vcov,coef,print=NULL,labels,...) {
     if (!is.null(f) && !is.function(f)) {
         if (!(is.matrix(f) | is.vector(f))) return(compare(x,f,...))
         contrast <- f; f <- NULL
     }
     if (missing(data)) data <- tryCatch(model.frame(x),error=function(...) NULL)
     
-    if (is.matrix(x) || is.vector(x)) contrast <- x
+    ##if (is.matrix(x) || is.vector(x)) contrast <- x
     alpha <- 1-level
     alpha.str <- paste(c(alpha/2,1-alpha/2)*100,"",sep="%")
     nn <- NULL
-    if (missing(vcov)) { ## If user supplied vcov, then don't estimate IC
+    if (missing(vcov) || (is.logical(vcov) && vcov[1]==FALSE)) { ## If user supplied vcov, then don't estimate IC
         if (missing(score.deriv)) {
             if (!is.logical(iid)) {
                 iidtheta <- iid
@@ -128,19 +146,26 @@ estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
         } else {
             suppressWarnings(iidtheta <- iid(x,score.deriv=score.deriv))
         }
-    }  else { iidtheta <- NULL }
+    } else {
+        if (is.logical(vcov)) vcov <- vcov(x)
+        iidtheta <- NULL
+    }
     if (!missing(subset)) {
         e <- substitute(subset)
-        subset <- eval(e, data, parent.frame())
+        expr <- suppressWarnings(inherits(try(subset,silent=TRUE),"try-error"))
+        if (expr) subset <- eval(e,envir=data)
+        ##subset <- eval(e, data, parent.frame())
         if (is.character(subset)) subset <- data[,subset]
-        if (is.numeric(subset)) subset <- subset==1
-    }
+        if (is.numeric(subset)) subset <- subset>0
+    }    
     idstack <- NULL
     if (!missing(id)) {
         if (is.null(iidtheta)) stop("'iid' method needed")
         nprev <- nrow(iidtheta)
         e <- substitute(id)
-        if (!is.null(data)) id <- eval(e, data, parent.frame())
+        expr <- suppressWarnings(inherits(try(id,silent=TRUE),"try-error"))
+        if (expr) id <- eval(e,envir=data)
+            ##if (!is.null(data)) id <- eval(e, data)
         if (is.logical(id) && length(id)==1) {
             id <- if(is.null(iidtheta)) seq(nrow(data)) else seq(nprev)
             stack <- FALSE
@@ -152,6 +177,7 @@ estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
             if (length(id)!=nrow(data)) stop("Dimensions of 'data' and 'id' does not agree")
         }
         if (stack) {
+            N <- nrow(iidtheta)
             clidx <- NULL
             if (!lava.options()$cluster.index) {
                 iidtheta <- matrix(unlist(by(iidtheta,id,colSums)),byrow=TRUE,ncol=ncol(iidtheta))
@@ -164,15 +190,40 @@ estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
                 iidtheta <- clidx$X
                 attributes(iidtheta)[names(atr)] <- atr
                 idstack <- id[as.vector(clidx$firstclustid)+1]
-            } 
-        } else idstack <- id
+            }
+            if (is.null(attributes(iidtheta)$N)) {
+                attributes(iidtheta)$N <- N
+            }
+        } else idstack <- id        
+    } else {
+        if (!is.null(data)) idstack <- rownames(data)
     }
     if (!is.null(iidtheta)) rownames(iidtheta) <- idstack
 
     if (!is.null(iidtheta) && missing(vcov)) {
-        n <- NROW(iidtheta)
-        if (is.null(f)) {
-            V <- crossprod(iidtheta)
+        ## if (is.null(f))
+        V <- crossprod(iidtheta)
+        ### Small-sample corrections for clustered data
+        K <- NROW(iidtheta)
+        N <- attributes(iidtheta)$N
+        if (is.null(N)) N <- K                    
+        p <- NCOL(iidtheta)
+        adj1 <- K/(K-p) ## Mancl & DeRouen, 2001
+        adj2 <- (N-1)/(N-p)*(K/(K-1)) ## Morel,Bokossa & Neerchal, 2003
+        if (tolower(type[1])=="mbn" && !is.null(attributes(iidtheta)$bread)) {
+            V0 <- V
+            iI0 <- attributes(iidtheta)$bread
+            I0 <- Inverse(iI0)
+            I1 <- crossprod(iidtheta%*%I0)
+            delta <- min(0.5,p/(K-p))
+            phi <- max(1,tr(I0%*%V0)*adj2/p)
+            V <- adj2*V0 + delta*phi*iI0
+        }
+        if (tolower(type[1])=="df") {
+            V <- adj1*V
+        }
+        if (tolower(type[1])=="df2") {
+            V <- adj2*V
         }
     } else {
         if (!missing(vcov)) {
@@ -192,7 +243,7 @@ estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
         dots <- ("..."%in%names(form))
         form0 <- setdiff(form,"...")
         parname <- "p"
-        parname <- form[1]
+        if (!is.null(form)) parname <- form[1] # unless .Primitive
         if (length(form0)==1 && !(form0%in%c("object","data"))) {
             ##names(formals(f))[1] <- "p"
             parname <- form0
@@ -238,10 +289,11 @@ estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
             pp <- as.vector(val)
             V <- D%*%V%*%t(D)
         } else {
-            if (N<NROW(data) || NROW(data)==0) { ## transformation not depending on data
+            if (!average || N<NROW(data) || NROW(data)==0) { ## transformation not depending on data
                 pp <- as.vector(val)
                 iidtheta <- iidtheta%*%t(D)
-                V <- crossprod(iidtheta)
+                ##V <- crossprod(iidtheta)
+                V <- D%*%V%*%t(D)
             } else {
                 if (k>1) { ## More than one parameter (and depends on data)
                     if (!missing(subset)) { ## Conditional estimate
@@ -275,7 +327,7 @@ estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
                 }
                 if (!missing(subset)) { ## Conditional estimate
                     phat <- mean(subset)
-                    iid3 <- cbind(-1/phat^2 * (subset-phat)/n)
+                    iid3 <- cbind(-1/phat^2 * (subset-phat)/N) ## check
                     if (!missing(id)) {
                         if (!lava.options()$cluster.index)
                             iid3 <- matrix(unlist(by(iid3,id,colSums)),byrow=TRUE,ncol=ncol(iid3))
@@ -294,7 +346,7 @@ estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
                         V <- crossprod(iidtheta)
                     }
                 }
-            }            
+            }
         }
     }
 
@@ -331,33 +383,33 @@ estimate.default <- function(x=NULL,f=NULL,data,id,iddata,stack=TRUE,subset,
                                       (pnorm(abs(estimate[,1]-null)/estimate[,2],lower.tail=FALSE)*2)));
         colnames(res$coefmat)[5] <- "P-value"
         rownames(res$coefmat) <- cc$cnames
+        res$iid <- res$iid%*%t(contrast)
+        colnames(res$iid) <- cc$cnames
         res$compare$estimate <- NULL
         res$coef <- res$compare$coef
         res$vcov <- res$compare$vcov
     }
+    if (!missing(keep) && !is.null(keep)) {
+        res$coef <- res$coef[keep]
+        res$coefmat <- res$coefmat[keep,,drop=FALSE]
+        res$iid <- res$iid[,keep,drop=FALSE]
+        res$vcov <- res$vcov[keep,keep,drop=FALSE]
+    }
+    if (!missing(labels)) {
+        names(res$coef) <- labels
+        colnames(res$iid) <- labels
+        colnames(res$vcov) <- rownames(res$vcov) <- labels
+        rownames(res$coefmat) <- labels
+    }
     return(res)  
 }
+
 
 estimate.glm <- function(x,...) {  
     estimate.default(x,...)
 }
 
-
-
-estimate.lmerMod <- function(x,...) {
-    cc <- cbind(fixef(x),diag(vcov(x))^.5)
-    cc <- cbind(cc,cc[,1]-qnorm(0.975)*cc[,2],cc[,1]+qnorm(0.975)*cc[,2],
-                2*(1-pnorm(abs(cc[,1])/cc[,2])))
-    colnames(cc) <- c("Estimate","Std.Err","2.5%","97.5%","p-value")
-    res <- structure(list(coef=fixef(x), vcov=vcov(x),
-                          coefmat=cc,
-                          varcomp=as.numeric(VarCorr(x)),residual=attributes(VarCorr(x))$sc^2
-                          ),
-                     class="estimate")
-    res
-}
-
-##' @S3method print estimate
+##' @export
 print.estimate <- function(x,digits=3,width=25,...) {
     if (!is.null(x$print)) {
         x$print(x,...)
@@ -370,7 +422,7 @@ print.estimate <- function(x,digits=3,width=25,...) {
     if (!is.null(x$compare)) print(x$compare)    
 }
 
-##' @S3method vcov estimate
+##' @export
 vcov.estimate <- function(object,...) {    
     res <- object$vcov
     nn <- names(coef(object))
@@ -378,12 +430,18 @@ vcov.estimate <- function(object,...) {
     res
 }
 
-##' @S3method coef estimate
-coef.estimate <- function(object,...) {
+##' @export
+coef.estimate <- function(object,mat=FALSE,...) {
+    if (mat) return(object$coefmat)
     object$coef
 }
 
-##' @S3method iid estimate
+##' @export
+summary.estimate <- function(object,...) {
+    object$coefmat
+}
+
+##' @export
 iid.estimate <- function(x,...) {
     dimn <- dimnames(x$iid)
     if (!is.null(dimn)) {
@@ -394,12 +452,12 @@ iid.estimate <- function(x,...) {
     structure(x$iid,dimnames=dimn)
 }
 
-##' @S3method model.frame estimate
+##' @export
 model.frame.estimate <- function(formula,...) {
     NULL
 }
 
-##' @S3method stack estimate
+##' @export
 stack.estimate <- function(x,y,Ix,iIy,weight,dweight,...) {    
     iid1 <- iid(x)
     iid2 <- iid(y)
