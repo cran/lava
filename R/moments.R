@@ -1,5 +1,5 @@
 Moments <- function(x,p,data,conditional=TRUE,...) {
-  
+
 }
 
 ##' @export
@@ -12,8 +12,8 @@ moments.lvmfit <- function(x, p=pars(x),...) moments(Model(x),p=p,...)
 ##' @export
 moments.lvm <- function(x, p, debug=FALSE, conditional=FALSE, data=NULL, ...) {
 ##  moments.lvm <- function(x, p, meanpar=NULL, conditional=FALSE, debug=FALSE,...) {
-### p: model-parameters as obtained from e.g. ´startvalues`
-###       i.e. vector of regression parameters and variance parameters
+### p: model-parameters as obtained from e.g. 'startvalues'.
+###       (vector of regression parameters and variance parameters)
 ### meanpar: mean-parameters (optional)
 
   ii <- index(x)
@@ -36,8 +36,8 @@ moments.lvm <- function(x, p, debug=FALSE, conditional=FALSE, data=NULL, ...) {
     P <-  px%*% tcrossprod(P, px)
     Jidx <- ii$endo.idx
   }
-  
-  Im <- diag(nrow(AP$A))  
+
+  Im <- diag(nrow(AP$A))
   if (ii$sparse) {
     IAi <- with(AP, as(Inverse(Im-t(A)),"sparseMatrix"))
     ##IAi <- as(solve(Matrix::Diagonal(nrow(A))-t(A)),"sparseMatrix")
