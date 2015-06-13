@@ -1,8 +1,8 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.4.0
-Date: 2015-02-15
+Version: 1.4.1
+Date: 2015-06-13
 Author: Klaus K. Holst
 Maintainer: Klaus K. Holst <klaus@holst.it>
 Description: Estimation and simulation of latent variable models.
@@ -15,6 +15,6 @@ Suggests: mets (>= 1.1), graph, Rgraphviz, igraph (>= 0.6), Matrix,
         KernSmooth, lme4, geepack, gof (>= 0.9), foreach, rgl, fields,
         survival, testthat, ascii
 NeedsCompilation: no
-Packaged: 2015-02-16 19:50:27 UTC; klaus
+Packaged: 2015-06-21 19:06:43 UTC; klaus
 Repository: CRAN
-Date/Publication: 2015-02-17 23:30:20
+Date/Publication: 2015-06-22 01:37:59

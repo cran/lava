@@ -17,8 +17,7 @@
 ##' @author Klaus K. Holst
 ##' @export
 ##' @examples
-##' \dontrun{
-##' library(mets)
+##' if (interactive() & require(mets)) {
 ##' K <- 5
 ##' y <- "y"%++%seq(K)
 ##' m <- lvm()
@@ -39,6 +38,9 @@ spaghetti <- function(formula,data,id,type="l",lty=1,col=Col(1),trend=FALSE,tren
         nn <- widenames[idx]
         ord <- order(as.numeric(unlist(lapply(nn,function(x) gsub(vname,"",x)))))
         idx[ord]
+    }
+    if (length(col)==nrow(data)) {
+        col <- with(data, fast.reshape(col,id=id))[,1]
     }
     if (length(x)==0) {
         wide <- mets::fast.reshape(data,id=id,varying=y,...)

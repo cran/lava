@@ -48,15 +48,13 @@ bootstrap <- function(x,...) UseMethod("bootstrap")
 ##' @seealso \code{\link{confint.lvmfit}}
 ##' @keywords models regression
 ##' @examples
-##'
 ##' m <- lvm(y~x)
 ##' d <- sim(m,100)
 ##' e <- estimate(y~x, d)
-##' \dontrun{
+##' \donttest{ ## Reduce Ex.Timings
 ##' B <- bootstrap(e,R=100)
 ##' B
 ##' }
-##'
 ##' @export
 bootstrap.lvm <- function(x,R=100,data,fun=NULL,control=list(),
                           p, parametric=FALSE, bollenstine=FALSE,
@@ -138,7 +136,7 @@ bootstrap.lvm <- function(x,R=100,data,fun=NULL,control=list(),
     } else {
         colnames(coefs) <- names(res[[1]]$coefs)
         rownames(coefs) <- c(); if (sd) colnames(sds) <- colnames(coefs)
-        res <- list(coef=coefs[-1,,drop=FALSE], sd=sds[-1,,drop=FALSE], coef0=coefs[1,], sd0=sds[1,], model=x)
+        res <- list(coef=coefs[-1,,drop=FALSE], sd=sds[-1,,drop=FALSE], coef0=coefs[1,], sd0=sds[1,], model=x, bollenstine=bollenstine)
     }
     class(res) <- "bootstrap.lvm"
     return(res)

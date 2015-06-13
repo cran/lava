@@ -124,7 +124,7 @@
 ##' @param formula Formula (see details)
 ##' @param eventName Event names
 ##' @param \dots Additional arguments to lower levels functions
-eventTime <- function(object,formula,eventName,...) {
+eventTime <- function(object,formula,eventName="status",...) {
     if (missing(formula)) return(object$attributes$eventHistory)
     if (inherits(eventName,"formula")) eventName <- all.vars(eventName)
     ff <- as.character(formula)
@@ -166,7 +166,7 @@ eventTime <- function(object,formula,eventName,...) {
   addvar(object) <- timeName
   #distribution(object,timeName) <- NA
   ## m <- regression(m,formula(paste0("~",timeName)))
-  if (missing(eventName)) eventName <- "Event"
+    ##if (missing(eventName)) eventName <- "Event"
   eventTime <- list(names=c(timeName,eventName),
                     latentTimes=gsub(" ","",latentTimes),
                     events=events
@@ -328,6 +328,7 @@ coxWeibull.lvm <- function(scale=1/100,shape=2) {
 ##' @param type Type of model (default piecewise constant intensity)
 ##' @param ... Additional arguments to lower level functions
 ##' @author Klaus K. Holst
+##' @aliases timedep timedep<-
 ##' @export
 ##' @examples
 ##'
@@ -337,7 +338,7 @@ coxWeibull.lvm <- function(scale=1/100,shape=2) {
 ##'
 ##' \dontrun{
 ##' d <- sim(m,1e4); d$status <- TRUE
-##' dd <- mets::lifetable(Surv(y,status)~1,data=d,breaks=c(5));
+##' dd <- mets::lifetable(Surv(y,status)~1,data=d,breaks=c(0,5,10));
 ##' exp(coef(glm(events ~ offset(log(atrisk)) + -1 + interval, dd, family=poisson)))
 ##' }
 ##'
@@ -350,7 +351,7 @@ coxWeibull.lvm <- function(scale=1/100,shape=2) {
 ##'
 ##' \dontrun{
 ##' d <- sim(m,1e4); d$status <- TRUE
-##' dd <- mets::lifetable(Surv(y,status)~z1,data=d,breaks=c(3,5));
+##' dd <- mets::lifetable(Surv(y,status)~z1,data=d,breaks=c(0,3,5,Inf));
 ##' exp(coef(glm(events ~ offset(log(atrisk)) + -1 + interval+z1:interval, dd, family=poisson)))
 ##' }
 ##'
@@ -370,7 +371,7 @@ coxWeibull.lvm <- function(scale=1/100,shape=2) {
 ##'
 ##' \dontrun{
 ##' d <- sim(m,1e5); d$status <- TRUE
-##' dd <- mets::lifetable(Surv(y,status)~z1,data=d,breaks=c(5))
+##' dd <- mets::lifetable(Surv(y,status)~z1,data=d,breaks=c(0,5,Inf))
 ##' exp(coef(glm(events ~ offset(log(atrisk)) + -1 + interval + interval:z1, dd, family=poisson)))
 ##' }
 timedep <- function(object,formula,rate,timecut,type="coxExponential.lvm",...) {
@@ -387,11 +388,17 @@ timedep <- function(object,formula,rate,timecut,type="coxExponential.lvm",...) {
         object$attributes$timedep[[ff]] <- simvars
     }
     if (missing(rate)) rate <- rep(1,length(timecut))
+    
     args <- list(timecut=timecut,rate=rate,...)
+    covariance(object,ff) <- 1
     distribution(object,ff) <- do.call(type,args)
     return(object)
 }
 
+##' @export
+"timedep<-" <- function(object,...,value) {
+    timedep(object,value,...)
+}
 
 ##' @export
 coxExponential.lvm <- function(scale=1,rate,timecut){

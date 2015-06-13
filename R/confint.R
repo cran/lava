@@ -34,11 +34,10 @@
 ##' e <- estimate(y~x, d)
 ##' confint(e,3,profile=TRUE)
 ##' confint(e,3)
-##' \dontrun{
-##' B <- bootstrap(e,R=100)
+##' \donttest{ ## Reduce Ex.timings
+##' B <- bootstrap(e,R=50)
 ##' B
 ##' }
-##'
 ##' @aliases confint.multigroupfit
 ##' @export
 ##' @method confint lvmfit

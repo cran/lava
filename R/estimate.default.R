@@ -36,6 +36,10 @@ estimate.list <- function(x,...) {
 ##' @param df Degrees of freedom (default obtained from 'df.residual')
 ##' @param print (optional) print function
 ##' @param labels (optional) names of coefficients
+##' @param label.width (optional) max width of labels
+##' @param only.coef if TRUE only the coefficient matrix is return
+##' @param transform (optional) transform of parameters and confidence intervals
+##' @param folds (optional) Aggregate influence functions (divide and conquer)
 ##' @export
 ##' @examples
 ##'
@@ -134,23 +138,28 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
                              keep,
                              contrast,null,vcov,coef,
                              robust=TRUE,df=NULL,
-                             print=NULL,labels) {
+                             print=NULL,labels,label.width,
+                             only.coef=FALSE,transform,folds=0
+                             ) {
     expr <- suppressWarnings(inherits(try(f,silent=TRUE),"try-error"))
     if (!missing(coef)) {
         pp <- coef
     } else {
         pp <- suppressWarnings(try(stats::coef(x),"try-error"))
     }
+
     if (expr || is.character(f)) { ## || is.call(f)) {
         ## if (is.call(f)) f <- parsedesign(seq(length(pp)),f,...)
-        f <- parsedesign(names(pp),substitute(f),...)
+        dots <- substitute(list(...))[-1]
+        args <- c(list(coef=names(pp),x=substitute(f)),dots)
+        f <- do.call(parsedesign,args)
     }
     if (!is.null(f) && !is.function(f)) {
         if (!(is.matrix(f) | is.vector(f))) return(compare(x,f,...))
         contrast <- f; f <- NULL
     }
     if (missing(data)) data <- tryCatch(model.frame(x),error=function(...) NULL)
-
+    
     ##if (is.matrix(x) || is.vector(x)) contrast <- x
     alpha <- 1-level
     alpha.str <- paste(c(alpha/2,1-alpha/2)*100,"",sep="%")
@@ -161,10 +170,10 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
                 iidtheta <- iid
                 iid <- TRUE
             } else {
-                suppressWarnings(iidtheta <- iid(x))
+                suppressWarnings(iidtheta <- iid(x,folds=folds))
             }
         } else {
-            suppressWarnings(iidtheta <- iid(x,score.deriv=score.deriv))
+            suppressWarnings(iidtheta <- iid(x,score.deriv=score.deriv,folds=folds))
         }
     } else {
         if (is.logical(vcov)) vcov <- vcov(x)
@@ -183,19 +192,32 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
     if (!missing(id)) {
         if (is.null(iidtheta)) stop("'iid' method needed")
         nprev <- nrow(iidtheta)
-        e <- substitute(id)
-        expr <- suppressWarnings(inherits(try(id,silent=TRUE),"try-error"))
-        if (expr) id <- eval(e,envir=data)
-            ##if (!is.null(data)) id <- eval(e, data)
+        if (inherits(id,"formula")) {
+            id <- interaction(get_all_vars(id,data))
+        }
+        ## e <- substitute(id)
+        ## expr <- suppressWarnings(inherits(try(id,silent=TRUE),"try-error"))
+        ## if (expr) id <- eval(e,envir=data)
+        ##if (!is.null(data)) id <- eval(e, data)
         if (is.logical(id) && length(id)==1) {
             id <- if(is.null(iidtheta)) seq(nrow(data)) else seq(nprev)
             stack <- FALSE
         }
         if (is.character(id) && length(id)==1) id <- data[,id,drop=TRUE]
         if (!is.null(iidtheta)) {
-            if (length(id)!=nprev) stop("Dimensions of i.i.d decomposition and 'id' does not agree")
+            if (length(id)!=nprev) {
+                if (!is.null(x$na.action) && (length(id)==length(x$na.action)+nprev)) {
+                    warning("Applying na.action")
+                    id <- id[-x$na.action]
+                } else stop("Dimensions of i.i.d decomposition and 'id' does not agree")
+            }
         } else {
-            if (length(id)!=nrow(data)) stop("Dimensions of 'data' and 'id' does not agree")
+            if (length(id)!=nrow(data)) {
+                if (!is.null(x$na.action) && (length(id)==length(x$na.action)+nrow(data))) {
+                    warning("Applying na.action")
+                    id <- id[-x$na.action]
+                } else stop("Dimensions of i.i.d decomposition and 'id' does not agree")
+            }
         }
         if (stack) {
             N <- nrow(iidtheta)
@@ -220,7 +242,8 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
     } else {
         if (!is.null(data)) idstack <- rownames(data)
     }
-    if (!is.null(iidtheta)) rownames(iidtheta) <- idstack
+
+    if (!is.null(iidtheta) && (length(idstack)==nrow(iidtheta))) rownames(iidtheta) <- idstack
     if (!robust) {
         if (inherits(x,"lm") && family(x)$family=="gaussian" && is.null(df)) df <- x$df.residual
         if (missing(vcov)) vcov <- stats::vcov(x)
@@ -309,7 +332,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
             pp <- as.vector(val)
             V <- D%*%V%*%t(D)
         } else {
-            if (!average || N<NROW(data) || NROW(data)==0) { ## transformation not depending on data
+            if (!average || (N<NROW(data))) { ## || NROW(data)==0)) { ## transformation not depending on data
                 pp <- as.vector(val)
                 iidtheta <- iidtheta%*%t(D)
                 ##V <- crossprod(iidtheta)
@@ -390,9 +413,14 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         if (!is.null(nn)) rownames(res) <- nn
         if (is.null(rownames(res))) rownames(res) <- paste0("p",seq(nrow(res)))
     }
+    if (!missing(transform)) {
+        res[,c(1,3,4)] <- transform(res[,c(1,3,4)])
+        res[,2] <- NA
+    }
+    
     coefs <- res[,1,drop=TRUE]; names(coefs) <- rownames(res)
     res <- structure(list(coef=coefs,coefmat=res,vcov=V, iid=NULL, print=print, id=idstack),class="estimate")
-    if (iid) res$iid <- iidtheta
+    if (iid && missing(transform)) res$iid <- iidtheta
     if (!missing(contrast) | !missing(null)) {
         p <- length(res$coef)
         if (missing(contrast)) contrast <- diag(p)
@@ -434,6 +462,11 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         colnames(res$vcov) <- rownames(res$vcov) <- labels
         rownames(res$coefmat) <- labels
     }
+    if (!missing(label.width)) {
+        rownames(res$coefmat) <- make.unique(unlist(lapply(rownames(res$coefmat),
+                                                           function(x) toString(x,width=label.width))))
+    }
+    if (only.coef) return(res$coefmat)
     return(res)
 }
 

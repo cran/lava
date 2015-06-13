@@ -77,7 +77,7 @@
 ##' @param \dots Additional arguments to be passed to the low level functions
 ##' @usage
 ##' \method{regression}{lvm}(object = lvm(), to, from, fn = NA,
-##' silent = lava.options()$silent, additive=TRUE, y, x, ...)
+##' silent = lava.options()$silent, additive=TRUE, y, x, value, ...)
 ##' \method{regression}{lvm}(object, to=NULL, quick=FALSE, ...) <- value
 ##' @return A \code{lvm}-object
 ##' @note Variables will be added to the model if not already present.
@@ -173,21 +173,21 @@
       object <- addvar(object,xs,reindex=FALSE ,...)
 
       for (i in seq_len(length(xs))) {
-        xf <- unlist(strsplit(xx[[i]],"[\\[\\]]",perl=TRUE))
-        if (length(xf)>1) {
-          xpar <- strsplit(xf[2],":")[[1]]
-          if (length(xpar)>1) {
-            val <- ifelse(xpar[2]=="NA",NA,xpar[2])
-            valn <- suppressWarnings(as.numeric(val))
-            covariance(object,xs[i]) <- ifelse(is.na(valn),val,valn)
-          }
-          val <- ifelse(xpar[1]=="NA",NA,xpar[1])
-          valn <- suppressWarnings(as.numeric(val))
-          if (val!=".") {
-              intercept(object,xs[i]) <- ifelse(is.na(valn),val,valn)
+          xf <- unlist(strsplit(xx[[i]],"[\\[\\]]",perl=TRUE))
+          if (length(xf)>1) {
+              xpar <- strsplit(xf[2],":")[[1]]
+              if (length(xpar)>1) {
+                  val <- ifelse(xpar[2]=="NA",NA,xpar[2])
+                  valn <- suppressWarnings(as.numeric(val))
+                  covariance(object,xs[i]) <- ifelse(is.na(valn),val,valn)
+              }          
+              val <- ifelse(xpar[1]=="NA",NA,xpar[1])
+              valn <- suppressWarnings(as.numeric(val))
+              if (is.na(val) || val!=".") {
+                  intercept(object,xs[i]) <- ifelse(is.na(valn),val,valn)
               notexo <- c(notexo,xs[i])
-          }
-        } else { exo <- c(exo,xs[i]) }
+              }
+          } else { exo <- c(exo,xs[i]) }
       }
 
 
@@ -214,8 +214,9 @@
           }
           val <- ifelse(ypar[1]=="NA",NA,ypar[1])
           valn <- suppressWarnings(as.numeric(val))
-          if (val!=".")
+          if (is.na(val) || val!=".") {
               intercept(object,y) <- ifelse(is.na(valn),val,valn)
+          }
         }
         for (j in seq_len(length(xs))) {
           if (length(res[[j]])>1) {
@@ -247,7 +248,7 @@
 ##' @export
 `regression.lvm` <-
     function(object=lvm(),to,from,fn=NA,silent=lava.options()$silent,
-             additive=TRUE, y,x,...) {
+             additive=TRUE, y,x,value,...) {
         if (!missing(y)) {
             if (inherits(y,"formula")) y <- all.vars(y)
             to <- y
@@ -278,7 +279,11 @@
             return(regfix(object))
         }
         if (class(to)[1]=="formula") {
-            regression(object,silent=silent,...) <- to
+            if (!missing(value)) {
+                regression(object,to,silent=silent,...) <- value
+            } else {
+                regression(object,silent=silent,...) <- to
+            }
             object$parpos <- NULL
             return(object)
         }
