@@ -1,4 +1,13 @@
-pcor <- function(x,y,X,Z,start,...) {
+##' Polychoric correlation
+##'
+##' Maximum likelhood estimates of polychoric correlations
+##' @param x Variable 1
+##' @param y Variable 2
+##' @param X Optional covariates
+##' @param start Optional starting values 
+##' @param ... Additional arguments to lower level functions
+##' @export
+pcor <- function(x,y,X,start,...) {
     if (is.numeric(x) && is.numeric(y)) {
         e <- estimate(covariance(lvm(),x~y))
         return(estimate(e,function(p) list(rho=p[5]/(p[3]*p[4])^.5),iid=TRUE))
@@ -9,8 +18,8 @@ pcor <- function(x,y,X,Z,start,...) {
     if (missing(start)) {
         f <- as.formula(ifelse(missing(X),"~1","~X"))
         start <- c(0.5,
-                   attr(lava::ordreg(update(f,x~.),fast=TRUE,family=binomial("probit")),"threshold"),
-                   attr(lava::ordreg(update(f,y~.),fast=TRUE,family=binomial("probit")),"threshold"))
+                   attr(lava::ordreg(update(f,x~.),fast=TRUE,family=stats::binomial("probit")),"threshold"),
+                   attr(lava::ordreg(update(f,y~.),fast=TRUE,family=stats::binomial("probit")),"threshold"))
     }
 
 

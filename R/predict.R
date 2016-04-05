@@ -1,13 +1,50 @@
 ##' @export
-predict.lvmfit <- function(object,x=NULL,data=model.frame(object),p=coef(object),...) {
-  predict(Model(object),x=x,p=p,data=data,...)
+predict.lvmfit <- function(object,x=NULL,y=NULL,data=model.frame(object),p=coef(object),...) {
+  predict(Model(object),x=x,y=y,p=p,data=data,...)
 }
+
+
+##' @export
+predict.lvm.missing <- function(object,x=NULL,y=NULL,data=model.frame(object),p=coef(object),...) {
+    idx <- match(coef(Model(object)),names(coef(object)))
+    xx <- exogenous(object)
+    p <- p[idx]
+    if (!is.null(x)) {
+        if (inherits(x,"formula")) {
+            xy <- getoutcome(x)
+            if (length(xy)>0) {
+                if (is.null(y)) y <- decomp.specials(xy)
+            }
+            x <- attributes(xy)$x
+      }
+      x <- intersect(x,endogenous(object))
+      if (is.null(y))
+          y <- setdiff(vars(object),c(x,xx))
+    } 
+    obs0 <- !is.na(data[,x,drop=FALSE])
+    data[,xx][which(is.na(data[,xx]),arr.ind=TRUE)] <- 0
+    pp <- predict.lvmfit(object,x=x,y=y,data=data,p=p,...)
+    if (all(obs0)) return(pp)
+    
+    if (!requireNamespace("mets",quietly=TRUE)) stop("Requires 'mets'")
+    obs <- mets::fast.pattern(obs0)
+    res <- matrix(nrow=nrow(data),ncol=NCOL(pp))
+    for (i in seq(nrow(obs$pattern))) {
+        jj <- which(obs$pattern[i,]==1)
+        ii <- which(obs$group==i-1)
+        res[ii,] <- predict.lvmfit(object,...,p=p,x=x[jj],y=y,data=data[ii,,drop=FALSE])[,colnames(pp),drop=FALSE]
+    }
+    attributes(res) <- attributes(pp)
+    return(res)
+}
+
 
 ##' Prediction in structural equation models
 ##'
 ##' Prediction in structural equation models
 ##' @param object Model object
 ##' @param x optional list of (endogenous) variables to condition on
+##' @param y optional subset of variables to predict
 ##' @param residual If true the residuals are predicted
 ##' @param p Parameter vector
 ##' @param data Data to use in prediction
@@ -33,11 +70,11 @@ predict.lvmfit <- function(object,x=NULL,data=model.frame(object),p=coef(object)
 ##' @method predict lvm
 ##' @aliases predict.lvmfit
 ##' @export
-predict.lvm <- function(object,x=NULL,residual=FALSE,p,data,path=FALSE,quick=is.null(x)&!(residual|path),...) {
+predict.lvm <- function(object,x=NULL,y=NULL,residual=FALSE,p,data,path=FALSE,quick=is.null(x)&!(residual|path),...) {
   ## data = data.frame of exogenous variables
 
   if (!quick && !all(exogenous(object)%in%colnames(data))) stop("data.frame should contain exogenous variables")
-  m <- moments(object,p,data=data)
+  m <- moments(object,p,data=data,...)
   if (quick) { ## Only conditional moments given covariates
       ii <- index(object)
       P.x <- m$P; P.x[ii$exo.idx, ii$exo.idx] <- 0
@@ -47,7 +84,7 @@ predict.lvm <- function(object,x=NULL,residual=FALSE,p,data,path=FALSE,quick=is.
       if (length(X)>0) {
           mu.x <- matrix(0,ncol=nrow(data),nrow=length(mu.0))
           mu.x[ii$exo.idx,] <- t(data[,X,drop=FALSE])
-          xi.x <- (m$IAi[ii$endo.obsidx,]%*%(mu.0 + mu.x))
+          xi.x <- (m$IAi[ii$endo.obsidx,,drop=FALSE]%*%(mu.0 + mu.x))
       } else {
           xi.x <- m$xi%*%rep(1,nrow(data))
           rownames(xi.x) <- ii$endogenous
@@ -59,7 +96,7 @@ predict.lvm <- function(object,x=NULL,residual=FALSE,p,data,path=FALSE,quick=is.
                        e=m$e))
   }
 
-
+    
   X <- exogenous(object)
   Y <- setdiff(manifest(object), X)
   if (path) {
@@ -118,12 +155,12 @@ predict.lvm <- function(object,x=NULL,residual=FALSE,p,data,path=FALSE,quick=is.
   ys <- data[,y0,drop=FALSE]
   y0.idx <- match(y0,Y)
   ry <- t(ys)-Ey.x[y0.idx,,drop=FALSE]
-  y <- NULL
+
   if (!is.null(x)) {
-      if (class(x)[1]=="formula")  {
+      if (inherits(x,"formula")) {
           xy <- getoutcome(x)
           if (length(xy)>0) {
-              y <- decomp.specials(xy)
+              if (is.null(y)) y <- decomp.specials(xy)
           }
           x <- attributes(xy)$x
       }
@@ -138,10 +175,10 @@ predict.lvm <- function(object,x=NULL,residual=FALSE,p,data,path=FALSE,quick=is.
       if (is.null(y))
           y <- setdiff(vars(object),c(x,exogenous(object)))
 
-      E.x <- xi.x[y,] + C.x[y,x]%*%solve(C.x[x,x])%*%ry[x,,drop=FALSE]
+      E.x <- xi.x[y,,drop=FALSE] + C.x[y,x]%*%solve(C.x[x,x])%*%ry[x,,drop=FALSE]
       if (residual) {
           Vhat <- matrix(0, nrow(data), length(vars(object))); colnames(Vhat) <- vars(object)
-          Vhat[,obs.idx] <- as.matrix(data[,manifest(object)])
+          Vhat[,obs.idx] <- as.matrix(data[,manifest(object),drop=FALSE])
           Vhat[,y] <- t(E.x)
           return(t((IA%*%t(Vhat)-m$v)))
       }

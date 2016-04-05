@@ -29,7 +29,6 @@ lvm <- function(x=NULL, ..., silent=lava.options()$silent) {
   M <- C <- par <- fix <- numeric(); mu <- list()
 
 
-  ##  m <- new("graphNEL", edgemode="directed");
   noderender <- list(
                   fill=c(),
                   shape=c(),
@@ -87,7 +86,7 @@ lvm <- function(x=NULL, ..., silent=lava.options()$silent) {
   myvar <- NULL
   if (!is.list(x)) x <- list(x,...)
   for (myvar in x) {
-    if (class(myvar)[1]=="formula") {
+    if (inherits(myvar,"formula")) {
         ## if (length(getoutcome(myvar))>0) {
         ##   regression(res,...,silent=silent) <- myvar
         ## } else {

@@ -30,13 +30,18 @@ bootstrap <- function(x,...) UseMethod("bootstrap")
 ##' @param sd Logical indicating whether standard error estimates should be
 ##' included in the bootstrap procedure
 ##' @param silent Suppress messages
+##' @param parallel If TRUE parallel backend will be used
+##' @param mc.cores Number of threads (if NULL foreach::foreach will be used, otherwise parallel::mclapply)
 ##' @param \dots Additional arguments, e.g. choice of estimator.
 ##' @aliases bootstrap.lvmfit
 ##' @usage
 ##'
 ##' \method{bootstrap}{lvm}(x,R=100,data,fun=NULL,control=list(),
 ##'                           p, parametric=FALSE, bollenstine=FALSE,
-##'                           constraints=TRUE,sd=FALSE,silent=FALSE,...)
+##'                           constraints=TRUE,sd=FALSE,silent=FALSE,
+##'                           parallel=lava.options()$parallel,
+##'                           mc.cores=NULL,
+##'                           ...)
 ##'
 ##' \method{bootstrap}{lvmfit}(x,R=100,data=model.frame(x),
 ##'                              control=list(start=coef(x)),
@@ -52,17 +57,21 @@ bootstrap <- function(x,...) UseMethod("bootstrap")
 ##' d <- sim(m,100)
 ##' e <- estimate(y~x, d)
 ##' \donttest{ ## Reduce Ex.Timings
-##' B <- bootstrap(e,R=100)
+##' B <- bootstrap(e,R=50,parallel=FALSE)
 ##' B
 ##' }
 ##' @export
 bootstrap.lvm <- function(x,R=100,data,fun=NULL,control=list(),
                           p, parametric=FALSE, bollenstine=FALSE,
-                          constraints=TRUE,sd=FALSE,silent=FALSE,...) {
+                          constraints=TRUE,sd=FALSE,silent=FALSE,
+                          parallel=lava.options()$parallel,
+                          mc.cores=NULL,
+                          ...) {
 
     coefs <- sds <- c()
     on.exit(list(coef=coefs[-1,], sd=sds[-1,], coef0=coefs[1,], sd0=sds[1,], model=x))
-    pb <- txtProgressBar(style=3,width=40)
+    pb <- NULL
+    if (!silent) pb <- txtProgressBar(style=3,width=40)
     pmis <- missing(p)
     ##maxcount <- 0
     bootfun <- function(i) {
@@ -76,8 +85,7 @@ bootstrap.lvm <- function(x,R=100,data,fun=NULL,control=list(),
                 d0 <- sim(x,p=p,n=nrow(data))
             }
         }
-        e0 <- estimate(x,data=d0,control=control,silent=TRUE,index=FALSE
-                       )##,...)
+        e0 <- estimate(x,data=d0,control=control,silent=TRUE,index=FALSE,...)
         if (!silent && getTxtProgressBar(pb)<(i/R)) {
             setTxtProgressBar(pb, i/R)
         }
@@ -103,7 +111,7 @@ bootstrap.lvm <- function(x,R=100,data,fun=NULL,control=list(),
         return(list(coefs=coefs,sds=newsd))
     }
     if (bollenstine) {
-        e0 <- estimate(x,data=data,control=control,silent=TRUE,index=FALSE)
+        e0 <- estimate(x,data=data,control=control,silent=TRUE,index=FALSE,...)
         mm <- modelVar(e0)
         mu <- mm$xi
         Y <- t(t(data[,manifest(e0)])-as.vector(mu))
@@ -116,16 +124,24 @@ bootstrap.lvm <- function(x,R=100,data,fun=NULL,control=list(),
     }
 
     i <- 0
-    if (requireNamespace("foreach",quietly=TRUE) & lava.options()$parallel) {
-        res <- foreach::"%dopar%"(foreach::foreach (i=0:R),bootfun(i))
-        ##      res <- mclapply(0:R,bootfun,mc.cores=)
+    if (parallel) {
+        if (is.null(mc.cores) && requireNamespace("foreach",quietly=TRUE)) {
+            res <- foreach::"%dopar%"(foreach::foreach (i=0:R),bootfun(i))
+        } else {
+            if (is.null(mc.cores)) mc.cores <- 1
+            res <- parallel::mclapply(0:R,bootfun,mc.cores=mc.cores)
+        }
     } else {
         res <- lapply(0:R,bootfun)
     }
-    if (!silent) setTxtProgressBar(pb, 1)
-    close(pb)
+    if (!silent) {
+        setTxtProgressBar(pb, 1)
+        close(pb)
+    }
     ##  if (!silent) message("")
     coefs <- matrix(unlist(lapply(res, function(x) x$coefs)),nrow=R+1,byrow=TRUE)
+    nn <- names(res[[1]]$coefs)
+    if (!is.null(nn)) colnames(coefs) <- nn
     sds <- NULL
     if (sd)
         sds <- matrix(unlist(lapply(res, function(x) x$sds)),nrow=R+1,byrow=TRUE)

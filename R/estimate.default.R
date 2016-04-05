@@ -19,27 +19,29 @@ estimate.list <- function(x,...) {
 ##' @param data \code{data.frame}
 ##' @param id (optional) id-variable corresponding to iid decomposition of model parameters.
 ##' @param iddata (optional) id-variable for 'data'
-##' @param stack If TRUE (default)  the i.i.d. decomposition is automatically stacked according to 'id'
-##' @param average If TRUE averages are calculated
+##' @param stack if TRUE (default)  the i.i.d. decomposition is automatically stacked according to 'id'
+##' @param average if TRUE averages are calculated
 ##' @param subset (optional) subset of data.frame on which to condition (logical expression or variable name)
 ##' @param score.deriv (optional) derivative of mean score function
-##' @param level Level of confidence limits
-##' @param iid If TRUE (default) the iid decompositions are also returned (extract with \code{iid} method)
-##' @param type Type of small-sample correction
-##' @param keep (optional) Index of parameters to keep
+##' @param level level of confidence limits
+##' @param iid if TRUE (default) the iid decompositions are also returned (extract with \code{iid} method)
+##' @param type type of small-sample correction
+##' @param keep (optional) index of parameters to keep from final result
+##' @param use (optional) index of parameters to use in calculations
 ##' @param contrast (optional) Contrast matrix for final Wald test
-##' @param null (optional) Null hypothesis to test
+##' @param null (optional) null hypothesis to test
 ##' @param vcov (optional) covariance matrix of parameter estimates (e.g. Wald-test)
 ##' @param coef (optional) parameter coefficient
-##' @param robust If TRUE robust standard errors are calculated. If
+##' @param robust if TRUE robust standard errors are calculated. If
 ##' FALSE p-values for linear models are calculated from t-distribution
-##' @param df Degrees of freedom (default obtained from 'df.residual')
+##' @param df degrees of freedom (default obtained from 'df.residual')
 ##' @param print (optional) print function
 ##' @param labels (optional) names of coefficients
 ##' @param label.width (optional) max width of labels
 ##' @param only.coef if TRUE only the coefficient matrix is return
 ##' @param transform (optional) transform of parameters and confidence intervals
-##' @param folds (optional) Aggregate influence functions (divide and conquer)
+##' @param folds (optional) aggregate influence functions (divide and conquer)
+##' @param cluster (obsolete) alias for 'id'.
 ##' @export
 ##' @examples
 ##'
@@ -135,19 +137,35 @@ estimate.list <- function(x,...) {
 estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average=FALSE,subset,
                              score.deriv,level=0.95,iid=TRUE,
                              type=c("robust","df","mbn"),
-                             keep,
+                             keep,use,
                              contrast,null,vcov,coef,
                              robust=TRUE,df=NULL,
                              print=NULL,labels,label.width,
-                             only.coef=FALSE,transform,folds=0
+                             only.coef=FALSE,transform,
+                             folds=0,
+                             cluster
                              ) {
+    cl <- match.call(expand.dots=TRUE)
+    if (!missing(use)) {
+        p0 <- c("f","contrast","only.coef","subset","average","keep","labels")
+        cl0 <- cl
+        cl0[c("use",p0)] <- NULL
+        cl0$keep <- use
+        cl$x <- eval(cl0,parent.frame())
+        cl[c("vcov","use")] <- NULL
+        return(eval(cl,parent.frame()))
+    }
     expr <- suppressWarnings(inherits(try(f,silent=TRUE),"try-error"))
     if (!missing(coef)) {
         pp <- coef
     } else {
         pp <- suppressWarnings(try(stats::coef(x),"try-error"))
+        if (inherits(x,"survreg") && length(pp)<NROW(x$var)) {
+            pp <- c(pp,scale=x$scale)
+        }
     }
-
+    if (!missing(cluster)) id <- cluster
+    
     if (expr || is.character(f)) { ## || is.call(f)) {
         ## if (is.call(f)) f <- parsedesign(seq(length(pp)),f,...)
         dots <- substitute(list(...))[-1]
@@ -256,7 +274,8 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         N <- attributes(iidtheta)$N
         if (is.null(N)) N <- K
         p <- NCOL(iidtheta)
-        adj1 <- K/(K-p) ## Mancl & DeRouen, 2001
+        adj0 <- K/(K-p) ## Mancl & DeRouen, 2001
+        adj1 <- K/(K-1) ## Mancl & DeRouen, 2001        
         adj2 <- (N-1)/(N-p)*(K/(K-1)) ## Morel,Bokossa & Neerchal, 2003
         if (tolower(type[1])=="mbn" && !is.null(attributes(iidtheta)$bread)) {
             V0 <- V
@@ -268,6 +287,9 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
             V <- adj2*V0 + delta*phi*iI0
         }
         if (tolower(type[1])=="df") {
+            V <- adj0*V
+        }
+        if (tolower(type[1])=="df1") {
             V <- adj1*V
         }
         if (tolower(type[1])=="df2") {
@@ -286,25 +308,25 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         dots <- ("..."%in%names(form))
         form0 <- setdiff(form,"...")
         parname <- "p"
+
         if (!is.null(form)) parname <- form[1] # unless .Primitive
         if (length(form0)==1 && !(form0%in%c("object","data"))) {
             ##names(formals(f))[1] <- "p"
             parname <- form0
         }
         if (!is.null(iidtheta)) {
-            arglist <- c(list(object=x,data=data,p=pp),list(...))
+            arglist <- c(list(object=x,data=data,p=as.vector(pp)),list(...))
             names(arglist)[3] <- parname
         } else {
-            arglist <- c(list(object=x,p=pp),list(...))
+            arglist <- c(list(object=x,p=as.vector(pp)),list(...))
             names(arglist)[2] <- parname
         }
         if (!dots) {
-            arglist <- arglist[form0]
+            arglist <- arglist[intersect(form0,names(arglist))]
         }
-
         newf <- NULL
         if (length(form)==0) {
-            arglist <- list(pp)
+            arglist <- list(as.vector(pp))
             ##newf <- function(p,...) do.call("f",list(p,...))
             newf <- function(...) do.call("f",list(...))
             val <- do.call("f",arglist)
@@ -327,13 +349,13 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
                 if (is.null(newf))
                     return(do.call("f",arglist))
                 return(do.call("newf",arglist)) }, pp)
-        }
+        }        
         if (is.null(iidtheta)) {
-            pp <- as.vector(val)
+            pp <- structure(as.vector(val),names=names(val))
             V <- D%*%V%*%t(D)
         } else {
             if (!average || (N<NROW(data))) { ## || NROW(data)==0)) { ## transformation not depending on data
-                pp <- as.vector(val)
+                pp <- structure(as.vector(val),names=names(val))
                 iidtheta <- iidtheta%*%t(D)
                 ##V <- crossprod(iidtheta)
                 V <- D%*%V%*%t(D)
@@ -423,7 +445,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
     if (iid && missing(transform)) res$iid <- iidtheta
     if (!missing(contrast) | !missing(null)) {
         p <- length(res$coef)
-        if (missing(contrast)) contrast <- diag(p)
+        if (missing(contrast)) contrast <- diag(nrow=p)
         if (missing(null)) null <- 0
         if (is.vector(contrast)) {
             if (length(contrast)==p) contrast <- rbind(contrast)
@@ -451,6 +473,9 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         res$vcov <- res$compare$vcov
     }
     if (!missing(keep) && !is.null(keep)) {
+        if (is.character(keep)) {
+            keep <- match(keep,rownames(res$coefmat))
+        }
         res$coef <- res$coef[keep]
         res$coefmat <- res$coefmat[keep,,drop=FALSE]
         if (!is.null(res$iid)) res$iid <- res$iid[,keep,drop=FALSE]

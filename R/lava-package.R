@@ -5,7 +5,23 @@
 ##' Models.
 ##'
 ##' @name lava-package
-##' @import utils stats
+##' @importFrom graphics plot lines points abline points text layout
+##'     par plot.new plot.window title rect locator segments image
+##'     mtext box axis polygon matplot contour contour.default
+##'     identify
+##' @importFrom grDevices xy.coords col2rgb rgb colors rainbow
+##'     topo.colors gray.colors palette colorRampPalette heat.colors
+##' @importFrom utils stack combn read.csv getTxtProgressBar
+##'     setTxtProgressBar txtProgressBar tail modifyList
+##'     getFromNamespace packageVersion write.table methods data
+##' @importFrom stats density deriv effects lm family simulate vcov
+##'     var cov cor coef model.frame model.weights as.formula
+##'     model.matrix rnorm rchisq runif rlnorm pnorm qnorm na.omit AIC
+##'     terms logLik qt pt update update.formula confint approxfun
+##'     pchisq confint.default formula fft uniroot rbinom predict sd
+##'     addmargins residuals dnorm quantile qf cov2cor qchisq
+##'     get_all_vars p.adjust rpois rgamma printCoefmat rt glm nlminb
+##' @importFrom methods new as
 ##' @aliases lava-package lava
 ##' @docType package
 ##' @author Klaus K. Holst Maintainer: <k.k.holst@@biostat.ku.dk>

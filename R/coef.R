@@ -151,13 +151,13 @@
 `coef.lvmfit` <-
 function(object, level=ifelse(missing(type),-1,2),
          symbol=lava.options()$symbol,
-         data, std=NULL, labels=TRUE, vcov,
+         data, std=NULL, labels=TRUE, vcov, 
          type, reliability=FALSE, second=FALSE, ...) {
 
-    res <- (pars.default(object))
+    res <- (pars.default(object,...))
     if (level<0 && !is.null(names(res))) return(res)
 
-  if (is.null(object$control$meanstructure)) meanstructure <- TRUE
+    if (is.null(object$control$meanstructure)) meanstructure <- TRUE
   else meanstructure <- object$control$meanstructure
   npar <- index(object)$npar; npar.mean <- index(object)$npar.mean*meanstructure
   npar.ex <- index(object)$npar.ex
@@ -165,7 +165,8 @@ function(object, level=ifelse(missing(type),-1,2),
   para <- parameter(Model(object))
   para.idx <- which(vars(object)%in%para)
 
-  if ("lvm.missing"%in%class(object)) {
+
+  if (inherits(object,"lvm.missing")) {
       if (length(object$cc)==0) {## No complete cases
           coefs <- coef(object$estimate)
           c1 <- coef(Model(object),mean=TRUE,fix=FALSE)
@@ -583,7 +584,6 @@ CoefMat <- function(x,
                     digits = max(3, getOption("digits") - 2),
                     level=9,
                     symbol=lava.options()$symbol[1],...) {
-
   cc <- x
   if (!is.matrix(x)) {
     cc <- coef(x,level=level,symbol=symbol,...)
@@ -603,6 +603,7 @@ CoefMat <- function(x,
   Nextra <- sum(attributes(cc)$type=="extra")
 
   latent.var <- attributes(cc)$latent
+
 
   if (Nreg>0) {
     reg.idx <- which(attributes(cc)$type=="regression")
@@ -705,7 +706,7 @@ CoefMat <- function(x,
 ###{{{ standardized coefficients
 
 stdcoef <- function(x,p=coef(x),...) {
-  M0 <- moments(Model(x),p)
+  M0 <- moments(x,p=p,...)
   A <- t(M0$A)
   P <- M0$P
   v <- M0$v

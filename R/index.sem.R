@@ -95,7 +95,7 @@ function(x, sparse=FALSE,standard=TRUE,zeroones=FALSE,deriv=FALSE,mean=TRUE) { #
   P[covfix.idx] <- x$covfix[covfix.idx] ## ... with fixed parameters in plac
 
 
-  px <- Jy <- J <- I <- diag(length(vars(x)))
+  px <- Jy <- J <- I <- diag(nrow=length(vars(x)))
   if (m>0) {
     J[eta.idx,eta.idx] <- 0; J <- J[-eta.idx,,drop=FALSE]
   } ## Selection matrix (selecting observed variables)
@@ -178,7 +178,9 @@ function(x, sparse=FALSE,standard=TRUE,zeroones=FALSE,deriv=FALSE,mean=TRUE) { #
                        npar.ex=sum(e1),
                        constrain.par=constrain.par))
     npar.total <- res$npar+res$npar.mean+res$npar.ex
-    which.diag <- diag(P1==1)
+    which.diag <- NULL
+    if (length(P1)>0)
+        which.diag <- which(diag(P1==1))
 
     res <- c(res, list(parname.all=parname, parname=setdiff(parname,constrain.par),
                        which.diag=which.diag,
@@ -272,8 +274,8 @@ function(x, sparse=FALSE,standard=TRUE,zeroones=FALSE,deriv=FALSE,mean=TRUE) { #
       px <- as(px, "sparseMatrix")
 
     } else {
-      Ik <- diag(length(obs))
-      Im <- diag(ncol(A))
+      Ik <- diag(nrow=length(obs))
+      Im <- diag(nrow=ncol(A))
     }
     Kkk <- NULL
 
@@ -283,9 +285,9 @@ function(x, sparse=FALSE,standard=TRUE,zeroones=FALSE,deriv=FALSE,mean=TRUE) { #
   }
   if (deriv && length(P)>0) {
     if (res$npar.mean>0 & mean)
-      D <- deriv(x,meanpar=rep(1,res$npar.mean),zeroones=TRUE)
+      D <- deriv.lvm(x,meanpar=rep(1,res$npar.mean),zeroones=TRUE)
     else
-      D <- deriv(x,meanpar=NULL,zeroones=TRUE)
+      D <- deriv.lvm(x,meanpar=NULL,zeroones=TRUE)
     res[c("dA","dP","dv")] <- NULL
     res <- c(res, list(dA=D$dA, dP=D$dP, dv=D$dv))
   }

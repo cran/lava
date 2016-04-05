@@ -25,14 +25,17 @@
 ##'
 ##' @export
 lava.options <- function(...) {
-  dots <- list(...)
-  curopt <- get("options",envir=lava.env)
-  if (length(dots)==0)
-    return(curopt)
-  idx <- which(names(dots)!="")
-  curopt[names(dots)[idx]] <- dots[idx]
-  assign("options",curopt,envir=lava.env)
-  invisible(curopt)
+    dots <- list(...)
+    newopt <- curopt <- get("options",envir=lava.env)
+    if (length(dots)==0)
+        return(curopt)
+    if (length(dots)==1 && is.list(dots[[1]]) && is.null(names(dots))) {
+        dots <- dots[[1]]
+    }
+    idx <- which(names(dots)!="")
+    newopt[names(dots)[idx]] <- dots[idx]
+    assign("options",newopt,envir=lava.env)
+    invisible(curopt)
 }
 
 ##' @export
@@ -52,11 +55,12 @@ versioncheck <- function(pkg,geq,sep=".",...) {
         as.numeric(strsplit(as.character(packageVersion(pkg)),sep,fixed=TRUE)[[1]]),
         error=function(x) NULL)
     if (is.null(xyz)) return(FALSE)
-    for (i in seq_along(xyz)) {
+    for (i in seq(min(length(xyz),length(geq)))) {
         if (xyz[i]>geq[i]) return(TRUE)
-        if (xyz[i]<geq[i]) return(FALSE)
+        if (xyz[i]<geq[i]) return(FALSE)        
     }
-    return(TRUE)
+    if (length(xyz)>=length(geq)) return(TRUE)
+    return(FALSE)
 }
 
 lava.env <- new.env()
@@ -78,7 +82,7 @@ assign("options", list(
     eval.max=250,
     constrain=FALSE,
     silent=TRUE,
-    itol=1e-12,
+    itol=1e-16,
     cluster.index=versioncheck("mets",c(0,2,7)),
     Dmethod="simple", ##Richardson"
     parallel=TRUE,

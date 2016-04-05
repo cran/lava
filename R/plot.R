@@ -14,7 +14,7 @@
 ##' @param labels Logical argument indiciating whether to add labels to plot
 ##' (Unnamed parameters will be labeled p1,p2,...)
 ##' @param intercept Logical argument indiciating whether to add intercept
-##' labels (current version: not used))
+##' labels
 ##' @param addcolor Logical argument indiciating whether to add colors to plot
 ##' (overrides \code{nodecolor} calls)
 ##' @param plain if TRUE strip plot of colors and boxes
@@ -94,7 +94,7 @@
       return(NULL)
     }
     L <- igraph::layout.sugiyama(g <- igraph.lvm(x,...))$layout
-    if (noplot) return(g)
+    if (noplot) return(graph::updateGraph(g))
     dots <- list(...)
     if (is.character(layout))
       plot(g,layout=L,...)
@@ -116,7 +116,7 @@
   if (lava.options()$debug) {
     plot(g)
   } else {
-##    graphRenderInfo(g)$recipEdges <- "distinct"
+    ## graphRenderInfo(g)$recipEdges <- "distinct"
     .savedOpt <- options(warn=-1) ## Temporarily disable warnings as renderGraph comes with a stupid warning when labels are given as "expression"
     dots <- list(...)
     dots$attrs <- attrs

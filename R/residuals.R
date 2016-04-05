@@ -1,4 +1,7 @@
-Isqrt <- function(X) { eX <- eigen(X); with(eX, vectors %*% diag(1/sqrt(values)) %*% t(vectors)) }
+Isqrt <- function(X) {
+    eX <- eigen(X);
+    with(eX, vectors %*% diag(1/sqrt(values),nrow=length(values)) %*% t(vectors))
+}
 
 
 ##' @export
@@ -22,7 +25,8 @@ residuals.lvmfit <- function(object,data=model.frame(object),p=coef(object),...)
 residuals.lvm <- function(object,data=model.frame(object),std=FALSE,p=coef(object),...) {
   Y <- setdiff(manifest(object), X <- exogenous(object))
   Pr <- predict(object,p=p,data=data)
-  PrY <- Pr[,Y]
+  
+  PrY <- Pr[,Y,drop=FALSE]
   ##  y <- endogenous(object)[match(endogenous(object),manifest(object))]
   r <- as.matrix(data[,Y,drop=FALSE]-(PrY))
   res <- r
@@ -40,7 +44,7 @@ residuals.lvm <- function(object,data=model.frame(object),std=FALSE,p=coef(objec
 gradpredict <- function(p,obj,data=model.frame(obj)) {
 ##  res <- residuals.lvmfit(object=obj,data=data,std=FALSE,p=p)
   mom <- moments(Model(obj),p,conditional=TRUE)
-  D <- with(obj, deriv(model, meanpar=modelPar(model,p)$meanpar, mom=mom))
+  D <- with(obj, deriv.lvm(model, meanpar=modelPar(model,p)$meanpar, mom=mom))
 
   X <- with(obj, exogenous(model))
   Y <- with(obj, setdiff(manifest(model), X))
@@ -55,7 +59,7 @@ gradpredict <- function(p,obj,data=model.frame(obj)) {
   mu. <- mu.0 + mu.x
 
   K <- nrow(mom$J)
-  I <- diag(K)
+  I <- diag(nrow=K)
 
   d1 <- (t(mu.) %x% I)%*%D$dvecG
   px <- index(obj)$px

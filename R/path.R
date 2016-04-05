@@ -104,7 +104,7 @@ path.lvm <- function(object,to=NULL,from,...) pathM(object$M,to=to,from=from,...
 
 ##' @export
 path.graphNEL <- function(object,to,from,...) {
-  if (class(to)[1]=="formula") {
+  if (inherits(to,"formula")) {
     fvar <- extractvar(to)
     if (length(fvar$x)==1 & length(fvar$y)==1)
       return(path(object,to=fvar$y,from=fvar$x))
@@ -135,8 +135,10 @@ path.graphNEL <- function(object,to,from,...) {
     return(res)
   }
   idxfrom <- ifelse(is.numeric(from),from,which(from==graph::nodes(object)))
-  reachable <- acc(object,graph::nodes(object)[idxfrom])[[1]]
-
+  ##M <- as(object,"matrix")
+  ##reachable <- acc(M,graph::nodes(object)[idxfrom])
+  reachable <- graph::acc(object,graph::nodes(object)[idxfrom])[[1]]
+  
   if (is.null(to)) {
     idxto <- reachable
   } else {
@@ -159,7 +161,7 @@ path.graphNEL <- function(object,to,from,...) {
 
 pathM <- function(M,to,from,...) {
   nn <- colnames(M)
-  if (class(to)[1]=="formula") {
+  if (inherits(to,"formula")) {
     fvar <- extractvar(to)
     if (length(fvar$x)==1 & length(fvar$y)==1)
       return(pathM(M,to=fvar$y,from=fvar$x))
@@ -191,7 +193,7 @@ pathM <- function(M,to,from,...) {
   }
   idxfrom <- ifelse(is.numeric(from),from,which(from==nn))
   reachable <- acc(M,nn[idxfrom])
-
+  
   if (is.null(to)) {
     idxto <- reachable
   } else {

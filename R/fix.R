@@ -12,8 +12,9 @@ print.fix <- function(x,exo=FALSE,...) {
 
 linconstrain <- function(x,print=TRUE,indent="  ",exo=FALSE,...) {
   idx <- seq_len(attributes(x)$nvar)
+  idx0 <- setdiff(idx,attributes(x)$exo.idx)
   if (!exo & attributes(x)$type!="reg")
-    idx <- setdiff(idx,attributes(x)$exo.idx)
+    idx <- idx0
   if (attributes(x)$type=="mean") {
     M <- rbind(unlist(x[idx]))
     rownames(M) <- ""
@@ -24,6 +25,8 @@ linconstrain <- function(x,print=TRUE,indent="  ",exo=FALSE,...) {
     M[M==1] <- "*"
     M[which(!is.na(x$labels[idx,idx]))] <- x$labels[idx,idx][which(!is.na(x$labels[idx,idx]))]
     M[which(!is.na(x$values[idx,idx]))] <- x$values[idx,idx][which(!is.na(x$values[idx,idx]))]
+    if (attributes(x)$type=="reg")
+        M <- t(M[,idx0,drop=FALSE])
   }
   if (print) {
     M0 <- M
@@ -128,10 +131,10 @@ intercept.lvm <- intfix.lvm <- function(object,value,...) {
 ##' @export
 "intercept<-.lvm" <- "intfix<-.lvm" <- function(object, vars,...,value) {
   if (!missing(vars) && inherits(value,"formula")) value <- all.vars(value)
-  if (class(value)[1]=="formula") {
+  if (inherits(value,"formula")) {
     lhs <- getoutcome(value)
     yy <- decomp.specials(lhs)
-    if ((class(value[[3]])=="logical" && is.na(value[[3]]))) {
+    if ((inherits(value[[3]],"logical") && is.na(value[[3]]))) {
       intfix(object,yy) <- NA
       return(object)
     }
@@ -144,7 +147,7 @@ intercept.lvm <- intfix.lvm <- function(object,value,...) {
     object$parpos <- NULL
     return(object)
   }
-  if (class(vars)[1]=="formula") {
+  if (inherits(vars,"formula")) {
     vars <- all.vars(vars)
   }
   object$mean[vars] <- value
@@ -177,11 +180,12 @@ covfix.lvm <- function(object,...) {
 ##' @export
 "covfix<-.lvm" <- function(object, var1, var2=var1, pairwise=FALSE, exo=FALSE, ..., value) {
 
-  if (class(var1)[1]=="formula") {
-    var1 <- all.vars(var1)
+  if (inherits(var1,"formula")) {
+      var1 <- all.vars(var1)
   }
-  if (class(var2)[1]=="formula")
-    var2 <- all.vars(var2)
+  if (inherits(var2,"formula")) {
+      var2 <- all.vars(var2)
+  }
   object <- addvar(object,c(var1,var2),reindex=FALSE,...)
 
   allvars <- c(var1,var2)
@@ -332,7 +336,7 @@ regfix.lvm <- function(object,...) {
 "regfix<-" <- function(object,...,value) UseMethod("regfix<-")
 
 ##' @export
-"regfix<-.lvm" <- function(object, to, from, exo=TRUE, variance, y,x, ..., value) {
+"regfix<-.lvm" <- function(object, to, from, exo=lava.options()$exogenous, variance, y,x, ..., value) {
     if (!missing(y)) {
         if (inherits(y,"formula")) y <- all.vars(y)
         to <- y
@@ -342,80 +346,32 @@ regfix.lvm <- function(object,...) {
         from <- x
     }
     if (is.null(to)) stop("variable list needed")
-  curvar <- index(object)$vars
-  if (class(to)[1]=="formula") {
-    yx <- getoutcome(to)
-    lhs <- decomp.specials(yx)
-    if (length(lhs)==0) {
-      to <- all.vars(to)
-      if (is.null(from)) stop("predictor list needed")
-      if (class(from)[1]=="formula")
-        from <- all.vars(from)
-    } else {
-      from <- attributes(yx)$x
-      to <- lhs
-    }
-
-    yyf <- lapply(to,function(y) decomp.specials(y,NULL,"[",fixed=TRUE))
-    ys <- unlist(lapply(yyf,function(y) y[1]))
-    xxf <- lapply(from,function(y) decomp.specials(y,NULL,"[",fixed=TRUE))
-    xs <- unlist(lapply(xxf,function(y) y[1]))
-
-    object <- addvar(object,c(ys,xs),reindex=FALSE,...)
-
-    if (!missing(variance))
-        covariance(object,ys) <- variance
-
-    newexo <- notexo <- c()
-    for (i in seq_along(xs)) {
-      xf <- unlist(strsplit(from[[i]],"[\\[\\]]",perl=TRUE))
-      if (length(xf)>1) {
-        xpar <- decomp.specials(xf[2],NULL,":")
-        val <- ifelse(xpar[1]=="NA",NA,xpar[1])
-        valn <- suppressWarnings(as.numeric(val))
-        intercept(object,xs[i]) <- ifelse(is.na(valn),val,valn)
-        if (length(xpar)>1) {
-          val <- ifelse(xpar[2]=="NA",NA,xpar[2])
-          valn <- suppressWarnings(as.numeric(val))
-          covariance(object,xs[i]) <- ifelse(is.na(valn),val,valn)
-        }
-        notexo <- c(notexo,xs[i])
-      } else { newexo <- c(newexo,xs[i]) }
-    }
-    for (i in seq_along(ys)) {
-      yf <- unlist(strsplit(to[[i]],"[\\[\\]]",perl=TRUE))
-      if (length(yf)>1) {
-        ypar <- decomp.specials(yf[2],NULL,":")
-        val <- ifelse(ypar[1]=="NA",NA,ypar[1])
-        valn <- suppressWarnings(as.numeric(val))
-        intercept(object,ys[i]) <- ifelse(is.na(valn),val,valn)
-        if (length(ypar)>1) {
-          val <- ifelse(ypar[2]=="NA",NA,ypar[2])
-          valn <- suppressWarnings(as.numeric(val))
-          covariance(object,ys[i]) <- ifelse(is.na(valn),val,valn)
-        }
-      }
-    }
-    to <- ys; from <- xs
-    object <- addvar(object,c(ys,xs),reindex=FALSE,...)
-    notexo <- c(notexo,to)
+    
+  if (inherits(to,"formula")) {
+      val <- procformula(object,to,exo=exo)
+      object <- val$object
+      ys <- val$ys
+      xs <- val$xs      
+      if (!missing(variance))
+          covariance(object,ys) <- variance      
+      to <- ys; from <- xs 
   } else {
-    object <- addvar(object,c(to,from),reindex=FALSE,...)
-    newexo <- from
-    notexo <- to
+      object <- addvar(object,c(to,from),reindex=FALSE,...)
+      newexo <- from
+      notexo <- to
+      curvar <- index(object)$var  
+      if (exo) {
+          oldexo <- exogenous(object)
+          newexo <- setdiff(newexo,c(notexo,curvar))
+          exogenous(object) <- union(newexo,setdiff(oldexo,notexo))
+      }
   }
-
-  if (exo) {
-    oldexo <- exogenous(object)
-    newexo <- setdiff(newexo,c(notexo,curvar))
-    exogenous(object) <- union(newexo,setdiff(oldexo,notexo))
-  }
-
+    
   if (inherits(value,"formula")) value <- all.vars(value)
 
   if (length(from)==length(to) & length(from)==length(value)) {
     for (i in seq_along(from)) {
-      if (object$M[from[i],to[i]]==0) { ## Not adjancent! ##!isAdjacent(Graph(object), from[i], to[i])) {
+      if (object$M[from[i],to[i]]==0) { ## Not adjacent! ##!isAdjacent(Graph(object), from[i], to[i])) {
         object <- regression(object, to=to[i], from=from[i])
       }
       vali <- suppressWarnings(as.numeric(value[[i]]))

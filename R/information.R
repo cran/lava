@@ -116,7 +116,7 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
 
   mp <- moments(x,p,data=data)
   pp <- modelPar(x,p)
-  D <- deriv(x, meanpar=pp$meanpar, mom=mp, p=p)##, all=length(constrain(x))>0)
+  D <- deriv.lvm(x, meanpar=pp$meanpar, mom=mp, p=p)##, all=length(constrain(x))>0)
   C <- mp$C
   iC <- Inverse(C,det=FALSE)
 
@@ -130,7 +130,7 @@ information.lvm <- function(x,p,n,type=ifelse(model=="gaussian",
       print(idx); print(oldweight)
       weight[,idx] <- oldweight
     }
-    W <- diag(as.numeric(weight))
+    W <- diag(nrow=as.numeric(weight))
     iW <- W
     diag(iW) <- 1/diag(iW)
   }
@@ -204,7 +204,7 @@ information.lvmfit <- function(x,p=pars(x),n=x$data$n,data=model.frame(x),model=
   if (ncol(I)<length(p)) {
     I <- blockdiag(I,matrix(0,length(p)-ncol(I),length(p)-ncol(I)))
   }
-  I
+  return(I)
 }
 
 ###}}} information.lvmfit

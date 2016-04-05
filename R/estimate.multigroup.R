@@ -5,10 +5,11 @@
                                   estimator="gaussian",
                                   weight, weightname,
                                   weight2,
-                                  cluster=NULL,
+                                  id=NULL,
                                   silent=lava.options()$silent,
                                   quick=FALSE,
                                   param,
+                                  cluster,
                                   ...) {
   cl <- match.call()
   optim <- list(
@@ -41,6 +42,7 @@
     lava.options(param=param)
     on.exit(lava.options(param=oldparam))
   }
+  if (!missing(cluster)) id <- cluster
 
   defopt <- lava.options()[]
   defopt <- defopt[intersect(names(defopt),names(optim))]
@@ -209,7 +211,6 @@
       }
     }
   }
-
 
   ## Define objective function and first and second derivatives
   ObjectiveFun  <- paste0(estimator, "_objective", ".lvm")
@@ -520,7 +521,7 @@
         if (sum(constrained)==1) {
           res[constrained,constrained] <- res[constrained,constrained]*outer(theta[constrained],theta[constrained]) - (D[constrained])
         } else {
-          res[constrained,constrained] <- res[constrained,constrained]*outer(theta[constrained],theta[constrained]) - diag(D[constrained])
+          res[constrained,constrained] <- res[constrained,constrained]*outer(theta[constrained],theta[constrained]) - diag(D[constrained],nrow=length(constrained))
         }
       }
       attributes(res)$grad <- D
@@ -580,8 +581,8 @@
   I <- myInformation(opt$estimate)
   asVar <- tryCatch(Inverse(I),
                     error=function(e) matrix(NA, length(mystart), length(mystart)))
-
-  res <- list(model=x, model0=mymodel, call=cl, opt=opt, meanstructure=optim$meanstructure, vcov=asVar, estimator=estimator, weight=weight, weight2=weight2, cluster=cluster)
+    
+  res <- list(model=x, model0=mymodel, call=cl, opt=opt, meanstructure=optim$meanstructure, vcov=asVar, estimator=estimator, weight=weight, weight2=weight2, cluster=id)
   class(res) <- myclass
 
   myhooks <- gethook("post.hooks")
@@ -607,7 +608,7 @@ function(x, data, silent=lava.options()$silent, fix, missing=FALSE,  ...) {
   if (nm==1) {
     return(estimate(x[[1]],data,missing=missing,...))
   }
-  if (!all(unlist(lapply(x, function(y) class(y)[1]=="lvm")))) stop ("Expected a list of 'lvm' objects.")
+  if (!all(unlist(lapply(x, function(y) inherits(y,"lvm"))))) stop ("Expected a list of 'lvm' objects.")
   if (is.data.frame(data)) {
     warning("Only one dataset - going for standard analysis on each submodel.")
     res <- c()

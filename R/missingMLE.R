@@ -1,7 +1,7 @@
 ###{{{ missingModel
 
 missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=NULL,weight=NULL,weight2=NULL,cluster=NULL,...) {
-  if (class(model)!="lvm") stop("Needs a lvm-object")
+  if (!inherits(model,"lvm")) stop("Needs a lvm-object")
   if (type==3) {
     var <- manifest(model)
   }
@@ -35,14 +35,17 @@ missingModel <- function(model,data,var=endogenous(model),fix=FALSE,type=2,keep=
       if (type>1) {
         mytop <- intersect(topendo,colnames(data.mis)[mypattern])
         if (!is.null(mytop)) {
-          kill(m0) <- mytop
+          kill(m0) <- mytop     
           for (xx in exo) {
           ## If exogenous variable only have effect on missing variables,
           ##  then remove it from the model
-            if (all(c(rownames(A)[A[xx,]==1])%in%mytop)) {
-              exoremove <- c(exoremove,xx)
-              kill(m0) <- xx
-            }
+              if (all(c(rownames(A)[A[xx,]==1])%in%mytop) &&
+                  !(xx%in%m0$par)
+                  ##&& !(xx%in%names(index(m0))$parval)
+                  ) {
+                  exoremove <- c(exoremove,xx)
+                  kill(m0) <- xx
+              }
           }
         }
       }
@@ -140,18 +143,19 @@ estimate.MAR <- function(x,data,which=endogenous(x),fix,type=2,startcc=FALSE,con
   if (missing(fix))
     fix <- ifelse(length(xfix)>0,FALSE,TRUE)
 
-  S <- diag(length(manifest(x)));
+  S <- diag(nrow=length(manifest(x)));
   mu <- rep(0,nrow(S));
   K <- length(exogenous(x))
   vnames <- index(x)$manifest
   names(mu) <- rownames(S) <- colnames(S) <- vnames
   if (K>0) {
-    exo.idx <- c(which(manifest(x)%in%exogenous(x)))
     xx <- subset(Model(x),exogenous(x))
     exogenous(xx) <- NULL
     covfix(xx, vars(xx)) <- NA
     xx <- covariance(xx,exogenous(x),exogenous(x))
     datax <- data[,exogenous(x),drop=FALSE]
+    exo.idx <- match(exogenous(x),manifest(x))
+
     mu0 <- colMeans(datax,na.rm=TRUE)
     cov0 <- cov(datax,use="pairwise.complete.obs")*(nrow(datax)-1)/nrow(datax)
     cov0upper <- cov0[upper.tri(cov0,diag=TRUE)]
@@ -166,7 +170,6 @@ estimate.MAR <- function(x,data,which=endogenous(x),fix,type=2,startcc=FALSE,con
 
   x0 <- x
   x <- fixsome(x, measurement.fix=fix, exo.fix=TRUE, S=S, mu=mu, n=1)
-
   if (!silent)
     message("Identifying missing patterns...")
 
@@ -273,7 +276,7 @@ estimate.MAR <- function(x,data,which=endogenous(x),fix,type=2,startcc=FALSE,con
                         call=cl
                         ))
   class(res) <- c("lvm.missing","lvmfit")
-  if ("lvmfit.randomslope"%in%class(e.mis))
+  if (inherits(e.mis,"lvmfit.randomslope"))
     class(res) <- c(class(res),"lvmfit.randomslope")
 
   if (hessian & is.null(cluster)) {

@@ -10,6 +10,13 @@ Moments <- function(x,p,data,conditional=TRUE,...) {
 moments.lvmfit <- function(x, p=pars(x),...) moments(Model(x),p=p,...)
 
 ##' @export
+moments.lvm.missing <- function(x, p=pars(x), ...) {
+    idx <- match(coef(Model(x)),names(coef(x)))
+    moments.lvmfit(x,p=p[idx],...)
+}
+
+
+##' @export
 moments.lvm <- function(x, p, debug=FALSE, conditional=FALSE, data=NULL, ...) {
 ##  moments.lvm <- function(x, p, meanpar=NULL, conditional=FALSE, debug=FALSE,...) {
 ### p: model-parameters as obtained from e.g. 'startvalues'.
@@ -37,7 +44,7 @@ moments.lvm <- function(x, p, debug=FALSE, conditional=FALSE, data=NULL, ...) {
     Jidx <- ii$endo.idx
   }
 
-  Im <- diag(nrow(AP$A))
+  Im <- diag(nrow=nrow(AP$A))
   if (ii$sparse) {
     IAi <- with(AP, as(Inverse(Im-t(A)),"sparseMatrix"))
     ##IAi <- as(solve(Matrix::Diagonal(nrow(A))-t(A)),"sparseMatrix")
