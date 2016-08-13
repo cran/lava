@@ -60,7 +60,7 @@ ordreg <- function(formula,data=parent.frame(),offset,family=stats::binomial("pr
     I <- -ordreg_hessian(cc,up)
     names(cc) <- nn
     dimnames(I) <- list(nn,nn)
-    res <- list(vcov=solve(I),coef=cc,call=match.call(),up=up)
+    res <- list(vcov=solve(I),coef=cc,call=match.call(),up=up,opt=op)
     structure(res,class="ordreg")
 }
 
@@ -92,7 +92,7 @@ print.summary.ordreg <- function(x,alpha=0.95,...) {
 
 ##' @export
 score.ordreg <- function(x,p=coef(x),indiv=FALSE,...) {
-    ordreg_score(coef(x),x$up)
+    ordreg_score(p,x$up)
     if (!indiv) return(colSums(x$up$score))
     x$up$score
 }
@@ -141,5 +141,21 @@ ordreg_score <- function(theta,env,...) {
     colSums(env$score)
 }
 ordreg_hessian <- function(theta,env,...) {
-    numDeriv::jacobian(function(p) ordreg_score(p,env,...),theta)
+    numDeriv::jacobian(function(p) ordreg_score(p,env,...),theta,...)
+}
+
+##' @export
+predict.ordreg <- function(object,p=coef(object),type=c("prob","cumulative"),...) {
+    env <- object$up
+    env$theta <- p
+    if (env$p>0) beta <- with(env,theta[seq(p)+K-1])
+    alpha <- with(env, threshold(theta,K))
+    env$alpha <- alpha
+    env$beta <- beta
+    if (env$p>0) eta <- env$X%*%beta else eta <- cbind(rep(0,env$n))
+    env$lp <- kronecker(-eta,rbind(alpha),"+")
+    F <- with(env,h(lp))
+    if (tolower(type)[1]=="cumulative") return(F)            
+    Pr <- cbind(F,1)-cbind(0,F)
+    return(Pr)
 }

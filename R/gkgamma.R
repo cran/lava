@@ -41,55 +41,93 @@ gkgamma <- function(x,data=parent.frame(),strata=NULL,all=FALSE,iid=TRUE,...) {
                       iid=TRUE,
                       keep=1:2)
         mgam <- Reduce(function(x,y,...) merge(x,y,...),gam)
+        ps <- estimate(multinomial(strata),data=data,...)
+        mgam <- merge(mgam,ps)
+        psi <- 2*length(gam)+seq(length(coef(ps)))
         res <- estimate(mgam,function(p,...) {
-            k <- length(p)/2
+            k <- length(p)/3
             cd <- lapply(seq(k),function(x) p[(1:2)+2*(x-1)])
             dif <- unlist(lapply(cd,function(x) x[1]-x[2]))
             tot <- unlist(lapply(cd,function(x) x[1]+x[2]))
-            gam <- dif/tot
-            ##w <- tot/sum(tot)
-            ##pgam <- sum(w*gam)            
-            c(gam,pgamma=sum(dif)/sum(tot))
+            gam <- dif/tot ## Conditional gammas given Z=z
+            px2 <- p[psi]^2
+            pgamma <- sum(dif*px2)/sum(tot*px2)
+            c(gam,pgamma=pgamma)
         },labels=c(paste0("\u03b3:",names(dd)),"pgamma"),
         iid=iid)
-        k <- length(dd)
         if (!iid) {
             for (i in seq_along(gam))
                 gam[[i]][c("iid","id")] <- NULL
         }
-        homtest <- estimate(res,lava::contr(seq(k),k+1),iid=FALSE)
-        return(structure(list(cl=match.call(),k=k,n=unlist(lapply(dd,nrow)),
-                              strata=gam,gamma=res,homtest=homtest),
-                         class="gkgamma"))
+        homtest <- estimate(res,lava::contr(seq_along(gam),length(gam)+1),iid=FALSE)
+        attributes(res) <- c(attributes(res),
+                             list(class=c("gkgamma","estimate"),
+                                  cl=match.call(),
+                                  strata=gam,
+                                  homtest=homtest))
+        return(res)
     }
     if (is.table(x) || is.data.frame(x) || is.matrix(x)) {
         x <- multinomial(x)
     }
-    if (!inherits(x,"multinomial")) stop("Expected table, data.frame or multinomial object")    
-    estimate(x,function(p) {
+    if (!inherits(x,"multinomial")) stop("Expected table, data.frame or multinomial object")
+    structure(estimate(x,function(p) {
         P <- x$position; P[] <- p[x$position]
         goodmankruskal_gamma(P)
-    },iid=iid,...)
+    },iid=iid,data=data,...),
+    cl=match.call(),
+    class=c("gkgamma","estimate"))
 }
 
 ##' @export
-print.gkgamma <- function(x,...) {
-    for (i in seq_along(x$strata)) {
-        cat(names(x$strata)[i]," (n=",x$n[i],"):\n",sep="")
-        e <- x$strata[[i]]
-        print(e)
+print.gkgamma <- function(x,call=TRUE,...) {
+    if (call) {
+        cat("Call: ")
+        print(attr(x,"cl"))
+        printline(50)
     }
-    printline(50)
-    cat("\nGamma coefficient:\n\n")
-    print(x$gamma)
-    printline(50)
-    cat("\nHomogeneity test:\n")
-    with(x$homtest$compare,
-         cat("chisq = ",statistic,
-             ", df = ",parameter,
-             ", p-value = ",p.value,"\n"))
-}
+    n <- x$n
 
+    if (!is.null(attr(x,"strata"))) {
+        cat("Strata:\n\n")
+        for (i in seq_along(attr(x,"strata"))) {
+            with(attributes(x), cat(paste0(names(strata)[i],
+                                           " (n=",strata[[i]]$n,
+                                           if (strata[[i]]$ncluster<strata[[i]]$n) paste0(",clusters=",strata[[i]]$ncluster),
+                                           "):\n",sep="")))
+            e <- attr(x,"strata")[[i]]
+            print.estimate(e,level=0)
+            cat("\n")
+        }
+        printline(50)
+        cat("\n")
+        n <- sum(unlist(lapply(attr(x,"strata"),"[[","n")))
+    }
+    k <- x$ncluster
+    if (!is.null(n) && !is.null(k) && k<n) {
+        cat("n = ",n,", clusters = ",k,"\n\n",sep="")
+    } else {
+        if (!is.null(n)) {
+            cat("n = ",n,"\n\n",sep="")
+        } else if (!is.null(k)) {
+            cat("n = ",k,"\n\n",sep="")
+        }
+    }
+    if (!is.null(attr(x,"strata"))) {
+        cat("Gamma coefficient:\n\n")
+    }
+    class(x) <- "estimate"
+    print(x)
+    ## if (!is.null(attr(x,"homtest"))) {
+    ##     printline(50)
+    ##     cat("Homogeneity test:\n\n")
+    ##     with(attr(x,"homtest")$compare,
+    ##          cat("\u03c7\u00b2 = ",statistic,
+    ##              ", df = ",parameter,
+    ##              ", p-value = ",p.value,"\n",sep=""))
+    ## }
+    invisible(x)
+}
 
 
 

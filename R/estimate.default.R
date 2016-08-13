@@ -39,7 +39,7 @@ estimate.list <- function(x,...) {
 ##' @param labels (optional) names of coefficients
 ##' @param label.width (optional) max width of labels
 ##' @param only.coef if TRUE only the coefficient matrix is return
-##' @param transform (optional) transform of parameters and confidence intervals
+##' @param transform.ci (optional) transform of parameters and confidence intervals
 ##' @param folds (optional) aggregate influence functions (divide and conquer)
 ##' @param cluster (obsolete) alias for 'id'.
 ##' @export
@@ -91,8 +91,8 @@ estimate.list <- function(x,...) {
 ##'
 ##' ## Marginalize
 ##' f <- function(p,data)
-##'   list(p0=lava:::expit(p[1] + p[3]*data[,"z"]),
-##'        p1=lava:::expit(p[1] + p[2] + p[3]*data[,"z"]))
+##'   list(p0=lava:::expit(p["(Intercept)"] + p["z"]*data[,"z"]),
+##'        p1=lava:::expit(p["(Intercept)"] + p["x"] + p["z"]*data[,"z"]))
 ##' e <- estimate(g, f, average=TRUE)
 ##' e
 ##' estimate(e,diff)
@@ -141,7 +141,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
                              contrast,null,vcov,coef,
                              robust=TRUE,df=NULL,
                              print=NULL,labels,label.width,
-                             only.coef=FALSE,transform,
+                             only.coef=FALSE,transform.ci=NULL,
                              folds=0,
                              cluster
                              ) {
@@ -155,6 +155,9 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         cl[c("vcov","use")] <- NULL
         return(eval(cl,parent.frame()))
     }
+    if (lava.options()$cluster.index) {
+        if (!requireNamespace("mets",quietly=TRUE)) stop("'mets' package required")
+    }
     expr <- suppressWarnings(inherits(try(f,silent=TRUE),"try-error"))
     if (!missing(coef)) {
         pp <- coef
@@ -165,7 +168,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         }
     }
     if (!missing(cluster)) id <- cluster
-    
+
     if (expr || is.character(f)) { ## || is.call(f)) {
         ## if (is.call(f)) f <- parsedesign(seq(length(pp)),f,...)
         dots <- substitute(list(...))[-1]
@@ -177,7 +180,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         contrast <- f; f <- NULL
     }
     if (missing(data)) data <- tryCatch(model.frame(x),error=function(...) NULL)
-    
+
     ##if (is.matrix(x) || is.vector(x)) contrast <- x
     alpha <- 1-level
     alpha.str <- paste(c(alpha/2,1-alpha/2)*100,"",sep="%")
@@ -207,6 +210,8 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         if (is.numeric(subset)) subset <- subset>0
     }
     idstack <- NULL
+    ## Preserve id from 'estimate' object
+    if (missing(id) && inherits(x,"estimate") && !is.null(x$id)) id <- x$id
     if (!missing(id)) {
         if (is.null(iidtheta)) stop("'iid' method needed")
         nprev <- nrow(iidtheta)
@@ -275,7 +280,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         if (is.null(N)) N <- K
         p <- NCOL(iidtheta)
         adj0 <- K/(K-p) ## Mancl & DeRouen, 2001
-        adj1 <- K/(K-1) ## Mancl & DeRouen, 2001        
+        adj1 <- K/(K-1) ## Mancl & DeRouen, 2001
         adj2 <- (N-1)/(N-p)*(K/(K-1)) ## Morel,Bokossa & Neerchal, 2003
         if (tolower(type[1])=="mbn" && !is.null(attributes(iidtheta)$bread)) {
             V0 <- V
@@ -315,10 +320,10 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
             parname <- form0
         }
         if (!is.null(iidtheta)) {
-            arglist <- c(list(object=x,data=data,p=as.vector(pp)),list(...))
+            arglist <- c(list(object=x,data=data,p=vec(pp)),list(...))
             names(arglist)[3] <- parname
         } else {
-            arglist <- c(list(object=x,p=as.vector(pp)),list(...))
+            arglist <- c(list(object=x,p=vec(pp)),list(...))
             names(arglist)[2] <- parname
         }
         if (!dots) {
@@ -326,7 +331,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         }
         newf <- NULL
         if (length(form)==0) {
-            arglist <- list(as.vector(pp))
+            arglist <- list(vec(pp))
             ##newf <- function(p,...) do.call("f",list(p,...))
             newf <- function(...) do.call("f",list(...))
             val <- do.call("f",arglist)
@@ -349,7 +354,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
                 if (is.null(newf))
                     return(do.call("f",arglist))
                 return(do.call("newf",arglist)) }, pp)
-        }        
+        }
         if (is.null(iidtheta)) {
             pp <- structure(as.vector(val),names=names(val))
             V <- D%*%V%*%t(D)
@@ -381,7 +386,7 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
                     D <- colMeans(rbind(D))
                     iid2 <- iidtheta%*%D
                 }
-                pp <- as.vector(colMeans(cbind(val)))
+                pp <- vec(colMeans(cbind(val)))
                 iid1 <- (cbind(val)-rbind(pp)%x%cbind(rep(1,N)))/N
                 if (!missing(id)) {
                     if (!lava.options()$cluster.index)
@@ -394,10 +399,11 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
                     phat <- mean(subset)
                     iid3 <- cbind(-1/phat^2 * (subset-phat)/N) ## check
                     if (!missing(id)) {
-                        if (!lava.options()$cluster.index)
+                        if (!lava.options()$cluster.index) {
                             iid3 <- matrix(unlist(by(iid3,id,colSums)),byrow=TRUE,ncol=ncol(iid3))
-                        else
+                        } else {
                             iid3 <- mets::cluster.index(id,mat=iid3,return.all=FALSE)
+                        }
                     }
                     iidtheta <- (iid1+iid2)/phat + rbind(pp)%x%iid3
                     pp <- pp/phat
@@ -435,14 +441,12 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         if (!is.null(nn)) rownames(res) <- nn
         if (is.null(rownames(res))) rownames(res) <- paste0("p",seq(nrow(res)))
     }
-    if (!missing(transform)) {
-        res[,c(1,3,4)] <- transform(res[,c(1,3,4)])
-        res[,2] <- NA
-    }
-    
+
     coefs <- res[,1,drop=TRUE]; names(coefs) <- rownames(res)
     res <- structure(list(coef=coefs,coefmat=res,vcov=V, iid=NULL, print=print, id=idstack),class="estimate")
-    if (iid && missing(transform)) res$iid <- iidtheta
+    if (iid) ## && is.null(transform.ci))
+        res$iid <- iidtheta
+
     if (!missing(contrast) | !missing(null)) {
         p <- length(res$coef)
         if (missing(contrast)) contrast <- diag(nrow=p)
@@ -472,6 +476,12 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
         res$coef <- res$compare$coef
         res$vcov <- res$compare$vcov
     }
+
+    if (!is.null(transform.ci)) {
+        res$coefmat[,c(1,3,4)] <- do.call(transform.ci,list(res$coefmat[,c(1,3,4)]))
+        res$coefmat[,2] <- NA
+    }
+
     if (!missing(keep) && !is.null(keep)) {
         if (is.character(keep)) {
             keep <- match(keep,rownames(res$coefmat))
@@ -492,6 +502,9 @@ estimate.default <- function(x=NULL,f=NULL,...,data,id,iddata,stack=TRUE,average
                                                            function(x) toString(x,width=label.width))))
     }
     if (only.coef) return(res$coefmat)
+    res$call <- cl
+    res$n <- nrow(data)
+    res$ncluster <- nrow(res$iid)
     return(res)
 }
 
@@ -501,14 +514,34 @@ estimate.glm <- function(x,...) {
 }
 
 ##' @export
-print.estimate <- function(x,digits=3,width=25,...) {
+print.estimate <- function(x,level=0,digits=3,width=25,std.error=TRUE,p.value=TRUE,...) {
     if (!is.null(x$print)) {
         x$print(x,...)
         return(invisible(x))
     }
+    if (level>0 && !is.null(x$call)) {
+        cat("Call: "); print(x$call)
+        printline(50)
+    }
+    if (level>0) {
+        if (!is.null(x[["n"]]) && !is.null(x[["k"]])) {
+            cat("n = ",x[["n"]],", clusters = ",x[["k"]],"\n\n",sep="")
+        } else {
+            if (!is.null(x[["n"]])) {
+                cat("n = ",x[["n"]],"\n\n",sep="")
+            }
+            if (!is.null(x[["k"]])) {
+                cat("n = ",x[["k"]],"\n\n",sep="")
+            }
+        }
+    }
+
     cc <- x$coefmat
     rownames(cc) <- make.unique(unlist(lapply(rownames(cc),
-                                               function(x) toString(x,width=width))))
+                                              function(x) toString(x,width=width))))
+    if (!std.error) cc <- cc[,-2,drop=FALSE]
+    if (!p.value) cc[,-ncol(cc),drop=FALSE]
+
     print(cc,digits=digits,...)
     if (!is.null(x$compare)) {
         cat("\n",x$compare$method[3],"\n")
@@ -540,7 +573,15 @@ coef.estimate <- function(object,mat=FALSE,...) {
 
 ##' @export
 summary.estimate <- function(object,...) {
-    object$coefmat
+    ##object[c("iid","id","print")] <- NULL
+    object <- object[c("coef","coefmat","vcov","call","ncluster")]
+    class(object) <- "summary.estimate"
+    object
+}
+
+##' @export
+print.summary.estimate <- function(x,...) {
+    print.estimate(x,level=2,...)
 }
 
 ##' @export

@@ -10,7 +10,7 @@
   stack = TRUE, average = FALSE, subset, score.deriv, level = 0.95,
   iid = TRUE, type = c("robust", "df", "mbn"), keep, use, contrast, null,
   vcov, coef, robust = TRUE, df = NULL, print = NULL, labels, label.width,
-  only.coef = FALSE, transform, folds = 0, cluster)
+  only.coef = FALSE, transform.ci = NULL, folds = 0, cluster)
 }
 \arguments{
 \item{x}{model object (\code{glm}, \code{lvmfit}, ...)}
@@ -64,7 +64,7 @@ FALSE p-values for linear models are calculated from t-distribution}
 
 \item{only.coef}{if TRUE only the coefficient matrix is return}
 
-\item{transform}{(optional) transform of parameters and confidence intervals}
+\item{transform.ci}{(optional) transform of parameters and confidence intervals}
 
 \item{folds}{(optional) aggregate influence functions (divide and conquer)}
 
@@ -123,8 +123,8 @@ estimate(lm(y~x,d1))
 
 ## Marginalize
 f <- function(p,data)
-  list(p0=lava:::expit(p[1] + p[3]*data[,"z"]),
-       p1=lava:::expit(p[1] + p[2] + p[3]*data[,"z"]))
+  list(p0=lava:::expit(p["(Intercept)"] + p["z"]*data[,"z"]),
+       p1=lava:::expit(p["(Intercept)"] + p["x"] + p["z"]*data[,"z"]))
 e <- estimate(g, f, average=TRUE)
 e
 estimate(e,diff)
