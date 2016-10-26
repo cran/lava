@@ -4,6 +4,7 @@ procformula <- function(object=NULL,value,exo=lava.options()$exogenous,...) {
     ## '(?!...)' Negative lookahead assertion
     regex <- "~(?![^\\(].*\\))"
     yx <- lapply(strsplit(as.character(value),regex,perl=TRUE),function(x) gsub(" ","",x))[-1]
+    yx <- lapply(yx,function(x) gsub("\n","",x))
     iscovar <- FALSE
     if (length(yx)==1) {
         lhs <- NULL; xidx <- 1
@@ -68,8 +69,8 @@ procformula <- function(object=NULL,value,exo=lava.options()$exogenous,...) {
         ys <- unlist(lapply(yyf,function(x) x[1]))
     }
     
+    notexo <- c()
     if (!is.null(object)) {
-      notexo <- c()
       if (length(lhs)>0) {
         object <- addvar(object,ys,reindex=FALSE,...)
         notexo <- ys

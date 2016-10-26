@@ -7,16 +7,16 @@
 ##'
 ##' @aliases plot.lvmfit
 ##' @param x Model object
-##' @param diag Logical argument indicating whether to visualize variance
-##' parameters (i.e. diagonal of variance matrix)
-##' @param cor Logical argument indicating whether to visualize correlation
-##' parameters
-##' @param labels Logical argument indiciating whether to add labels to plot
-##' (Unnamed parameters will be labeled p1,p2,...)
-##' @param intercept Logical argument indiciating whether to add intercept
-##' labels
-##' @param addcolor Logical argument indiciating whether to add colors to plot
-##' (overrides \code{nodecolor} calls)
+##' @param diag Logical argument indicating whether to visualize
+##'     variance parameters (i.e. diagonal of variance matrix)
+##' @param cor Logical argument indicating whether to visualize
+##'     correlation parameters
+##' @param labels Logical argument indiciating whether to add labels
+##'     to plot (Unnamed parameters will be labeled p1,p2,...)
+##' @param intercept Logical argument indiciating whether to add
+##'     intercept labels
+##' @param addcolor Logical argument indiciating whether to add colors
+##'     to plot (overrides \code{nodecolor} calls)
 ##' @param plain if TRUE strip plot of colors and boxes
 ##' @param cex Fontsize of node labels
 ##' @param fontsize1 Fontsize of edge labels
@@ -24,15 +24,19 @@
 ##' @param graph Graph attributes (Rgraphviz)
 ##' @param attrs Attributes (Rgraphviz)
 ##' @param unexpr if TRUE remove expressions from labels
-##' @param addstyle Logical argument indicating whether additional style should
-##' automatically be added to the plot (e.g. dashed lines to double-headed
-##' arrows)
-##' @param Rgraphviz if FALSE igraph is used for graphics
+##' @param addstyle Logical argument indicating whether additional
+##'     style should automatically be added to the plot (e.g. dashed
+##'     lines to double-headed arrows)
+##' @param plot.engine default 'Rgraphviz' if available, otherwise
+##'     visNetwork,igraph
 ##' @param init Reinitialize graph (for internal use)
 ##' @param layout Graph layout (see Rgraphviz or igraph manual)
 ##' @param edgecolor if TRUE plot style with colored edges
-##' @param graph.proc If TRUE subscripts are automatically added to labels
-##' @param ... Additional arguments to be passed to the low level functions
+##' @param graph.proc Function that post-process the graph object
+##'     (default: subscripts are automatically added to labels of the
+##'     nodes)
+##' @param ... Additional arguments to be passed to the low level
+##'     functions
 ##' @author Klaus K. Holst
 ##' @keywords hplot regression
 ##' @examples
@@ -69,30 +73,37 @@
   function(x,diag=FALSE,cor=TRUE,labels=FALSE,intercept=FALSE,addcolor=TRUE,plain=FALSE,cex,fontsize1=10,noplot=FALSE,graph=list(rankdir="BT"),
          attrs=list(graph=graph),
          unexpr=FALSE,
-         addstyle=TRUE,Rgraphviz=lava.options()$Rgraphviz,init=TRUE,
-         layout=c("dot","fdp","circo","twopi","neato","osage"),
+         addstyle=TRUE,plot.engine=lava.options()$plot.engine,init=TRUE,
+         layout=lava.options()$layout,
          edgecolor=lava.options()$edgecolor,
-         graph.proc=lava.options()$graph.proc,         
-         
+         graph.proc=lava.options()$graph.proc,
+
          ...) {
     if (is.null(vars(x))) {
       message("Nothing to plot: model has no variables.")
       return(NULL)
     }
   index(x) <- reindex(x)
-  if (length(index(x)$vars)<2) {
-    message("Not available for models with fewer than two variables")
-    return(NULL)
-  }
+  ## if (length(index(x)$vars)<2) {
+  ##     message("Not available for models with fewer than two variables")
+  ##     return(NULL)
+  ## }
   myhooks <- gethook("plot.post.hooks")
   for (f in myhooks) {
     x <- do.call(f, list(x=x,...))
   }
 
-  suppressWarnings(igraphit <- !Rgraphviz || !(requireNamespace("graph",quietly=TRUE)) || !(requireNamespace("Rgraphviz",quietly=TRUE)))
-  if (igraphit) {
+
+    plot.engine <- tolower(plot.engine)
+    if (plot.engine=="rgraphviz" && (!(requireNamespace("graph",quietly=TRUE)) || !(requireNamespace("Rgraphviz",quietly=TRUE)))) {
+        plot.engine <- "visnetwork"
+    }
+    if (plot.engine=="visnetwork" && (!(requireNamespace("visNetwork",quietly=TRUE)))) {
+        plot.engine <- "igraph"
+    }
+  if (plot.engine=="igraph") {
     if (!requireNamespace("igraph",quietly=TRUE)) {
-      message("package 'Rgraphviz' or 'igraph' not available")
+      message("package 'Rgraphviz','igraph' or 'visNetwork' not available")
       return(NULL)
     }
     L <- igraph::layout.sugiyama(g <- igraph.lvm(x,...))$layout
@@ -103,9 +114,15 @@
     else plot(g,layout=layout,...)
     return(invisible(g))
   }
+    if (plot.engine=="visnetwork") {
+        g <- vis.lvm(x,labels=labels,...)
+        if (!noplot) print(g)
+        return(g)
+  }
+
     if (init) {
-        if (graph.proc || edgecolor) {
-            x <- beautify(x,edgecol=edgecolor,...)
+        if (!is.null(graph.proc)) {
+            x <- do.call(graph.proc, list(x,edgecol=edgecolor,...))
         }
     g <- finalize(x,diag=diag,cor=cor,addcolor=addcolor,intercept=intercept,plain=plain,cex=cex,fontsize1=fontsize1,unexpr=unexpr,addstyle=addstyle)
   } else {
@@ -164,6 +181,75 @@
 
 ###}}} plot.lvm
 
+###{{{ vis.lvm
+
+vis.lvm <- function(m,randomSeed=1,width="100%",height="700px",labels=FALSE,cor=TRUE,...) {
+    if (!requireNamespace("visNetwork",quietly=TRUE)) stop("'visNetwork' required")
+    types <- rep("endogenous",length(vars(m)))
+    types[index(m)$eta.idx] <- "latent"
+    types[index(m)$exo.idx] <- "exogenous"
+    col <- lava.options()$node.color
+    colors <- rep(col[2],length(types))
+    colors[index(m)$eta.idx] <- col[3]
+    colors[index(m)$exo.idx] <- col[1]
+    trf <- transform(m)
+    if (length(trf)>0) {
+        colors[which(index(m)$vars%in%names(trf))] <- col[4]
+    }
+    shapes <- rep("box",length(types))
+    shapes[index(m)$eta.idx] <- "circle"
+    nodes <- data.frame(id=seq_along(types),
+                        label=vars(m),
+                        color=colors,
+                        shape=shapes,
+                        shadow=TRUE,
+                        size=rep(1.0,length(types)),
+                        group=types)
+    edges <- cbind(edgeList(m))#,shadow=TRUE)
+
+    AP <- matrices(m,paste0("p",seq_len(index(m)$npar)))
+    if (labels) {
+        mylab <- AP$A;
+        mylab[!is.na(m$par)] <- m$par[!is.na(m$par)]
+        lab <- c()
+        for (i in seq(nrow(edges))) {
+            lab <- c(lab,t(mylab)[edges[i,1],edges[i,2]])
+        }
+        edges <- cbind(edges,label=lab)
+    }
+    if (length(edges)>0)
+        edges <- cbind(edges,dashes=FALSE,arrows="from")
+
+
+    if (cor) {
+        mylab <- AP$P
+        mylab[!is.na(m$covpar)] <- m$covpar[!is.na(m$covpar)]
+        coredges <- data.frame(from=numeric(),to=numeric(),label=character())
+        for (i in seq_len(nrow(mylab)-1)) {
+            for (j in seq(i+1,nrow(mylab))) {
+                if (mylab[i,j]!="0") {
+                    coredges <- rbind(coredges,
+                                      data.frame(from=i,to=j,label=mylab[i,j]))
+                }
+            }
+        }
+        if (nrow(coredges)>0) {
+            if (!labels) coredges <- coredges[,1:2,drop=FALSE]
+            coredges <- cbind(coredges,dashes=TRUE,arrows="false")
+            edges <- rbind(edges,coredges)
+        }
+    }
+
+    if (length(edges)>0) edges$physics <- TRUE
+    v <- visNetwork::visNetwork(nodes,edges,width=width,height=height,...)
+    v <- visNetwork::visEdges(v, arrows=list(from=list(enabled=TRUE, scaleFactor = 0.5)),
+                              scaling = list(min = 2, max = 2))
+    v <- visNetwork::visLayout(v,randomSeed=randomSeed)
+    v
+}
+
+###}}} vis.lvm
+
 ###{{{ plot.lvmfit
 
 ##' @export
@@ -181,7 +267,7 @@
     newgraph <- FALSE
     if (is.null(g)) {
         newgraph <- TRUE
-        if (graph.proc) {
+        if (!is.null(graph.proc)) {
             Model(x) <- beautify(Model(x),edgecol=FALSE,...)
         }
         Graph(x) <- finalize(Model(x), diag=TRUE, cor=FALSE, fontsize1=fontsize1, ...)
@@ -278,7 +364,7 @@ igraph.lvm <- function(x,layout=igraph::layout.kamada.kawai,...) {
 ###}}} igraph.lvm
 
 
-beautify <- function(x,col=c("lightblue","orange","yellowgreen"),border=rep("black",3),labcol=rep("darkblue",3),edgecol=TRUE,...) {
+beautify <- function(x,col=lava.options()$node.color,border=rep("black",3),labcol=rep("darkblue",3),edgecol=TRUE,...) {
     if (is.null(x$noderender$fill)) notcolored <- vars(x)
     else notcolored <- vars(x)[is.na(x$noderender$fill)]
     x0 <- intersect(notcolored,exogenous(x))
@@ -302,7 +388,8 @@ beautify <- function(x,col=c("lightblue","orange","yellowgreen"),border=rep("bla
     }
     if (length(keep)>0) {
         trimmed <- trimmed[keep]
-        lab <- paste0(vars(x)[keep],"=",paste0("expression(",trimmed,"[scriptscriptstyle(",num,")])"),collapse=",")
+        trim <- gsub(" ",",",trimmed)
+        lab <- paste0('"',vars(x)[keep],'"',"=",paste0("expression(",trim,"[scriptscriptstyle(",num,")])"),collapse=",")
         labels(x) <- eval(parse(text=paste("c(",lab,")")))
     }
     if (!edgecol) return(x)
@@ -335,4 +422,5 @@ beautify <- function(x,col=c("lightblue","orange","yellowgreen"),border=rep("bla
         }
     }
     x
+
 }

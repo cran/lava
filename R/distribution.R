@@ -55,7 +55,7 @@
       addvar(x) <- as.formula(paste("~",variable))
       if (is.numeric(value)) value <- list(value)
       if (!is.null(attributes(value)$mean)) intercept(x,variable) <- attributes(value)$mean
-      if (!is.null(attributes(value)$variance)) variance(x,variable) <- attributes(value)$variance
+      if (!is.null(attributes(value)$variance)) variance(x,variable,exo=TRUE) <- attributes(value)$variance
 ##      if (is.function(value) && "..."%ni%names(formals(value))) formals(value) <- c(formals(value),alist(...=))
       x$attributes$distribution[[variable]] <- value
       ## Remove from 'mdistribution'
@@ -145,8 +145,7 @@ normal.lvm <- function(link="identity",mean,sd,log=FALSE,...) {
 gaussian.lvm <- normal.lvm
 
 ##' @export
-lognormal.lvm <- function(...) normal.lvm(...,log=TRUE)
-
+lognormal.lvm <- function(...) structure(normal.lvm(...,log=TRUE),family=list(family="log-normal",...))
 
 ###}}} normal/gaussian
 

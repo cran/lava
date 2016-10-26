@@ -12,7 +12,7 @@
 ##' @importFrom grDevices xy.coords col2rgb rgb colors rainbow
 ##'     topo.colors gray.colors palette colorRampPalette heat.colors
 ##' @importFrom utils stack combn read.csv getTxtProgressBar
-##'     setTxtProgressBar txtProgressBar tail modifyList
+##'     setTxtProgressBar txtProgressBar head tail modifyList
 ##'     getFromNamespace packageVersion write.table methods data
 ##' @importFrom stats density deriv effects lm family simulate vcov
 ##'     var cov cor coef model.frame model.weights as.formula
@@ -21,6 +21,7 @@
 ##'     pchisq confint.default formula fft uniroot rbinom predict sd
 ##'     addmargins residuals dnorm quantile qf cov2cor qchisq
 ##'     get_all_vars p.adjust rpois rgamma printCoefmat rt glm nlminb
+##' @importFrom survival is.Surv
 ##' @importFrom methods new as
 ##' @aliases lava-package lava
 ##' @docType package
@@ -248,6 +249,6 @@ NULL
 ##' parlabels rsq stdcoef CoefMat CoefMat.multigroupfit deriv updatelvm
 ##' checkmultigroup profci estimate.MAR missingModel Inverse
 ##' gaussian_logLik.lvm addhook gethook multigroup Weight fixsome
-##' parfix parfix<- merge IV parameter contr parsedesign Specials decomp.specials
+##' parfix parfix<- merge IV parameter parsedesign Specials decomp.specials
 ##' getoutcome index index<-
 NULL

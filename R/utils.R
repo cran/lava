@@ -34,30 +34,6 @@ parsedesign <- function(coef,x,...) {
 
 ###}}}
 
-###{{{ contr
-
-##' @export
-contr <- function(p,n,...) {
-  if (length(p)==1) {
-    B <- matrix(0,ncol=p*n,nrow=p*(n-1))
-    pos <- 0
-    for (i in seq_len(p)) {
-      for (j in seq_len(n-1)) {
-        pos <- pos+1
-        B[pos,i] <- 1;  B[pos,j*p+i] <- -1
-      }
-    }
-    return(B)
-  }
-  if (missing(n)) n <- max(p)
-  B <- matrix(0,ncol=n,nrow=length(p)-1)
-  B[,p[1]] <- 1
-  B[cbind(seq(nrow(B)),p[-1])] <- -1
-  B
-}
-
-###}}} contr
-
 ###{{{ substArg
 
 substArg <- function(x,env,...) {
@@ -222,10 +198,8 @@ categorical2dummy <- function(x,data,silent=TRUE,...) {
 
 `procdata.lvm` <-
   function(x,data,categorical=FALSE,
-##           na.method=ifelse(any(is.na(data[,intersect(colnames(data),exogenous(x))])),"pairwise.complete.obs","complete.obs")
-           na.method=ifelse(any(is.na(data[,intersect(colnames(data),manifest(x))])),"pairwise.complete.obs","complete.obs")
-##           na.method=c("pairwise.complete.obs")
-           ) {
+    na.method=ifelse(any(is.na(data[,intersect(colnames(data),manifest(x))])),"complete.obs","pairwise.complete.obs")
+    ) {
     if (is.numeric(data) & !is.list(data)) {
       data <- rbind(data)
     }
@@ -253,19 +227,20 @@ categorical2dummy <- function(x,data,silent=TRUE,...) {
       if (n==1) {
         S <- diag(nrow=ncol(mydata)); colnames(S) <- rownames(S) <- obs
       }
-      if (na.method=="pairwise.complete.obs") {
-        mu <- colMeans(mydata,na.rm=TRUE)
-        if (is.null(S)) {
-          S <- (n-1)/n*cov(mydata,use=na.method)
-          S[is.na(S)] <- 1e-3
-        }
-      }
       if (na.method=="complete.obs") {
         mydata <- na.omit(mydata)
         n <- nrow(mydata)
         mu <- colMeans(mydata)
         if (is.null(S))
           S <- (n-1)/n*cov(mydata) ## MLE variance matrix of observed variables
+      }
+      nS <- is.null(S) || any(is.na(S))
+      if (na.method=="pairwise.complete.obs" || nS) {
+          mu <- colMeans(mydata,na.rm=TRUE)
+          if (nS) {
+              S <- (n-1)/n*cov(mydata,use="pairwise.complete.obs")
+              S[is.na(S)] <- 1e-3
+          }
       }
     }
     else
@@ -423,8 +398,6 @@ acc <- function(M,v) {
 
 ###}}} Depth-First/acc (accessible)
 
-## Trace operator
-tr <- function(x) sum(diag(x))
 
 npar.lvm <- function(x) {
   return(index(x)$npar+ index(x)$npar.mean+index(x)$npar.ex)
@@ -455,16 +428,6 @@ numberdup <- function(xx) { ## Convert to numbered list
   }
   return(xx.new)
 }
-
-
-##' @export
-logit <- function(p) log(p/(1-p))
-
-##' @export
-expit <- function(z) 1/(1+exp(-z))
-
-##' @export
-tigol <- expit
 
 extractvar <- function(f) {
     yy <- getoutcome(f)
@@ -536,4 +499,5 @@ Decomp.specials <- function(x,pattern="[()]") {
 
 printline <- function(n=70) {
     cat(rep("_", n), "\n", sep="");
+
 }

@@ -51,13 +51,14 @@ onerun <- function(iter=NULL,...,n=2e3,b0=1,idx=2) {
                     "Sandwich.se","Sandwich.lo","Sandwich.hi")
     res
 }
-
 val <- sim(onerun,R=10,b0=1,messages=0,mc.cores=1)
 val
-val <- sim(val,R=40,b0=1,mc.cores=1) ## append results
 
+val <- sim(val,R=40,b0=1,mc.cores=1) ## append results
 summary(val,estimate=c(1,1),confint=c(3,4,6,7),true=c(1,1))
+
 summary(val,estimate=c(1,1),se=c(2,5),names=c("Model","Sandwich"))
+summary(val,estimate=c(1,1),se=c(2,5),true=c(1,1),names=c("Model","Sandwich"),confint=TRUE)
 
 if (interactive()) {
     plot(val,estimate=1,c(2,5),true=1,names=c("Model","Sandwich"),polygon=FALSE)

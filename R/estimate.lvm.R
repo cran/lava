@@ -37,7 +37,6 @@
 ##' \item{tol:}{ Tolerance of optimization constraints on lower limit of
 ##' variance parameters.  } }
 ##'
-##' @aliases estimate
 ##' @param x \code{lvm}-object
 ##' @param data \code{data.frame}
 ##' @param estimator String defining the estimator (see details below)
@@ -71,7 +70,7 @@
 ##' @param ... Additional arguments to be passed to the low level functions
 ##' @return A \code{lvmfit}-object.
 ##' @author Klaus K. Holst
-##' @seealso \code{score}, \code{information}, ...
+##' @seealso estimate.default score, information
 ##' @keywords models regression
 ##' @export
 ##' @method estimate lvm
@@ -96,6 +95,7 @@
 ##' ## Using just sufficient statistics
 ##' n <- nrow(dd)
 ##' e0 <- estimate(m,data=list(S=cov(dd)*(n-1)/n,mu=colMeans(dd),n=n))
+##' rm(dd)
 ##'
 ##' ## Multiple group analysis
 ##' m <- lvm()
@@ -194,14 +194,16 @@
         }
         Debug(list("start=",optim$start))
 
-        if (!missing(cluster)) id <- cluster
-        if (!missing & (is.matrix(data) | is.data.frame(data))) {
-            includelist <- c(manifest(x),xfix)
-            if (!base::missing(weight) && is.character(weight)) includelist <- c(includelist,weight)
-            if (!base::missing(weight2) && is.character(weight2)) includelist <- c(includelist,weight2)
-            if (!base::missing(id) && is.character(id)) includelist <- c(includelist,id)
-            data <- na.omit(data[,intersect(colnames(data),includelist),drop=FALSE])
-        }
+        if (!base::missing(cluster)) id <- cluster
+
+        ## commented; don't reduce data
+        ## if (!missing & (is.matrix(data) | is.data.frame(data))) {
+        ##     includelist <- c(manifest(x),xfix)
+        ##     if (!base::missing(weight) && is.character(weight)) includelist <- c(includelist,weight)
+        ##     if (!base::missing(weight2) && is.character(weight2)) includelist <- c(includelist,weight2)
+        ##     if (!base::missing(id) && is.character(id)) includelist <- c(includelist,id)
+        ##     ##data <- na.omit(data[,intersect(colnames(data),includelist),drop=FALSE])
+        ## }
 
         ## Weights...
         if (!base::missing(weight)) {
@@ -236,7 +238,6 @@
         }
 
         Debug("procdata")
-
         dd <- procdata.lvm(x,data=data)
         S <- dd$S; mu <- dd$mu; n <- dd$n
         ## Debug(list("n=",n))
@@ -281,6 +282,7 @@
         if (!exists(ObjectiveFun) & !exists(GradFun))
             stop("Unknown estimator.")
 
+
         Method <-  paste0(estimator, "_method", ".lvm")
         if (!exists(Method)) {
             Method <- "nlminb1"
@@ -289,8 +291,9 @@
         }
         NoOptim <- "method"%in%names(control) && is.null(control$method)
         if (is.null(optim$method) && !(NoOptim)) {
-            optim$method <- if (missing) "nlminb1" else Method
+            optim$method <- if (missing && Method!="nlminb0") "nlminb1" else Method
         }
+
 
         if (!quick & index) {
             ## Proces data and setup some matrices
@@ -641,7 +644,6 @@
         if (optim$trace>0 & !silent) message("\n")
         ## Optimize with lower constraints on the variance-parameters
         if ((is.data.frame(data) | is.matrix(data)) && nrow(data)==0) stop("No observations")
-
         if (!missing(p)) {
             opt <- list(estimate=p)
             ## if (!is.null(myGrad))
@@ -764,7 +766,7 @@
 ##' @export
 estimate.formula <- function(x,data=parent.frame(),pred.norm=c(),unstruct=FALSE,silent=TRUE,id=NULL,distribution=NULL,estimator="gaussian",...) {
     cl <- match.call()
-    formulaId <- union(Specials(x,c("cluster")),Specials(x,c("id")))    
+    formulaId <- union(Specials(x,c("cluster")),Specials(x,c("id")))
     formulaSt <- paste0("~.-cluster(",formulaId,")-id(",formulaId,")")
     if (!is.null(formulaId)) {
         id <- formulaId
@@ -790,7 +792,7 @@ estimate.formula <- function(x,data=parent.frame(),pred.norm=c(),unstruct=FALSE,
     } else {
         it <- "0"
     }
-    
+
     if (!is.null(id)) covars <- setdiff(covars,id)
     model <- lvm(toformula(yvar,c(it,covars)),silent=TRUE)
     if (!is.null(distribution)) {

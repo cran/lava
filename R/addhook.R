@@ -4,14 +4,18 @@
 ##' Extract and set global parameters of \code{lava}. In particular optimization
 ##' parameters for the \code{estimate} function.
 ##'
-##' \itemize{ \item \code{param}: 'relative' (factor loading and variance of one
+##' \itemize{
+##'   \item \code{param}: 'relative' (factor loading and variance of one
 ##' endogenous variables in each measurement model are fixed to one), 'absolute'
 ##' (mean and variance of latent variables are set to 0 and 1, respectively),
 ##' 'hybrid' (intercept of latent variables is fixed to 0, and factor loading of
 ##' at least one endogenous variable in each measurement model is fixed to 1),
-##' 'none' (no constraints are added) \item \code{silent}: Set to \code{FALSE}
-##' to disable various output messages \item ...  } see \code{control} parameter
-##' of the \code{estimate} function.
+##' 'none' (no constraints are added)
+##'   \item \code{layout}: One of 'dot','fdp','circo','twopi','neato','osage'
+##'   \item \code{silent}: Set to \code{FALSE} to disable various output messages
+##'   \item ...  }
+##'
+##' see \code{control} parameter of the \code{estimate} function.
 ##'
 ##' @param \dots Arguments
 ##' @return \code{list} of parameters
@@ -85,18 +89,22 @@ assign("options", list(
     progressbarstyle=3,
     itol=1e-16,
     cluster.index=versioncheck("mets",c(0,2,7)),
-    Dmethod="simple", ##Richardson"
+    Dmethod="simple", ##"Richardson"
     parallel=TRUE,
     param="relative",
     sparse=FALSE,
     test=TRUE,
+    coef.names=FALSE,
     constrain=TRUE,
-    graph.proc=TRUE,
+    graph.proc="beautify",
     min.weight=1e-3,
     exogenous=TRUE,
-    Rgraphviz=TRUE,
+    plot.engine="Rgraphviz",
+    node.color=c(exogenous="lightblue",endogenous="orange",
+                 latent="yellowgreen",transform="lightgray"),
     edgecolor=FALSE,
+    layout="dot",
     ## symbols=c("<-","<->"),
-    symbols=c("~",","),
+    symbols=c("~","~~"),
     devel=FALSE,
     debug=FALSE), envir=lava.env)

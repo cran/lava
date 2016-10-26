@@ -2,6 +2,16 @@
 `%++%.lvm` <- function(x,y) merge(x,y)
 
 ##' @export
+"+.lvm" <- function(x,...) {
+  merge(x,...)
+}
+
+## ##' @export
+## "+.lm" <- function(x,...) {
+##   merge(x,...)
+## }
+
+##' @export
 merge.lvm <- function(x,y,...) {
   objects <- list(x,y,...)
   if (length(objects)<2) return(x)
@@ -43,6 +53,11 @@ merge.lvm <- function(x,y,...) {
   return(m)
 }
 
+
+##' @export
+"+.estimate" <- function(x,...) {
+  merge(x,...)
+}
 
 ##' @export
 merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=NULL) {
@@ -129,14 +144,21 @@ merge.lm <- function(x,y,...) {
     nn <- names(formals(merge.estimate)[-seq(3)])
     idx <- na.omit(match(nn,names(args)))
     models <- args; models[idx] <- NULL
-    mm <- lapply(models,estimate); names(mm)[1:2] <- c("x","y")
-    do.call("merge.estimate",c(mm,args[idx]))
+    mm <- lapply(args,function(x) tryCatch(estimate(x),error=function(e) NULL))
+    names(mm)[1:2] <- c("x","y")
+    ii <- which(unlist(lapply(mm,is.null)))
+    if (length(ii)>0) mm[ii] <- NULL
+    do.call(merge,c(mm,args[idx]))
 }
 
 ##' @export
 merge.glm <- merge.lm
 
 ##' @export
+merge.lvmfit <- merge.lm
+
+##' @export
 merge.multinomial <- function(x,...) {
     merge.estimate(x,...)
 }
+

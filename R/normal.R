@@ -45,17 +45,22 @@ normal_objective.lvm <- function(x,p,data,weight2=NULL,indiv=FALSE,...) {
     x.idx <- ii$exo.idx
     y <- ii$endogenous
     ord <- lava::ordinal(x)
+    atr <- attributes(ord)
+    ord <- intersect(y,ord)
+    attributes(ord) <- atr
+
     status <- rep(0,length(y))
     bin <- tryCatch(match(do.call("binary",list(x=x)),y),error=function(x) NULL)
+    ## FIX: binary should be added...
     status[match(ord,y)] <- 2
-    
+
     Table <- (length(y)==length(ord)) && (length(x.idx)==0)
     if (Table) {
-        pat <- mets::fast.pattern(data,categories=max(data)+1)
+        pat <- mets::fast.pattern(data[,y,drop=FALSE],categories=max(data[,y,drop=FALSE])+1)
         data <- pat$pattern
         colnames(data) <- y
     }
-    
+
     mu <- predict(x,data=data,p=p)
     S <- attributes(mu)$cond.var
     class(mu) <- "matrix"
@@ -77,12 +82,11 @@ normal_objective.lvm <- function(x,p,data,weight2=NULL,indiv=FALSE,...) {
         yu[,colnames(weight2)] <- weight2
         status[match(colnames(weight2),y)] <- 1
     }
+
     l <- mets::loglikMVN(yl,yu,status,mu,S,thres)
 
     if (Table) {
         l <- l[pat$group+1]
-        ##data <- data[pat$group+1,]
-        ##l <- l+runif(length(l),0,0.001)
     }
     if (indiv) return(-l)
     return(-sum(l))
@@ -94,6 +98,9 @@ normal_logLik.lvm <- function(object,p,data,weight2=NULL,...) {
 }
 
 normal_gradient.lvm <- function(x,p,data,weight2=NULL,indiv=FALSE,...) {
+    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) runif(1)
+    save.seed <- get(".Random.seed", envir = .GlobalEnv)
+    on.exit(assign(".Random.seed", save.seed, envir = .GlobalEnv))
     if (!requireNamespace("mets",quietly=TRUE)) stop("'mets' package required")
     if  (is.null(ordinal(x))) {
         D <- deriv.lvm(x,p=p)
@@ -110,15 +117,33 @@ normal_gradient.lvm <- function(x,p,data,weight2=NULL,indiv=FALSE,...) {
     numDeriv::grad(function(p0) normal_objective.lvm(x,p=p0,data=data,weight2=weight2,...),p,method=lava.options()$Dmethod)
 }
 
-normal_hessian.lvm <- function(x,p,n,...) {
+normal_hessian.lvm <- function(x,p,outer=FALSE,weight2=NULL,...) {
     if (!requireNamespace("mets",quietly=TRUE)) stop("'mets' package required")
-    ##return(numDeriv::jacobian(function(p0) normal_gradient.lvm(x,p=p0,data=data,indiv=FALSE,...),p,method=lava.options()$Dmethod))
     dots <- list(...); dots$weight <- NULL
-    do.call("information", c(list(x=x,p=p,n=n),dots))
-    ## S <- normal_gradient.lvm(x,p=p,data=data,indiv=TRUE,...)
-    ## J <- t(S)%*%S
-    ## attributes(J)$grad <- colSums(S)
-    ## return(J)
+    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) runif(1)
+    save.seed <- get(".Random.seed", envir = .GlobalEnv)
+    on.exit(assign(".Random.seed", save.seed, envir = .GlobalEnv))
+    if (!outer) {
+        f <- function(p) {
+            set.seed(1)
+        do.call("normal_objective.lvm", c(list(x,p=p,indiv=FALSE,weight2=weight2),dots))
+        }
+        g <- function(p) {
+            set.seed(1)
+            do.call("normal_gradient.lvm", c(list(x,p=p,indiv=FALSE,weight2=weight2),dots))
+        }
+        if (is.null(ordinal(x)) && is.null(weight2))
+            return(numDeriv::jacobian(g,p))
+        else {
+            return(numDeriv::hessian(f,p))
+        }
+    }
+    ## Else calculate outer product of the score (empirical variance of score)
+    S <- normal_gradient.lvm(x,p=p,indiv=TRUE,...)
+    J <- t(S)%*%S
+    attributes(J)$grad <- colSums(S)
+    return(J)
+
 }
 
 ##normal_gradient.lvm <- normal_hessian.lvm <- NULL
