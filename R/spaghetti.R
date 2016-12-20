@@ -10,9 +10,9 @@
 ##' @param col Colour
 ##' @param alpha transparency (0-1)
 ##' @param lwd Line width
+##' @param level Confidence level
 ##' @param trend.formula Formula for trendline
 ##' @param tau Quantile to estimate (trend)
-##' @param level Confidence level
 ##' @param trend.lty Trend line type
 ##' @param trend.join Trend polygon
 ##' @param trend.delta Length of limit bars
@@ -21,6 +21,7 @@
 ##' @param trend.alpha Transparency
 ##' @param trend.lwd Trend line width
 ##' @param legend Legend
+##' @param by make separate plot for each level in 'by' (formula, name of column, or vector)
 ##' @param xlab Label of X-axis
 ##' @param ylab Label of Y-axis
 ##' @param add Add to existing device
@@ -35,7 +36,7 @@
 ##' regression(m,y=y,x=~u) <- 1
 ##' regression(m,y=y,x=~s) <- seq(K)-1
 ##' regression(m,y=y,x=~x) <- "b"
-##' d <- sim(m,500)
+##' d <- sim(m,500); d$z <- rbinom(500,1,0.5)
 ##' dd <- mets::fast.reshape(d);
 ##' dd$num <- dd$num+rnorm(nrow(dd),sd=0.5) ## Unbalance
 ##' spaghetti(y~num,dd,id="id",lty=1,col=Col(1,.4),trend=TRUE,trend.col="darkblue")
@@ -47,10 +48,26 @@ spaghetti <- function(formula,data,id="id",group=NULL,
                       trend.lty=1,trend.join=TRUE,trend.delta=0.2,
                       trend=!is.null(tau),trend.col=col,
                       trend.alpha=0.2,trend.lwd=3,
-                      legend=NULL,
+                      legend=NULL, by=NULL,
                       xlab="Time",ylab="",add=FALSE,...) {
                          ##spaghetti <- function(formula,data,id,type="l",lty=1,col=Col(1),trend=FALSE,trend.col="darkblue",trend.alpha=0.2,trend.lwd=3,xlab="Time",ylab="",...) {
-        if (!lava.options()$cluster.index) stop("mets not available? Check 'lava.options()cluster.index'.")    
+    if (!lava.options()$cluster.index) stop("mets not available? Check 'lava.options()cluster.index'.")
+    if (!is.null(by)) {
+        if (is.character(by) && length(by==1)) {
+            by <- data[,by]
+        } else if (inherits(by,"formula")) {
+            by <- model.matrix(update(by,~-1+.),data)
+        }
+        cl <- match.call(expand.dots=TRUE)
+        cl$by <- NULL
+        datasets <- split(data,by)
+        res <- c()
+        for (d in datasets) {
+            cl$data <- d
+            res <- c(res, eval(cl,parent.frame()))
+        }
+        return(res)
+    }
     if (!is.null(group)) {
         if (is.character(group) && length(group==1)) {
             M <- data[,group]
@@ -114,8 +131,8 @@ spaghetti <- function(formula,data,id="id",group=NULL,
         X <- NULL
         matplot(t(Y),type=type,lty=lty,lwd=lwd,col=Col(col[1],alpha[1]),xlab=xlab,ylab=ylab,...)
     } else {
-        data <- data[,c(id,x,y),drop=FALSE]
-        wide <- mets::fast.reshape(dsort(data,c(id,x)),id=id,varying=c(y,x),...)
+        data <- data[,c(id,x,y),drop=FALSE]        
+        wide <- mets::fast.reshape(data[order(data[,id],data[,x]),],id=id,varying=c(y,x),...)
         yidx <- Idx(y,names(wide))
         xidx <- Idx(x,names(wide))
         Y <- wide[,yidx,drop=FALSE]

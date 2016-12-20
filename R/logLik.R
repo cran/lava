@@ -182,6 +182,9 @@ gaussian_logLik.lvm <- function(object,p,data,
                   exo =  { exo.idx } )
 
   mom <- moments(object, p, conditional=(type[1]=="cond2"), data=data)
+
+  if (!lava.options()$allow.negative.variance && any(diag(mom$P)<0)) return(NaN)
+
   C <- mom$C
   xi <- mom$xi
   if (type[1]=="exo") {
@@ -191,7 +194,7 @@ gaussian_logLik.lvm <- function(object,p,data,
   Debug(list("C=",C),debug)
   k <- nrow(C)
 
-  iC <- Inverse(C,det=TRUE)
+  iC <- Inverse(C,det=TRUE, symmetric = TRUE)
   detC <- attributes(iC)$det
 
   if (!is.null(weight)) {

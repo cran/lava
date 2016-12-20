@@ -123,7 +123,7 @@
              weight2,
              id,
              fix,
-             index=TRUE,
+             index=!quick,
              graph=FALSE,
              silent=lava.options()$silent,
              quick=FALSE,
@@ -153,6 +153,7 @@
             gamma=lava.options()$gamma,
             gamma2=1,
             ngamma=lava.options()$ngamma,
+            backtrack=lava.options()$backtrack,
             lambda=0.05,
             abs.tol=1e-9,
             epsilon=1e-10,
@@ -238,7 +239,7 @@
         }
 
         Debug("procdata")
-        dd <- procdata.lvm(x,data=data)
+        dd <- procdata.lvm(x,data=data,missing=missing)
         S <- dd$S; mu <- dd$mu; n <- dd$n
         ## Debug(list("n=",n))
         ## Debug(list("S=",S))
@@ -295,7 +296,7 @@
         }
 
 
-        if (!quick & index) {
+        if (index) {
             ## Proces data and setup some matrices
             x <- fixsome(x, measurement.fix=fix, S=S, mu=mu, n=n,debug=!silent)
             if (!silent)
@@ -347,15 +348,14 @@
                     optim$start <- start
                 }
         }
-
-        coefname <- coef(x,mean=optim$meanstructure,fix=FALSE);
-        names(optim$start) <- coefname
-
+        
         ## Missing data
         if (missing) {
             return(estimate.MAR(x=x,data=data,fix=fix,control=optim,debug=lava.options()$debug,silent=silent,estimator=estimator,weight=weight,weight2=weight2,cluster=id,...))
         }
-
+        coefname <- coef(x,mean=optim$meanstructure,fix=FALSE);
+        names(optim$start) <- coefname
+        
         ## Non-linear parameter constraints involving observed variables? (e.g. nonlinear regression)
         constr <- lapply(constrain(x), function(z)(attributes(z)$args))
         xconstrain <- intersect(unlist(constr), manifest(x))
@@ -398,7 +398,7 @@
             names(optim$start) <- nn
         }
         ## Fix problems with starting values?
-        optim$start[is.nan(optim$start)] <- 0
+        optim$start[is.nan(unlist(optim$start))] <- 0
         ## Debug(list("lower=",lower))
 
         ObjectiveFun  <- paste0(estimator, "_objective", ".lvm")

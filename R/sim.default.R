@@ -149,12 +149,13 @@ sim.default <- function(x=NULL,R=100,f=NULL,colnames=NULL,messages=1L,mc.cores,b
     count <- 0
     if (messages>0) pb <- txtProgressBar(style=lava.options()$progressbarstyle,width=40)
     time <- c()
+    robx <- function(...) tryCatch(x(...),error=function(e) NA)    
     for (ii in idx) {
         count <- count+1
         if (!missing(cl) && !is.null(cl)) {
-            pp <- c(as.list(parval[ii,,drop=FALSE]),dots,list(cl=cl,fun=x,SIMPLIFY=FALSE))
+            pp <- c(as.list(parval[ii,,drop=FALSE]),dots,list(cl=cl,fun=robx,SIMPLIFY=FALSE))
         } else {
-            pp <- c(as.list(parval[ii,,drop=FALSE]),dots,list(mc.cores=mc.cores,FUN=x,SIMPLIFY=FALSE))
+            pp <- c(as.list(parval[ii,,drop=FALSE]),dots,list(mc.cores=mc.cores,FUN=robx,SIMPLIFY=FALSE))
         }
         if (mc.cores>1) {
             if (!missing(cl) && !is.null(cl)) {
@@ -181,12 +182,16 @@ sim.default <- function(x=NULL,R=100,f=NULL,colnames=NULL,messages=1L,mc.cores,b
 ##' @export
 "[.sim" <- function (x, i, j, drop = FALSE) {
     atr <- attributes(x)
-    class(x) <- "matrix"
-    x <- NextMethod("[",drop=FALSE)
-    atr.keep <- "call"
+    if (!is.null(dim(x))) {
+        class(x) <- "matrix"
+    } else {
+        class(x) <- class(x)[-1]
+    }
+    x <- NextMethod("[",drop=drop)
+    atr.keep <- c("call","time")
     if (missing(j)) atr.keep <- c(atr.keep,"f")
     attributes(x)[atr.keep] <- atr[atr.keep]
-    class(x) <- c("sim","matrix")
+    if (!drop) class(x) <- c("sim",class(x))
     x
 }
 
@@ -207,14 +212,30 @@ Time <- function(sec,print=FALSE,...) {
 }
 
 Print <- function(x,n=5,digits=max(3,getOption("digits")-3),...) {
-    if (is.null(rownames(x))) rownames(x) <- seq(nrow(x))
-    sep <- rbind('---'=rep('',ncol(x)))
+    mat <- !is.null(dim(x))
+    if (!mat) {
+        x <- cbind(x)
+        colnames(x) <- ""
+    }
+    if (is.null(rownames(x))) {
+        rownames(x) <- seq(nrow(x))
+    }
+    sep <- rbind("---"=rep('',ncol(x)))
     if (n<1) {
         print(x,quote=FALSE,digits=digits,...)
     } else {
-        hd <- base::as.matrix(base::format(utils::head(x,n),digits=digits,...))
-        tl <- base::as.matrix(base::format(utils::tail(x,n),digits=digits,...))
-        print(rbind(hd,sep,tl),quote=FALSE,...)
+        ## hd <- base::as.matrix(base::format(utils::head(x,n),digits=digits,...))
+        ## tl <- base::as.matrix(base::format(utils::tail(x,n),digits=digits,...))
+        ## print(rbind(hd,sep,tl),quote=FALSE,...)
+        if (NROW(x)<=(2*n)) {
+            hd <- base::format(utils::head(x,2*n),digits=digits,...)
+            print(hd, quote=FALSE,...)
+        } else {
+            hd <- base::format(utils::head(x,n),digits=digits,...)
+            tl <- base::format(utils::tail(x,n),digits=digits,...)
+            print(rbind(base::as.matrix(hd),sep,base::as.matrix(tl)),
+                  quote=FALSE,...)
+        }
     }
     invisible(x)
 }
@@ -222,7 +243,9 @@ Print <- function(x,n=5,digits=max(3,getOption("digits")-3),...) {
 ##' @export
 print.sim <- function(x,...) {
     attr(x,"f") <- attr(x,"call") <- NULL
-    class(x) <- "matrix"
+    if (!is.null(dim(x))) {
+        class(x) <- "matrix"
+    }
     Print(x,...)
     return(invisible(x))
 }
@@ -234,7 +257,7 @@ print.sim <- function(x,...) {
 ##' n <- 1000
 ##' val <- cbind(est1=rnorm(n,sd=1),est2=rnorm(n,sd=0.2),est3=rnorm(n,1,sd=0.5),
 ##'              sd1=runif(n,0.8,1.2),sd2=runif(n,0.1,0.3),sd3=runif(n,0.25,0.75))
-
+##' 
 ##' plot.sim(val,estimate=c(1,2),true=c(0,0),se=c(4,5),equal=TRUE)
 ##' plot.sim(val,estimate=c(1,3),true=c(0,1),se=c(4,6),density.xlim=c(-3,3),ylim=c(-3,3))
 ##' plot.sim(val,estimate=c(1,2),true=c(0,0),se=c(4,5),equal=TRUE,plot.type="single")
@@ -243,7 +266,7 @@ print.sim <- function(x,...) {
 ##' plot.sim(val,estimate=c(1,2,3),equal=TRUE,byrow=TRUE)
 ##' plot.sim(val,estimate=c(1,2,3),plot.type="single")
 ##' plot.sim(val,estimate=1,se=c(3,4,5),plot.type="single")
-
+##' 
 ##' density.sim(val,estimate=c(1,2,3),polygon.density=c(0,10,10),polygon.angle=c(0,45,-45))
 ##' @param x sim object
 ##' @param ... Graphical arguments to plot.sim
@@ -507,7 +530,7 @@ plot.sim <- function(x,estimate,se=NULL,true=NULL,
 
     if (single) {
         N <- K
-        nk <- lapply(se,length)
+        nk <- unlist(lapply(se,length))
         if (!is.null(se)) N <- sum(unlist(nk))+K
         col <- rep(col,length.out=K)
         for (i in seq(K)) {
@@ -522,7 +545,7 @@ plot.sim <- function(x,estimate,se=NULL,true=NULL,
         density.alpha <- rep(density.alpha,length.out=K)
         polygon.density <- rep(polygon.density,length.out=K)
         polygon.angle <- rep(polygon.angle,length.out=K)
-        for (i in seq(K)) {
+        for (i in seq_len(K)) {
             alphas <- density.alpha[i]
             densities <- polygon.density[i]
             if (!is.null(densities) && densities<1) densities <- NULL
@@ -633,7 +656,10 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
     }
 
     if (!is.null(true)) {
-        if (length(true)!=length(estimate)) stop("'true' should be of same length as 'estimate'.")
+        if (length(true)!=length(estimate)) {
+            ##stop("'true' should be of same length as 'estimate'.")
+            true <- rep(true,length.out=length(estimate))
+        }
         est <- rbind(est,
                      rbind(True=true),rbind(Bias=est["Mean",]-true),
                      rbind(RMSE=((est["Mean",]-true)^2+(est["SD",])^2)^.5)
