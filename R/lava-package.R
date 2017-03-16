@@ -14,6 +14,7 @@
 ##' @importFrom utils stack combn read.csv getTxtProgressBar
 ##'     setTxtProgressBar txtProgressBar head tail modifyList
 ##'     getFromNamespace packageVersion write.table methods data
+##'     glob2rx
 ##' @importFrom stats density deriv effects lm family simulate vcov
 ##'     var cov cor coef model.frame model.weights as.formula
 ##'     model.matrix rnorm rchisq runif rlnorm pnorm qnorm na.omit AIC
@@ -249,7 +250,7 @@ NULL
 ##' randomslope randomslope<- lisrel variances offdiags describecoef
 ##' parlabels rsq stdcoef CoefMat CoefMat.multigroupfit deriv updatelvm
 ##' checkmultigroup profci estimate.MAR missingModel Inverse
-##' gaussian_logLik.lvm addhook gethook multigroup Weight fixsome
+##' gaussian_logLik.lvm addhook gethook multigroup Weights fixsome
 ##' parfix parfix<- merge IV parameter index index<-
-##' Specials parsedesign procformula getoutcome decomp.specials
+##' Specials procformula getoutcome decomp.specials
 NULL

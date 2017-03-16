@@ -90,6 +90,7 @@ assign("options", list(
     progressbarstyle=3,
     itol=1e-16,
     cluster.index=versioncheck("mets",c(0,2,7)),
+    tobit=versioncheck("lava.tobit",c(0,5)),
     Dmethod="simple", ##"Richardson"
     messages=1,
     parallel=TRUE,
@@ -99,6 +100,7 @@ assign("options", list(
     coef.names=FALSE,
     constrain=TRUE,
     graph.proc="beautify",
+    regex=FALSE,
     min.weight=1e-3,
     exogenous=TRUE,
     plot.engine="Rgraphviz",
