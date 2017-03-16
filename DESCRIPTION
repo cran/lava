@@ -1,8 +1,8 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.4.8
-Date: 2017-03-14
+Version: 1.5
+Date: 2017-03-16
 Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
              person("Brice", "Ozenne", role = "ctb"),
              person("Thomas", "Gerds", role = "ctb"))
@@ -24,6 +24,6 @@ Suggests: KernSmooth, Matrix, Rgraphviz, ascii, data.table, fields,
 ByteCompile: yes
 RoxygenNote: 6.0.1
 NeedsCompilation: no
-Packaged: 2017-03-16 11:05:41 UTC; klaus
+Packaged: 2017-03-16 20:59:37 UTC; klaus
 Repository: CRAN
-Date/Publication: 2017-03-16 13:27:36
+Date/Publication: 2017-03-16 22:51:43 UTC

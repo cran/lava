@@ -1,7 +1,7 @@
-6dc61192ecec4fc800b807f012ad8b6c *DESCRIPTION
+80ea264a242dbfe3774ba55f361b08c7 *DESCRIPTION
 0fc66ded24f1e4e865d649c9fee6af9e *INDEX
 ecb73701901b9d49f38d25762c0b4cdd *NAMESPACE
-ddab86edca837ad1d1576e6c084af601 *NEWS
+e5c9b535982266704f62fc1610eacc72 *NEWS
 de70ed42553dacc167440662306d453d *R/By.R
 a28c3044137e563c2f000316b7ffbe64 *R/Col.R
 9a51c793e1a8d12fa5af4ea0229b5017 *R/Expand.R
@@ -90,11 +90,11 @@ e4eed65212e2dac2a4f9d3e2d8833472 *R/modelsearch.R
 c6d9f1afd8a70dceec19cff216fe4b51 *R/multinomial.R
 1f9bfa57aa1a9c3e875d73f20ad8104e *R/multipletesting.R
 c245590d634326ec5fc4a33922b8f62c *R/nodecolor.R
-9d8e6a8cabd2273859e24756c33502aa *R/normal.R
+3d2da1c58853a9822188a1637bdd1da5 *R/normal.R
 269d845f16af61fe3687ee22f88906f5 *R/onload.R
 8e2dc1b12af748ed04c7236d35edac09 *R/operators.R
 7a11a5e59820856e4230a568d99d62f5 *R/optims.R
-caecc533050feb1c8d571fb36bc66b1a *R/ordinal.R
+ac8c22209bbc470ac0c9e5144cd431e1 *R/ordinal.R
 d7f7cdaa2f36b69aa8eedcfdd0ca3177 *R/ordreg.R
 ede5ff6ffb5bb2a1ec45c97e44a22de3 *R/parameter.R
 7091579f34b4380725e4e67bd4937595 *R/parlabels.R
@@ -163,7 +163,7 @@ cdefb6eb610f302036b2de243a99a517 *demo/inference.R
 a08f2482ed1aa2c382c8e518ecc4a779 *demo/model.R
 891ffcc55aa9fc46d121187705269df5 *demo/simulation.R
 1487b811b5815fe9d33f9202b3688598 *inst/CITATION
-2f09938eda42dcb9c5ed0b9cf9e84a3e *inst/doc/reference.pdf
+2b2987525a3e56cb1bb3f06a1cbf13cd *inst/doc/reference.pdf
 e5565bd9058e67350fee135e726a1203 *inst/gof1.png
 353943bdc7be1e7b960a39a6f3151f3b *inst/lava1.png
 142883ae5125f895240b57b6de582158 *inst/me1.png
