@@ -57,6 +57,13 @@
 ##' l <- lm(Sepal.Length ~ Sepal.Width*Species,iris)
 ##' plotConf(l,var2="Species")
 ##' plotConf(l,var1="Sepal.Width",var2="Species")
+##' 
+##' \dontrun{
+##' ## lme4 model
+##' dd$Id <- rbinom(n, size = 3, prob = 0.3)
+##' lmer0 <- lme4::lmer(y ~ x0 + x1*x2 + (1|Id), dd)
+##' plotConf(lmer0, var1="x1", var2="x2")
+##' }
 ##' @keywords hplot, regression
 plotConf <- function(model,
                      var1=NULL,
@@ -101,7 +108,13 @@ plotConf <- function(model,
     } else {
         curdata <- get_all_vars(formula(model), data=data)
     }
-    curdata0 <- model.frame(model,data) ## Checking for factors
+    
+    if (inherits(model,"lmerMod")) {
+      curdata0 <- model.frame(model, data = data, fixed.only = FALSE)
+    } else {
+      curdata0 <- model.frame(model,data) ## Checking for factors
+    }
+    
     
     if (is.null(var1) && is.null(var2)) {
         var1 <- colnames(curdata)[2]
@@ -207,7 +220,7 @@ plotConf <- function(model,
         if (inherits(model,"geeglm")) {
             SS <- (summary(model)$cov.unscaled)
         } else {
-            SS <- stats::vcov(model)
+            SS <- as.matrix(stats::vcov(model))
         }
     }
     ## coefnames <- c("(Intercept)",var1)

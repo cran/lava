@@ -132,10 +132,6 @@
              p,
              ...) {
 
-        if (length(exogenous(x)>0)) {
-            catx <- categorical2dummy(x,data)
-            x <- catx$x; data <- catx$data
-        }
         cl <- match.call()
         if (!base::missing(param)) {
             oldparam <- lava.options()$param
@@ -180,6 +176,10 @@
             innames <- intersect(ls(envir=data),vars(x))
             data <- as.data.frame(lapply(innames,function(x) get(x,envir=data)))
             names(data) <- innames
+        }
+        if (length(exogenous(x)>0)) {
+            catx <- categorical2dummy(x,data)
+            x <- catx$x; data <- catx$data
         }
 
         if (!lava.options()$exogenous) exogenous(x) <- NULL
@@ -250,8 +250,8 @@
         ## Debug(list("n=",n))
         ## Debug(list("S=",S))
         ## Debug(list("mu=",mu))
-        
-        ##  if (fix) {            
+
+        ##  if (fix) {
             if (length(var.missing)>0) {## Convert to latent:
                 new.lat <- setdiff(var.missing,latent(x))
                 if (length(new.lat)>0)
@@ -374,7 +374,7 @@
             constrainM <- names(constr)%in%unlist(x$mean)
             for (i in seq_len(length(constr))) {
                 if (!constrainM[i]) {
-                    if (constr[[i]]%in%xconstrain) {
+                    if (any(constr[[i]]%in%xconstrain)) {
                         xconstrainM <- FALSE
                         break;
                     }
@@ -549,10 +549,16 @@
                     for (i in seq_len(length(xconstrain))) {
                         pp <- unlist(M$parval[xconstrain[[i]]$warg]);
                         myidx <- with(xconstrain[[i]],order(c(wargidx,exoidx)))
-                        mu <- with(xconstrain[[i]],
-                                   apply(data[,exo,drop=FALSE],1,
-                                         function(x) func(
-                                             unlist(c(pp,x))[myidx])))
+                        D <- cbind(rbind(pp)%x%cbind(rep(1,nrow(Mu))),
+                                  data[,xconstrain[[i]]$exo,drop=FALSE])[,myidx,drop=FALSE]
+                        mu <- try(xconstrain[[i]]$func(D),silent=TRUE)
+                        if (is.data.frame(mu)) mu <- mu[,1]
+                        if (inherits(mu,"try-error") || NROW(mu)!=NROW(Mu)) {
+                            ## mu1 <- with(xconstrain[[i]],
+                            ##            apply(data[,exo,drop=FALSE],1,
+                            ##                  function(x) func(unlist(c(pp,x))[myidx])))
+                            mu <- apply(D,1,xconstrain[[i]]$func)
+                        }
                         Mu[,xconstrain[[i]]$endo] <- mu
                     }
                     offsets <- Mu%*%t(M$IAi)[,endogenous(x)]
@@ -775,7 +781,7 @@
                 else
                     myInfo <- function(pp)
                         numDeriv::hessian(myObj,pp)
-            }
+                }
                 I <- myInfo(opt$estimate)
                 asVar <- tryCatch(Inverse(I),
                                   error=function(e) matrix(NA, length(opt$estimate), length(opt$estimate)))
@@ -866,7 +872,7 @@ estimate.formula <- function(x,data=parent.frame(),pred.norm=c(),unstruct=FALSE,
         lava::distribution(model,yvar) <- distribution
         estimator <- "glm"
     }
-    mydata <- na.omit(as.data.frame(cbind(y,mm))); names(mydata)[1] <- yvar
+    mydata <- na.omit(as.data.frame(cbind(data.frame(y),mm))); names(mydata)[1] <- yvar
     exogenous(model) <- setdiff(covars,pred.norm)
     if (unstruct) {
         model <- covariance(model,pred.norm,pairwise=TRUE)

@@ -9,16 +9,16 @@ test_that("Effects",{
     d <- sim(m,100,seed=1)
     start <- c(rep(0,6),rep(1,17))
     suppressWarnings(e <- estimate(m,d,control=list(iter.max=0,start=start)))
-    f <- coef(ef <- effects(e,y1~x))
+    f <- summary(ef <- effects(e,y1~x))$coef
     expect_true(all(f[,2]>0)) ## Std.err
     expect_equal(f["Total",1],3) 
     expect_equal(f["Direct",1],1)
-    f2 <- coef(effects(e,u~v))
+    f2 <- summary(effects(e,u~v))$coef
     expect_equal(f2["Total",1],1)
     expect_equal(f2["Direct",1],1)
     expect_equal(f2["Indirect",1],0)
 
-    expect_output(print(ef),"Indirect effects")
+    expect_output(print(ef),"Mediation proportion")
     expect_equivalent(confint(ef)["Direct",],
                       confint(e)["y1~x",])
 
@@ -271,7 +271,7 @@ test_that("Prediction with missing data, random intercept", {
     system.time(e <- estimate(m0,d))
 
     mytol <- 1e-6
-    mse <- function(x,y=0) mean(na.omit(x-y)^2)
+    mse <- function(x,y=0) mean(na.omit(as.matrix(x)-as.matrix(y))^2)
     expect_true(mse(logLik(e),logLik(l))<mytol)
     expect_true(mse(nlme::fixef(l),coef(e)[1:2])<mytol)
     u1 <- nlme::ranef(l)##[[1]][,1]
@@ -313,6 +313,7 @@ test_that("Random slope model", {
     dw <- sim(m,20)
 
     dd <- mets::fast.reshape(dw)
+    dd$num <- dd$num+runif(nrow(dd),0,0.2)
     dd0 <- dd[-c(1:2*3),]
     library(lme4)
     l <- lmer(y~ 1+num +(1+num|id),dd,REML=FALSE)
@@ -370,7 +371,7 @@ test_that("Predictions, jacobians", {
 
     p <- c("u2,u2"=2,"u1,u1"=0.5)
     names(p) <- gsub(",",lava.options()$symbols[2],names(p))
-    d <- simulate(m,10,p=p,seed=123)
+    d <- simulate(m,50,p=p,seed=123)
     e <- estimate(m,d)
 
     object <- e
