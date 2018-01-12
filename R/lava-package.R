@@ -8,7 +8,7 @@
 ##' @importFrom graphics plot lines points abline points text layout
 ##'     par plot.new plot.window title rect locator segments image
 ##'     mtext box axis polygon matplot contour contour.default
-##'     identify
+##'     identify rug curve
 ##' @importFrom grDevices xy.coords col2rgb rgb colors rainbow
 ##'     topo.colors gray.colors palette colorRampPalette heat.colors
 ##' @importFrom utils stack combn read.csv getTxtProgressBar
@@ -245,7 +245,6 @@ NULL
 ##' pars.lvmfit pars.glm score.glm procdata.lvmfit modelPar modelVar
 ##' matrices reorderdata graph2lvm igraph.lvm subgraph finalize
 ##' index.lvm index.lvmfit index reindex index<-
-##' survival survival<- ordinal ordinal<-
 ##' rmvn dmvn NR logit expit tigol
 ##' randomslope randomslope<- lisrel variances offdiags describecoef
 ##' parlabels rsq stdcoef CoefMat CoefMat.multigroupfit deriv updatelvm
@@ -253,4 +252,5 @@ NULL
 ##' gaussian_logLik.lvm addhook gethook multigroup Weights fixsome
 ##' parfix parfix<- merge IV parameter index index<-
 ##' Specials procformula getoutcome decomp.specials
+##' na.pass0
 NULL

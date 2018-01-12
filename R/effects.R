@@ -36,7 +36,7 @@ totaleffects.lvmfit <- function(object,to,...,level=0.95) {
 }
 
 ##' @export
-effects.lvmfit <- function(object,to,from,silent=FALSE,...) {
+effects.lvmfit <- function(object,to,from,...) {
   if (missing(to)) {
     return(summary(object))
   }
@@ -50,7 +50,7 @@ effects.lvmfit <- function(object,to,from,silent=FALSE,...) {
     from <- P$path[[1]][1]
     to <- tail(P$path[[1]],1)
   }
-  cc <- coef(object,level=9,labels=FALSE) ## All parameters (fixed and variable)
+  cc <- coef(object,type=9,labels=FALSE) ## All parameters (fixed and variable)
   cc0 <- cbind(coef(object)) ## Estimated parameters
   i1 <- na.omit(match(rownames(cc),rownames(cc0)))
   idx.cc0 <-  which(rownames(cc)%in%rownames(cc0)); ## Position of estimated parameters among all parameters
@@ -61,7 +61,7 @@ effects.lvmfit <- function(object,to,from,silent=FALSE,...) {
 ##    V <- V[-seq_len(npar.mean),-seq_len(npar.mean)]
   S[idx.cc0,idx.cc0] <- V[i1,i1] ## "Covariance matrix" of all parameters
 
-  cclab <- rownames(coef(object,level=9,labels=TRUE)) ## Identify equivalence constraints
+  cclab <- rownames(coef(object,type=9,labels=TRUE)) ## Identify equivalence constraints
   cctab <- table(cclab)
   equiv <- which(cctab>1)
   for (i in seq_len(length(equiv))) {

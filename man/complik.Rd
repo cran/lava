@@ -5,7 +5,7 @@
 \title{Composite Likelihood for probit latent variable models}
 \usage{
 complik(x, data, k = 2, type = c("nearest", "all"), pairlist,
-  silent = TRUE, estimator = "normal", ...)
+  messages = 0, estimator = "normal", ...)
 }
 \arguments{
 \item{x}{\code{lvm}-object}
@@ -23,7 +23,7 @@ are included}
 argument which overrides \code{k} and \code{type} but gives complete
 flexibility in the specification of the composite likelihood}
 
-\item{silent}{Turn output messsages on/off}
+\item{messages}{Control amount of messages printed}
 
 \item{estimator}{Model (pseudo-likelihood) to use for the pairs/groups}
 
@@ -35,6 +35,12 @@ An object of class \code{clprobit} inheriting methods from \code{lvm}
 \description{
 Estimate parameters in a probit latent variable model via a composite
 likelihood decomposition.
+}
+\examples{
+m <- lvm(c(y1,y2,y3)~b*x+1*u[0],latent=~u)
+ordinal(m,K=2) <- ~y1+y2+y3
+d <- sim(m,50,seed=1)
+e1 <- complik(m,d,control=list(trace=1),type="all")
 }
 \seealso{
 estimate

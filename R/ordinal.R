@@ -167,8 +167,22 @@ ordinal.estimate.hook <- function(x,data,weights,data2,estimator,...) {
 }
 
 
-
+##' Define variables as ordinal
+##'
+##' Define variables as ordinal in latent variable model object
 ##' @export
+##' @aliases ordinal ordinal<-
+##' @param x Object
+##' @param ... additional arguments to lower level functions
+##' @param value variable (formula or character vector)
+##' @examples
+##' if (requireNamespace("mets")) {
+##' m <- lvm(y + z ~ x + 1*u[0], latent=~u)
+##' ordinal(m, K=3) <- ~y+z
+##' d <- sim(m, 100, seed=1)
+##' e <- estimate(m, d)
+##' }
+##' 
 "ordinal<-" <- function(x,...,value) UseMethod("ordinal<-")
 
 ##' @export
@@ -211,22 +225,25 @@ print.ordinal.lvm <- function(x,...) {
             return(NULL)
     }
     if (K[1]==0L || is.null(K[1]) || (is.logical(K) & !K[1])) {
-        x$attributes$type[var] <- setdiff(x$attributes$type,var)
-        pp <- unlist(x$attributes$ordinalparname[var])
-        parameter(x,remove=TRUE) <- pp
-        x$attributes$ordinalparname[var] <- NULL        
-        x$attributes$ordinal[var] <- NULL
-        ##x$attributes$labels[var] <- NULL
-        x$attributes$type <- x$attributes$type[setdiff(names(x$attributes$type),var)]
-        x$attributes$liability <- x$attributes$liability[setdiff(names(x$attributes$liability),var)]
-        x$attributes$nordinal <- x$attributes$nordinal[setdiff(names(x$attributes$nordinal),var)]
-        x$attributes$normal <- x$attributes$normal[setdiff(names(x$attributes$normal),var)]
-        x$constrainY[var] <- NULL
-        exo <- intersect(var,exogenous(x,TRUE))
-        if (length(exo)>0) {
-            intercept(x,var) <- NA
-            covariance(x,var) <- NA
-            exogenous(x) <- union(exogenous(x),exo)
+        idx <- na.omit(match(var,names(x$attributes$ordinal)))
+        if (length(idx)>0) {
+            pp <- unlist(x$attributes$ordinalparname[idx])
+            if (!is.null(pp)) parameter(x,remove=TRUE) <- pp
+            if (!is.null(x$attributes$ordinalparname))
+                x$attributes$ordinalparname <- x$attributes$ordinalparname[-idx]
+            x$attributes$ordinal <- x$attributes$ordinal[-idx]
+            ##x$attributes$labels[var] <- NULL
+            x$attributes$type <- x$attributes$type[-idx]
+            x$attributes$constrainY <- x$attributes$constrainY[setdiff(names(x$attributes$constrainY),var)]
+            x$attributes$liability <- x$attributes$liability[-idx]
+            x$attributes$nordinal <- x$attributes$nordinal[-idx]
+            x$attributes$normal <- x$attributes$normal[-idx]
+            exo <- intersect(var,exogenous(x,TRUE))
+            if (length(exo)>0) {
+                intercept(x,var) <- NA
+                covariance(x,var) <- NA
+                exogenous(x) <- union(exogenous(x),exo)
+            }
         }
         return(x)
     }

@@ -6,7 +6,7 @@
 \usage{
 \method{estimate}{lvm}(x, data = parent.frame(), estimator = NULL,
   control = list(), missing = FALSE, weights, weightsname, data2, id, fix,
-  index = !quick, graph = FALSE, silent = lava.options()$silent,
+  index = !quick, graph = FALSE, messages = lava.options()$messages,
   quick = FALSE, method, param, cluster, p, ...)
 }
 \arguments{
@@ -44,8 +44,8 @@ ensure identifiability.)}
 
 \item{graph}{For internal use only}
 
-\item{silent}{Logical argument indicating whether information should be
-printed during estimation}
+\item{messages}{Control how much information should be
+printed during estimation (0: none)}
 
 \item{quick}{If TRUE the parameter estimates are calculated but all
 additional information such as standard errors are skipped}
@@ -58,7 +58,7 @@ additional information such as standard errors are skipped}
 
 \item{p}{Evaluate model in parameter 'p' (no optimization)}
 
-\item{...}{Additional arguments to be passed to the low level functions}
+\item{...}{Additional arguments to be passed to lower-level functions}
 }
 \value{
 A \code{lvmfit}-object.

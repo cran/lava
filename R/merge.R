@@ -32,7 +32,7 @@ merge.lvm <- function(x,y,...) {
           val[idx.] <- m2$par[j,idx][idx.]
         if (any(idx. <- !is.na(m2$fix[j,idx])))
           val[idx.] <- m2$fix[j,idx][idx.]
-        regression(m,to=nn[idx],from=nn[j],silent=TRUE) <- val
+        regression(m,to=nn[idx],from=nn[j],messages=0) <- val
       }
       P0 <- P[j,]; P0[seq_len(j-1)] <- 0
         if (any(idx <- P[j,]!=0)) {
@@ -41,7 +41,7 @@ merge.lvm <- function(x,y,...) {
             val[idx.] <- m2$covpar[j,idx][idx.]
           if (any(idx. <- !is.na(m2$covfix[j,idx])))
             val[idx.] <- m2$covfix[j,idx][idx.]
-          covariance(m,nn[idx],nn[j],silent=TRUE) <- val
+          covariance(m,nn[idx],nn[j],messages=0) <- val
         }
       }
     intercept(m,nn) <- intercept(m2)
@@ -103,7 +103,7 @@ merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=
         idlen <- unlist(lapply(id,length))
         if (!identical(idlen,nn)) stop("Wrong lengths of 'id': ", paste(idlen,collapse=","), "; ", paste(nn,collapse=","))
     }
-    if (any(unlist(lapply(id,is.null)))) stop("Id needed for each model object")
+    ##if (any(unlist(lapply(id,is.null)))) stop("Id needed for each model object")
     ##iid <- Reduce("cbind",lapply(objects,iid))
     ids <- iidall <- c(); count <- 0
     for (z in objects) {
@@ -111,6 +111,10 @@ merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=
         clidx <- NULL
         id0 <- id[[count]]
         iidz <- iid(z)
+        if (is.null(id0)) {
+            id0 <- rownames(iidz)
+            if (is.null(id0)) stop("Need id for object number ", count)
+        }
         if (!missing(subset)) iidz <- iidz[,subset,drop=FALSE]
         if (!lava.options()$cluster.index) {
             iid0 <- matrix(unlist(by(iidz,id0,colSums)),byrow=TRUE,ncol=ncol(iidz))
@@ -126,15 +130,19 @@ merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=
     }
     id <- unique(unlist(ids))
     iid0 <- matrix(0,nrow=length(id),ncol=length(coefs))
+    model.index <- c()
     colpos <- 0
     for (i in seq(length(objects))) {
-        relpos <- seq_along(coef(objects[[i]]))
+        relpos <- seq_along(coef(objects[[i]]))        
         if (!missing(subset)) relpos <- seq_along(subset)
         iid0[match(ids[[i]],id),relpos+colpos] <- iidall[[i]]
+        model.index <- c(model.index,list(relpos+colpos))
         colpos <- colpos+tail(relpos,1)
     }
     rownames(iid0) <- id
-    estimate.default(NULL, coef=coefs, stack=FALSE, data=NULL, iid=iid0, id=id, keep=keep)
+    res <- estimate.default(NULL, coef=coefs, stack=FALSE, data=NULL, iid=iid0, id=id, keep=keep)
+    res$model.index <- model.index
+    return(res)
 }
 
 

@@ -7,7 +7,7 @@
 \usage{
 \method{bootstrap}{lvm}(x,R=100,data,fun=NULL,control=list(),
                           p, parametric=FALSE, bollenstine=FALSE,
-                          constraints=TRUE,sd=FALSE,silent=FALSE,
+                          constraints=TRUE,sd=FALSE,messages=lava.options()$messages,
                           parallel=lava.options()$parallel,
                           mc.cores=NULL,
                           ...)
@@ -42,7 +42,7 @@ constraints should be included in the bootstrap procedure}
 \item{sd}{Logical indicating whether standard error estimates should be
 included in the bootstrap procedure}
 
-\item{silent}{Suppress messages}
+\item{messages}{Control amount of messages printed}
 
 \item{parallel}{If TRUE parallel backend will be used}
 
@@ -64,7 +64,7 @@ Draws non-parametric bootstrap samples
 \examples{
 m <- lvm(y~x)
 d <- sim(m,100)
-e <- estimate(y~x, d)
+e <- estimate(lvm(y~x), data=d)
 \donttest{ ## Reduce Ex.Timings
 B <- bootstrap(e,R=50,parallel=FALSE)
 B

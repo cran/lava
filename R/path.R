@@ -45,14 +45,13 @@
 ##'
 ##' @usage
 ##' \method{path}{lvm} (object, to = NULL, from, all=FALSE, ...)
-##' \method{effects}{lvmfit} (object, to, from, silent=FALSE, ...)
+##' \method{effects}{lvmfit} (object, to, from, ...)
 ##' @param object Model object (\code{lvm})
 ##' @param to Outcome variable (string). Alternatively a formula specifying
 ##' response and predictor in which case the argument \code{from} is ignored.
 ##' @param from Response variable (string), not necessarily directly affected by
 ##' \code{to}.
 ##' @param all If TRUE all simple paths (in undirected graph) is returned
-##' @param silent Logical variable which indicates whether messages are turned
 ##' on/off.
 ##' @param \dots Additional arguments to be passed to the low level functions
 ##' @export
@@ -61,10 +60,10 @@ path <- function(object,...) UseMethod("path")
 ##' @export
 path.lvmfit <- function(object,to=NULL,from,...) {
   mypath <- pathM(Model(object)$M,to,from,...)
-  cc <- coef(object,level=9,labels=FALSE) ## All parameters (fixed and variable)
+  cc <- coef(object,type=9,labels=FALSE) ## All parameters (fixed and variable)
 
-  #cc0 <- coef(object,level=1) ## Estimated parameters
-  cc0 <- coef(object,level=2) ## Estimated parameters
+  #cc0 <- coef(object,type=1) ## Estimated parameters
+  cc0 <- coef(object,type=2) ## Estimated parameters
   i1 <- na.omit(match(rownames(cc),rownames(cc0)))
   idx.cc0 <-  which(rownames(cc)%in%rownames(cc0)); ## Position of estimated parameters among all parameters
   S <- matrix(0,nrow(cc),nrow(cc)); rownames(S) <- colnames(S) <- rownames(cc)

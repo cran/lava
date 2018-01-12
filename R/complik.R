@@ -12,7 +12,7 @@
 ##' @param pairlist A list of indices specifying the composite groups. Optional
 ##' argument which overrides \code{k} and \code{type} but gives complete
 ##' flexibility in the specification of the composite likelihood
-##' @param silent Turn output messsages on/off
+##' @param messages Control amount of messages printed
 ##' @param \dots Additional arguments parsed on to lower-level functions
 ##' @param estimator Model (pseudo-likelihood) to use for the pairs/groups
 ##' @return An object of class \code{clprobit} inheriting methods from \code{lvm}
@@ -20,7 +20,12 @@
 ##' @seealso estimate
 ##' @keywords models regression
 ##' @export
-complik <- function(x,data,k=2,type=c("nearest","all"),pairlist,silent=TRUE,estimator="normal",
+##' @examples
+##' m <- lvm(c(y1,y2,y3)~b*x+1*u[0],latent=~u)
+##' ordinal(m,K=2) <- ~y1+y2+y3
+##' d <- sim(m,50,seed=1)
+##' e1 <- complik(m,d,control=list(trace=1),type="all")
+complik <- function(x,data,k=2,type=c("nearest","all"),pairlist,messages=0,estimator="normal",
                      ...) {
     y <- setdiff(endogenous(x),latent(x))
     x.idx <- index(x)$exo.idx
@@ -40,7 +45,6 @@ complik <- function(x,data,k=2,type=c("nearest","all"),pairlist,silent=TRUE,esti
     } else {
         binsurvpos <- which(colnames(data)%in%binsurv)
     }
-    
     if (missing(pairlist)) {
         #if (length(binsurv)<(k+1)) stop("No need for composite likelihood analysis.")       
         if (type[1]=="all") {
@@ -86,7 +90,7 @@ complik <- function(x,data,k=2,type=c("nearest","all"),pairlist,silent=TRUE,esti
         }
         mydata[(1:nrow(data))+(ii-1)*nrow(data),] <- data0
     }
-    suppressWarnings(e0 <- estimate(x,data=mydata,estimator=estimator,missing=TRUE,silent=silent,
+    suppressWarnings(e0 <- estimate(x,data=mydata,estimator=estimator,missing=TRUE,messages=messages,
                                    ...))
 
     S <- score(e0,indiv=TRUE)

@@ -59,15 +59,15 @@
 ##' ensure identifiability.)
 ##' @param index For internal use only
 ##' @param graph For internal use only
-##' @param silent Logical argument indicating whether information should be
-##' printed during estimation
+##' @param messages Control how much information should be
+##' printed during estimation (0: none)
 ##' @param quick If TRUE the parameter estimates are calculated but all
 ##' additional information such as standard errors are skipped
 ##' @param method Optimization method
 ##' @param param set parametrization (see \code{help(lava.options)})
 ##' @param cluster Obsolete. Alias for 'id'.
 ##' @param p Evaluate model in parameter 'p' (no optimization)
-##' @param ... Additional arguments to be passed to the low level functions
+##' @param ... Additional arguments to be passed to lower-level functions
 ##' @return A \code{lvmfit}-object.
 ##' @author Klaus K. Holst
 ##' @seealso estimate.default score, information
@@ -124,14 +124,13 @@
              fix,
              index=!quick,
              graph=FALSE,
-             silent=lava.options()$silent,
+             messages=lava.options()$messages,
              quick=FALSE,
              method,
              param,
              cluster,
              p,
              ...) {
-
         cl <- match.call()
         if (!base::missing(param)) {
             oldparam <- lava.options()$param
@@ -171,7 +170,6 @@
         if (length(control)>0) {
             Optim[names(control)] <- control
         }
-
         if (is.environment(data)) {
             innames <- intersect(ls(envir=data),vars(x))
             data <- as.data.frame(lapply(innames,function(x) get(x,envir=data)))
@@ -307,8 +305,8 @@
 
         if (index) {
             ## Proces data and setup some matrices
-            x <- fixsome(x, measurement.fix=fix, S=S, mu=mu, n=n,debug=!silent)
-            if (!silent)
+            x <- fixsome(x, measurement.fix=fix, S=S, mu=mu, n=n,debug=messages>1)
+            if (messages>1)
                 message("Reindexing model...\n")
             if (length(xfix)>0) {
                 index(x) <- reindex(x,sparse=Optim$sparse,zeroones=TRUE,deriv=TRUE)
@@ -345,7 +343,7 @@
                 if (is.null(Optim$start) || sum(paragree)<length(myparnames)) {
                     if (is.null(Optim$starterfun) && lava.options()$param!="relative")
                         Optim$starterfun <- startvalues0
-                    start <- suppressWarnings(do.call(Optim$starterfun, list(x=x,S=S,mu=mu,debug=lava.options()$debug,silent=silent,data=data,...)))
+                    start <- suppressWarnings(do.call(Optim$starterfun, list(x=x,S=S,mu=mu,debug=lava.options()$debug,messages=messages,data=data,...)))
                     if (!is.null(x$expar) && length(start)<nparall) {
                         ii <- which(index(x)$e1==1)
                         start <- c(start, structure(unlist(x$expar[ii]),names=names(x$expar)[ii]))
@@ -360,7 +358,7 @@
 
         ## Missing data
         if (missing) {
-            return(estimate.MAR(x=x,data=data,fix=fix,control=Optim,debug=lava.options()$debug,silent=silent,estimator=estimator,weights=weights,data2=data2,cluster=id,...))
+            return(estimate.MAR(x=x,data=data,fix=fix,control=Optim,debug=lava.options()$debug,messages=messages,estimator=estimator,weights=weights,data2=data2,cluster=id,...))
         }
         coefname <- coef(x,mean=Optim$meanstructure,fix=FALSE);
         names(Optim$start) <- coefname
@@ -655,8 +653,8 @@
         if (is.null(tryCatch(get(GradFun),error = function (x) NULL)))
             myGrad <- NULL
 
-        if (!silent) message("Optimizing objective function...")
-        if (Optim$trace>0 & !silent) message("\n")
+        if (messages>1) message("Optimizing objective function...")
+        if (Optim$trace>0 & (messages>1)) message("\n")
         ## Optimize with lower constraints on the variance-parameters
         if ((is.data.frame(data) | is.matrix(data)) && nrow(data)==0) stop("No observations")
         if (!missing(p)) {
@@ -770,7 +768,7 @@
             asVar <- matrix(NA,ncol=length(pp),nrow=length(pp))
         } else {
 
-            if (!silent) message("\nCalculating asymptotic variance...\n")
+            if (messages>1) message("\nCalculating asymptotic variance...\n")
             asVarFun  <- paste0(estimator, "_variance", ".lvm")
 
             if (!exists(asVarFun)) {
@@ -834,50 +832,3 @@
 
 ###}}} estimate.lvm
 
-###{{{ estimate.formula
-
-##' @export
-estimate.formula <- function(x,data=parent.frame(),pred.norm=c(),unstruct=FALSE,silent=TRUE,id=NULL,distribution=NULL,estimator="gaussian",...) {
-    cl <- match.call()
-    formulaId <- union(Specials(x,c("cluster")),Specials(x,c("id")))
-    formulaSt <- paste0("~.-cluster(",formulaId,")-id(",formulaId,")")
-    if (!is.null(formulaId)) {
-        id <- formulaId
-        x <- update(x,as.formula(formulaSt))
-    }
-    if (!is.null(id))
-        x <- update(x,as.formula(paste(".~.+",id)))
-    varnames <- all.vars(x)
-    mf <- model.frame(x,data)
-    mt <- attr(mf, "terms")
-    yvar <- names(mf)[1]
-    y <- mf[,yvar]
-    opt <- options(na.action="na.pass")
-    mm <- model.matrix(x,data)
-    options(opt)
-    covars <- colnames(mm)
-    covars <- unlist(lapply(covars, function(x) gsub("[^a-zA-Z0-9._]","",x)))
-    colnames(mm) <- covars
-
-    if (attr(terms(x),"intercept")==1) {
-        covars <- covars[-1]
-        it <- c()
-    } else {
-        it <- "0"
-    }
-
-    if (!is.null(id)) covars <- setdiff(covars,id)
-    model <- lvm(toformula(yvar,c(it,covars)),silent=TRUE)
-    if (!is.null(distribution)) {
-        lava::distribution(model,yvar) <- distribution
-        estimator <- "glm"
-    }
-    mydata <- na.omit(as.data.frame(cbind(data.frame(y),mm))); names(mydata)[1] <- yvar
-    exogenous(model) <- setdiff(covars,pred.norm)
-    if (unstruct) {
-        model <- covariance(model,pred.norm,pairwise=TRUE)
-    }
-    estimate(model,mydata,silent=silent,id=id,estimator=estimator,...)
-}
-
-###}}} estimate.formula

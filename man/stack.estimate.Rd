@@ -4,8 +4,8 @@
 \alias{stack.estimate}
 \title{Stack estimating equations}
 \usage{
-\method{stack}{estimate}(x, model2, D1u, inv.D2u, weights, dweights, U, k = 1,
-  keep1 = FALSE, ...)
+\method{stack}{estimate}(x, model2, D1u, inv.D2u, propensity, dpropensity, U,
+  keep1 = FALSE, propensity.arg, estimate.arg, na.action = na.pass, ...)
 }
 \arguments{
 \item{x}{Model 1}
@@ -16,18 +16,34 @@
 
 \item{inv.D2u}{Inverse of deri}
 
-\item{weights}{weights (vector or function)}
+\item{propensity}{propensity score (vector or function)}
 
-\item{dweights}{derivative of weight wrt parameters of model 1}
+\item{dpropensity}{derivative of propensity score wrt parameters of model 1}
 
 \item{U}{Optional score function (model 2) as function of all parameters}
 
-\item{k}{Debug argument}
+\item{keep1}{If FALSE only parameters of model 2 is returned}
 
-\item{keep1}{If TRUE only parameters of model 2 i s returned}
+\item{propensity.arg}{Arguments to propensity function}
+
+\item{estimate.arg}{Arguments to 'estimate'}
+
+\item{na.action}{Method for dealing with missing data in propensity score}
 
 \item{...}{Additional arguments to lower level functions}
 }
 \description{
-Stack estimating equations
+Stack estimating equations (two-stage estimator)
+}
+\examples{
+m <- lvm(z0~x)
+Missing(m, z ~ z0) <- r~x
+distribution(m,~x) <- binomial.lvm()
+p <- c(r=-1,'r~x'=0.5,'z0~x'=2)
+beta <- p[3]/2
+d <- sim(m,500,p=p)
+m1 <- estimate(r~x,data=d,family=binomial)
+d$w <- d$r/predict(m1,type="response")
+m2 <- estimate(z~1, weights=w, data=d)
+(e <- stack(m1,m2,propensity=TRUE))
 }
