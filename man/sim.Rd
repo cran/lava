@@ -25,6 +25,7 @@
 \alias{uniform.lvm}
 \alias{beta.lvm}
 \alias{normal.lvm}
+\alias{mvn.lvm}
 \alias{lognormal.lvm}
 \alias{gaussian.lvm}
 \alias{GM2.lvm}
@@ -205,7 +206,7 @@ distribution(m,~y1+y2,"or2") <- VGAM::rbiplackcop
 sim(m,10,p=c(or1=0.1,or2=4))
 }
 m <- lvm()
-distribution(m,~y1+y2+y3,TRUE) <- function(n,...) rmvn(n,sigma=diag(3)+1)
+distribution(m,~y1+y2+y3,TRUE) <- function(n,...) rmvn0(n,sigma=diag(3)+1)
 var(sim(m,100))
 ## Syntax also useful for univariate generators, e.g.
 m <- lvm(y~x+z)
