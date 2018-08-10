@@ -42,7 +42,6 @@ iid.default <- function(x,bread,id=NULL,folds=0,maxsize=(folds>0)*1e6,...) {
     } else {
         U <- score(x,indiv=TRUE,...)
     }
-    n <- NROW(U)
     pp <- pars(x)
     if (!missing(bread) && is.null(bread)) {
         bread <- suppressWarnings(vcov(x))
@@ -54,7 +53,7 @@ iid.default <- function(x,bread,id=NULL,folds=0,maxsize=(folds>0)*1e6,...) {
         if (is.null(bread)) {
             if (maxsize>0) {
                 ff <- function(p) colSums(Reduce("rbind",mets::divide.conquer(function(data) score(x,data=data,p=p,...),
-                                                                              data=data,size=maxsize)))
+                                                                       data=data,size=maxsize)))
                 I <- -numDeriv::jacobian(ff,pp,method=lava.options()$Dmethod)
             } else {
                 I <- -numDeriv::jacobian(function(p) score(x,p=p,indiv=FALSE,...),pp,method=lava.options()$Dmethod)
@@ -73,7 +72,7 @@ iid.default <- function(x,bread,id=NULL,folds=0,maxsize=(folds>0)*1e6,...) {
         attributes(iid0)$N <- N
     }
     colnames(iid0) <- colnames(U)
-  return(structure(iid0,bread=bread))
+    return(structure(iid0,bread=bread))
 }
 
 
@@ -82,7 +81,8 @@ iid.multigroupfit <- function(x,...) iid.default(x,combine=TRUE,...)
 
 ##' @export
 iid.matrix <- function(x,...) {
-    p <- ncol(x); n <- nrow(x)
+    p <- NCOL(x)
+    n <- NROW(x)
     mu <- colMeans(x,na.rm=TRUE); S <- var(x,use="pairwise.complete.obs")*(n-1)/n
     iid1 <- t(t(x)-mu)
     iid2 <- matrix(ncol=(p+1)*p/2,nrow=n)

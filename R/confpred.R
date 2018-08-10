@@ -34,19 +34,18 @@ confpred <- function(object,data,newdata=data,alpha=0.05,mad,...) { ## Split alg
     dd <- csplit(data,0.5)
     muhat.new <- predict(object,newdata=newdata) ## New predictions
     muhat.1 <- predict(object,newdata=dd[[1]])      ## Training
-    R1 <- abs(dd[[1]][,1]-muhat.1)
     muhat.2 <- predict(object,newdata=dd[[2]])   ## Ranking
     R2 <- abs(dd[[2]][,1]-muhat.2)
     if (missing(mad)) mad <- formula(object)
-    if (is.null(mad)) { 
+    if (is.null(mad)) {
         mad.new <- rep(1,nrow(newdata))
     } else { ## Locally-weighted conformal ffinference
         if (names(dd[[2]])[1] %ni% names(newdata)) {
             newdata <- cbind(0,newdata); names(newdata)[1] <- names(dd[[2]])[1]
         }
         X0 <- model.matrix(mad,data=newdata)
-        if (inherits(mad,"formula")) { 
-            X2 <- model.matrix(mad,dd[[2]])            
+        if (inherits(mad,"formula")) {
+            X2 <- model.matrix(mad,dd[[2]])
             mad.obj <- stats::lm.fit(x=X2,y=R2)
             mad2 <- X2%*%mad.obj$coefficients
             mad.new <- X0%*%mad.obj$coefficients

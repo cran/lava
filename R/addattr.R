@@ -29,10 +29,11 @@
         return(attrvar)
     }
     if (is.character(val))
-            myexpr <- paste0("list(",attr,"=c(", paste0("\"",var,"\"=\"",val,"\"" , collapse=", "), "))")
+        myexpr <- paste0("list(",attr,"=c(", paste0("\"",var,"\"=\"",val,"\"" , collapse=", "), "))")
     else
         myexpr <- paste0("list(",attr,"=c(", paste0("\"",var,"\"=",val, collapse=", "), "))")
     Debug(list("str=",myexpr),debug)
     eval(parse(text=paste0(fun,"(x) <- ",myexpr)))
     return(x)
 }
+
