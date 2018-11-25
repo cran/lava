@@ -29,7 +29,6 @@
 \alias{index<-}
 \alias{rmvn0}
 \alias{dmvn0}
-\alias{NR}
 \alias{logit}
 \alias{expit}
 \alias{tigol}
@@ -51,6 +50,7 @@
 \alias{estimate.MAR}
 \alias{missingModel}
 \alias{Inverse}
+\alias{Identical}
 \alias{gaussian_logLik.lvm}
 \alias{addhook}
 \alias{gethook}

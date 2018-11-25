@@ -47,7 +47,7 @@
 ##' @param cond for internal use
 ##' @param sigma Default residual variance (1)
 ##' @param rho Default covariance parameter (0.5)
-##' @param X Optional matrix of covariates
+##' @param X Optional matrix of fixed values of variables (manipulation)
 ##' @param unlink Return Inverse link transformed data
 ##' @param latent Include latent variables (default TRUE)
 ##' @param use.labels convert categorical variables to factors before applying transformation
@@ -312,6 +312,8 @@ sim.lvm <- function(x,n=NULL,p=NULL,normal=FALSE,cond=FALSE,sigma=1,rho=.5,
 
     setup <- is.null(n) && is.null(X) ## Save environment (variables v.env) and return sim object
     loadconfig <- !is.null(x$sim.env) && !setup && (length(list(...))==0 && length(p)==0)
+    Yfix <- NULL
+
     if (loadconfig) {
         for (v in setdiff(v.env,"X")) assign(v, x$sim.env[[v]])
         if (is.null(X)) X <-  x$sim.env[['X']]
@@ -321,9 +323,14 @@ sim.lvm <- function(x,n=NULL,p=NULL,normal=FALSE,cond=FALSE,sigma=1,rho=.5,
         xx <- exogenous(x)
 
         if (!is.null(X)) {
-            n <- nrow(X)
-            if (!is.null(colnames(X))) {                
-                X <- as.matrix(X[,xx,drop=FALSE])
+            if (is.null(n))
+                n <- nrow(X)
+            if (!is.null(colnames(X))) {
+                yfix <- setdiff(colnames(X),xx)
+                if (length(yfix)>0) Yfix <- X[,yfix,drop=FALSE]
+                xx0 <- intersect(xx,colnames(X))
+                if (length(xx0)>0)
+                    X <- as.matrix(X[,xx0,drop=FALSE])
             }
         } else {
             if (!is.null(p)) {
@@ -426,7 +433,7 @@ sim.lvm <- function(x,n=NULL,p=NULL,normal=FALSE,cond=FALSE,sigma=1,rho=.5,
 
     if (!setup) {
         res[,X.idx] <- t(mu[X.idx]+t(E[,X.idx]))
-        if (is.null(X)) {
+        if (is.null(X) || NCOL(X)<length(xx)) {
             if (!is.null(xx) && length(xx)>0)
                 for (i in seq_along(xx)) {
                     mu.x <- mu[X.idx[i]]
@@ -446,8 +453,12 @@ sim.lvm <- function(x,n=NULL,p=NULL,normal=FALSE,cond=FALSE,sigma=1,rho=.5,
                         }
                     }
                 }
-        } else {
-            res[,X.idx] <- X[,xx]
+        }
+        if (!is.null(X)) {
+            ii <- match(colnames(X),vv)
+            res0 <- res
+            for (i in seq(ncol(X)))
+                res[,ii[i]] <- X[,i]
         }
     }
 
@@ -573,6 +584,14 @@ sim.lvm <- function(x,n=NULL,p=NULL,normal=FALSE,cond=FALSE,sigma=1,rho=.5,
                 itercount <- itercount+1
             }
             for (i in leftovers) {
+                if (length(Yfix)>0 && i %in% colnames(Yfix)) {
+                    if (NROW(Yfix) == 1) {
+                        res[,i] <- rep(Yfix[,i],length.out=nrow(res))
+                    } else                     
+                        res[,i] <- rep(Yfix[,i,drop=TRUE],length.out=nrow(res))
+                    simuled <- c(simuled,i)
+                    next
+                }
                 if (i%in%vartrans) {
                     xtrans <- x$attributes$transform[[i]]$x
                     if (all(xtrans%in%c(simuled,names(parvals))))  {
