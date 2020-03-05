@@ -4,8 +4,17 @@
 \alias{complik}
 \title{Composite Likelihood for probit latent variable models}
 \usage{
-complik(x, data, k = 2, type = c("nearest", "all"), pairlist,
-  messages = 0, estimator = "normal", ...)
+complik(
+  x,
+  data,
+  k = 2,
+  type = c("all", "nearest"),
+  pairlist,
+  messages = 0,
+  estimator = "normal",
+  quick = FALSE,
+  ...
+)
 }
 \arguments{
 \item{x}{\code{lvm}-object}
@@ -27,10 +36,13 @@ flexibility in the specification of the composite likelihood}
 
 \item{estimator}{Model (pseudo-likelihood) to use for the pairs/groups}
 
+\item{quick}{If TRUE the parameter estimates are calculated but all additional
+information such as standard errors are skipped}
+
 \item{\dots}{Additional arguments parsed on to lower-level functions}
 }
 \value{
-An object of class \code{clprobit} inheriting methods from \code{lvm}
+An object of class \code{estimate.complik} inheriting methods from \code{lvm}
 }
 \description{
 Estimate parameters in a probit latent variable model via a composite
