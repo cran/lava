@@ -432,16 +432,19 @@ predict.twostage.lvmfit <- function(object,
 ##' @param messages print information (>0)
 ##' @param ... additional arguments to lower level functions
 ##' @examples
-##' \donttest{ ## Reduce Ex.Timings
-##' m1 <- lvm( x1+x2+x3 ~ u1, latent= ~u1)
+##' \donttest{ ## Reduce Ex.Timings##'
+##' m1 <- lvm( x1+x2+x3 ~ u, latent= ~u)
 ##' m2 <- lvm( y ~ 1 )
 ##' m <- functional(merge(m1,m2), y ~ u, value=function(x) sin(x)+x)
 ##' distribution(m, ~u1) <- uniform.lvm(-6,6)
 ##' d <- sim(m,n=500,seed=1)
 ##' nonlinear(m2) <- y~u1
-##' val <- twostageCV(m1, m2, data=d, std.err=FALSE, df=2:6, nmix=1:2,
+##' if (requireNamespace('mets', quietly=TRUE)) {
+##'   set.seed(1)
+##'   val <- twostageCV(m1, m2, data=d, std.err=FALSE, df=2:6, nmix=1:2,
 ##'                   nfolds=2, mc.cores=1)
-##' val
+##'   val
+##' }
 ##' }
 twostageCV <- function(model1, model2, data, control1=list(trace=0), control2=list(trace=0),
                 knots.boundary, mc.cores=1, nmix=1:4, df=1:9, fix=TRUE, std.err=TRUE,
@@ -452,7 +455,7 @@ twostageCV <- function(model1, model2, data, control1=list(trace=0), control2=li
         stop("Specify at least one nonlinear association in 'model2' (using the 'nonlinear' method)")
     }
     form <- as.formula(paste(names(F)[1], "~", x=F[[1]]$x))
-    
+
     op <- options(warn=-1)
     if (fix) {
         model1 <- baptize(fixsome(model1, param="relative"))
@@ -510,7 +513,7 @@ twostageCV <- function(model1, model2, data, control1=list(trace=0), control2=li
     } else {
         f0 <- function(data) list(e0=mixture(model1,data=data,k=e1$k,control=c(control1,list(start=coef(e1)))))
     }
-    
+
     ff <- lapply(MM,
                  function(m) function(data,e0,...)  twostage(e0,m,data=data,std.derr=FALSE))
     a <- cv(ff,data=data,K=nfolds,rep=rep,mc.cores=mc.cores,shared=f0)
@@ -535,7 +538,7 @@ print.twostageCV <- function(x,...) {
     splinedf <- unlist(lapply(x$knots,function(x) if (any(is.na(x))) return(1) else length(x)-1))
     cat("Selected spline model degrees of freedom: ", splinedf[i2] ,"\n", sep="")
     knots <- rbind(x$knots[[i2]])
-    if (is.na(knots)) knots <- "none"
+    if (is.na(knots[1])) knots <- "none"
     cat("Knots:", paste(formatC(knots,...) , collapse=" "), "\n\n")
     rmse <- x$cv
     rownames(rmse) <- paste0("df:",splinedf)
@@ -543,7 +546,11 @@ print.twostageCV <- function(x,...) {
     print(rmse)
     printline(70)
     cat("\n")
-    print(CoefMat(x$model2,...),quote=FALSE)
+    if (!inherits(x$model2, "lvmfit")) {
+        print(x$model2$coefmat, quote=FALSE)
+    } else {
+        print(CoefMat(x$model2,...),quote=FALSE)
+    }
 }
 
 ##' @export
@@ -566,10 +573,18 @@ Model.twostageCV <- function(x,...) {
 
 ##' @export
 summary.twostageCV <- function(object,...) {
-    with(object, list(model1=summary(model1),
-                      AIC1=AIC1, cv=cv, knots=knots,
-                      model2=summary(model2)))
+    res <- with(object, list(model1=summary(model1),
+                                AIC1=AIC1, cv=cv, knots=knots,
+                                model2=summary(model2)))
+    structure(res, class="summary.twostageCV")
 }
+
+##' @export
+print.summary.twostageCV <- function(x,...) {
+    print.twostageCV(x, ...)
+}
+
+
 
 ##' @export
 predict.twostageCV <- function(object,... ) {
