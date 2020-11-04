@@ -168,26 +168,26 @@ if (fullVignette) {
 summary(em0)
 
 ## ----eval=mets----------------------------------------------------------------
-#  e0 <- estimate(m1,data=d)
-#  AIC(e0,em0)
+e0 <- estimate(m1,data=d)
+AIC(e0,em0)
 
 ## ----eval=mets----------------------------------------------------------------
-#  em2 <- twostage(em0,m2,data=d)
-#  em2
+em2 <- twostage(em0,m2,data=d)
+em2
 
 ## ----mixturefit, eval=mets----------------------------------------------------
-#  plot(I(eta2-z) ~ eta1, data=d, col=Col("black",0.5), pch=16,
-#       xlab=expression(eta[1]), ylab=expression(eta[2]))
-#  
-#  lines(Estimate ~ eta1, data=as.data.frame(p), col="darkblue", lwd=5)
-#  confband(p[,1], lower=p[,4], upper=p[,5], polygon=TRUE,
-#  	 border=NA, col=Col("darkblue",0.2))
-#  
-#  pm <- cbind(eta1=newd$eta1,
-#  	    estimate(em2, f=function(p) predict(e2,p=p,newdata=newd))$coefmat)
-#  lines(Estimate ~ eta1, data=as.data.frame(pm), col="darkred", lwd=5)
-#  confband(pm[,1], lower=pm[,4], upper=pm[,5], polygon=TRUE,
-#  	 border=NA, col=Col("darkred",0.2))
-#  legend("bottomright", c("Gaussian","Mixture"),
-#         col=c("darkblue","darkred"), lwd=2, bty="n")
+plot(I(eta2-z) ~ eta1, data=d, col=Col("black",0.5), pch=16,
+     xlab=expression(eta[1]), ylab=expression(eta[2]))
+
+lines(Estimate ~ eta1, data=as.data.frame(p), col="darkblue", lwd=5)
+confband(p[,1], lower=p[,4], upper=p[,5], polygon=TRUE,
+	 border=NA, col=Col("darkblue",0.2))
+
+pm <- cbind(eta1=newd$eta1,
+	    estimate(em2, f=function(p) predict(e2,p=p,newdata=newd))$coefmat)
+lines(Estimate ~ eta1, data=as.data.frame(pm), col="darkred", lwd=5)
+confband(pm[,1], lower=pm[,4], upper=pm[,5], polygon=TRUE,
+	 border=NA, col=Col("darkred",0.2))
+legend("bottomright", c("Gaussian","Mixture"),
+       col=c("darkblue","darkred"), lwd=2, bty="n")
 

@@ -102,34 +102,34 @@ b
 quantile(tanh(b$coef[,'z']), c(.025,.975))
 
 ## ----cache=TRUE, eval=mets----------------------------------------------------
-#  m3 <- lvm() %>%
-#    regression(y1 + s2 ~ x) %>%
-#    covariance(y1 ~ s2, constrain=TRUE, rname='z')
-#  
-#  e3 <- estimate(m3, d)
+m3 <- lvm() %>%
+  regression(y1 + s2 ~ x) %>%
+  covariance(y1 ~ s2, constrain=TRUE, rname='z')
+
+e3 <- estimate(m3, d)
 
 ## ----eval=mets----------------------------------------------------------------
-#  e3
+e3
 
 ## ----cache=TRUE, eval=mets----------------------------------------------------
-#  estimate(e3, 'z', back.transform=tanh)
+estimate(e3, 'z', back.transform=tanh)
 
 ## ----cache=TRUE, eval=mets----------------------------------------------------
-#  m3b <- lvm() %>%
-#    regression(s1 + s2 ~ x) %>%
-#    covariance(s1 ~ s2, constrain=TRUE, rname='z')
-#  
-#  e3b <- estimate(m3b, d)
-#  e3b
+m3b <- lvm() %>%
+  regression(s1 + s2 ~ x) %>%
+  covariance(s1 ~ s2, constrain=TRUE, rname='z')
+
+e3b <- estimate(m3b, d)
+e3b
 
 ## ----eval=mets----------------------------------------------------------------
-#  e3b
+e3b
 
 ## ----cache=TRUE, eval=mets----------------------------------------------------
-#  estimate(e3b, 'z', back.transform=tanh)
+estimate(e3b, 'z', back.transform=tanh)
 
 ## ----profilecens, cache=TRUE, eval=mets---------------------------------------
-#  tanh(confint(e3b, 'z', profile=TRUE))
+tanh(confint(e3b, 'z', profile=TRUE))
 
 ## -----------------------------------------------------------------------------
 sessionInfo()
