@@ -345,10 +345,12 @@ regfix.lvm <- function(object,...) {
 "regfix<-" <- function(object,...,value) UseMethod("regfix<-")
 
 ##' @export
-"regfix<-.lvm" <- function(object, to, from, exo=lava.options()$exogenous, variance, y,x, ..., value) {
+"regfix<-.lvm" <- function(object, to, from=NULL, exo=lava.options()$exogenous, variance, y,x, ..., value) {
     if (!missing(y)) {
-        if (inherits(y,"formula")) y <- all.vars(y)
-        to <- y
+      if (inherits(y,"formula")) {
+        y <- all.vars(y)
+      }
+      to <- y
     }
     if (!missing(x)) {
         if (inherits(x,"formula")) x <- all.vars(x)
@@ -358,42 +360,69 @@ regfix.lvm <- function(object,...) {
 
     if (inherits(to,"formula")) {
         val <- procformula(object,to,exo=exo)
+        constrain_formula <- to
         object <- val$object
         ys <- val$ys
         xs <- val$xs
         if (!missing(variance))
-            covariance(object,ys) <- variance
+            covariance(object, ys) <- variance
         to <- ys; from <- xs
     } else {
-        object <- addvar(object,c(to,from),reindex=FALSE,...)
+        object <- addvar(object, c(to, from), reindex=FALSE, ...)
         newexo <- from
         notexo <- to
         curvar <- index(object)$var
         if (exo) {
             oldexo <- exogenous(object)
-            newexo <- setdiff(newexo,c(notexo,curvar))
-            exogenous(object) <- union(newexo,setdiff(oldexo,notexo))
+            newexo <- setdiff(newexo, c(notexo, curvar))
+            exogenous(object) <- union(newexo, setdiff(oldexo, notexo))
         }
     }
 
     if (inherits(value,"formula")) value <- all.vars(value)
 
-    if (length(from)==length(to) & length(from)==length(value)) {
+    nonlinear_function <- NULL
+    if (is.function(value)) {
+      vfun <- value
+      aname <- setdiff(names(formals(value)), "...")
+      if (is.null(to)) { # formula was apparently given as  ~outcome
+        to <- from[1]
+        from <- NULL
+      }
+      pname <- parameter(object)
+      if (length(from)==0) {
+        constrain_formula <- toformula(to, aname)
+        from <- setdiff(aname, pname)
+        nonlinear_function <- function(...) {
+          as.vector(do.call(vfun,
+                    structure(as.list(as.data.frame(...)), names=aname)))
+        }
+      } else {
+        nonlinear_function <- function(...) as.vector(vfun(...))
+        ##nonlinear_function <- vfun
+        from <- setdiff(from, pname)
+      }
+      object <- addvar(object, c(to, from))
+      value <- 0
+    }
+
+    if (length(from)==length(to) && length(from)==length(value)
+        && is.null(nonlinear_function)) {
         for (i in seq_along(from)) {
-            if (object$M[from[i],to[i]]==0) { ## Not adjacent! ##!isAdjacent(Graph(object), from[i], to[i])) {
+            if (object$M[from[i], to[i]]==0) { ## Not adjacent! ##!isAdjacent(Graph(object), from[i], to[i])) {
                 object <- regression(object, to=to[i], from=from[i])
             }
             vali <- char2num(value[[i]])
             if (is.na(value[[i]]) | value[[i]]=="NA") {
-                object$fix[from[i],to[i]] <- object$par[from[i],to[i]] <- NA
+                object$fix[from[i], to[i]] <- object$par[from[i], to[i]] <- NA
             }
             else {
                 if (is.numeric(value[[i]]) | !is.na(vali)) {
-                    object$fix[from[i],to[i]] <- vali
-                    object$par[from[i],to[i]] <- NA
+                    object$fix[from[i], to[i]] <- vali
+                    object$par[from[i], to[i]] <- NA
                 } else {
-                    object$par[from[i],to[i]] <- value[[i]]
-                    object$fix[from[i],to[i]] <- NA
+                    object$par[from[i], to[i]] <- value[[i]]
+                    object$fix[from[i], to[i]] <- NA
                 }
             }
         }
@@ -402,18 +431,18 @@ regfix.lvm <- function(object,...) {
         index(object)[names(newindex)] <- newindex
         return(object)
     }
-
     for (i in from) {
         for (j in to) {
             if (object$M[i,j]==0) { ##!isAdjacent(Graph(object), i, j)) {
-                object <- regression(object,to=j,from=i)
+                object <- regression(object, to=j, from=i)
             }
         }
     }
 
+
     K <- length(from)*length(to)
     if (length(value)==1)
-        value <- rep(value,K)
+        value <- rep(value, K)
     if (length(value)!=K) stop("Wrong number of parameters")
 
     for (j in seq_along(to)) {
@@ -421,14 +450,14 @@ regfix.lvm <- function(object,...) {
             p <- (j-1)*length(from) + i
             valp <- char2num(value[[p]])
             if (is.na(value[[p]]) | value[[p]]=="NA")
-                object$fix[from[i],to[j]] <- object$par[from[i],to[j]] <- NA
+                object$fix[from[i], to[j]] <- object$par[from[i], to[j]] <- NA
             else {
                 if (is.numeric(value[[p]]) | !is.na(valp)) {
-                    object$fix[from[i],to[j]] <- valp
-                    object$par[from[i],to[j]] <- NA
+                    object$fix[from[i], to[j]] <- valp
+                    object$par[from[i], to[j]] <- NA
                 } else {
-                    object$par[from[i],to[j]] <- value[[p]]
-                    object$fix[from[i],to[j]] <- NA
+                    object$par[from[i], to[j]] <- value[[p]]
+                    object$fix[from[i], to[j]] <- NA
                 }
             }
         }
@@ -437,6 +466,11 @@ regfix.lvm <- function(object,...) {
     object$parpos <- NULL
     index(object)[names(newindex)] <- newindex
     index(object) <- reindex(object)
+
+    if (!is.null(nonlinear_function)) {
+      constrain(object, constrain_formula, endogenous=FALSE, ...) <- nonlinear_function
+    }
+
     return(object)
 }
 

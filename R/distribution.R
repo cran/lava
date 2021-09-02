@@ -200,6 +200,17 @@ threshold.lvm <- function(p,labels=NULL,...) {
 
 ###}}} threshold
 
+##' @export
+multinomial.lvm <- function(prob, labels=NULL) {
+  if (sum(prob)<1)
+    prob <- c(prob, 1-sum(prob))
+  if (is.null(labels)) {
+    labels = seq(0, length(prob)-1)
+  }
+  structure(function(n, ...) sample(labels, n, prob=prob, replace=TRUE),
+            family=list(family='multinomial', par=prob))
+}
+
 ###{{{ binomial
 
 ##' @export
@@ -348,24 +359,48 @@ weibull.lvm <- function(scale=1,shape=2) {
 ###{{{ sequence
 
 ##' @export
+id.lvm <- function(...) Sequence.lvm(integer=TRUE)
+
+##' @export
 Sequence.lvm <- function(a=0,b=1,integer=FALSE) {
-    if (integer) {
-        f <- function(n,...) seq(n)
-        return(f)
-    }
-    if (is.null(a) || is.null(b)) {
-        if (!is.null(a)) {
-            f <- function(n,...) seq(a,length.out=n)
-        } else {
-            f <- function(n,...) seq(n)-(n-b)
-        }
-    } else {
-        f <- function(n,...) seq(a,b,length.out=n)
-    }
+  if (integer) {
+    f <- function(n,...) seq(n)
+    attr(f, "family") <- list(family="sequence")
     return(f)
+  }
+  if (is.null(a) || is.null(b)) {
+    if (!is.null(a)) {
+      f <- function(n,...) seq(a,length.out=n)
+    } else {
+      f <- function(n,...) seq(n)-(n-b)
+    }
+  } else {
+    f <- function(n,...) seq(a,b,length.out=n)
+  }
+  attr(f, "family") <- list(family="sequence")
+  return(f)
 }
 
 ###}}} sequence
+
+##' @export
+none.lvm <- function(...) {
+  f <- function(n, mu, ...) {
+    return(mu)
+  }
+  attr(f, "family") <- list(family="intervention")
+  return(f)
+}
+
+##' @export
+constant.lvm <- function(value=NA) {
+  f <- function(n, mu, ...) {
+    if (!is.na(value)) return(rep(value, n))
+    return(mu)
+  }
+  attr(f, "family") <- list(family="constant", par=list(value=value))
+  return(f)
+}
 
 ###{{{ ones
 
