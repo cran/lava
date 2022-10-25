@@ -42,7 +42,6 @@ twostagelvm <- function(object, model2,
     return(res)
 }
 
-
 uhat <- function(p=coef(model1), model1, data=model.frame(model1), nlobj) {
     if (!is.function(nlobj)) {
         predict.fun <- lapply(nlobj, function(x) x[["pred"]])
@@ -79,7 +78,6 @@ uhat <- function(p=coef(model1), model1, data=model.frame(model1), nlobj) {
     }
     return(cbind(predict.fun(P$mean, P$var, model.frame(model1))))
 }
-
 
 ##' Two-stage estimator
 ##'
@@ -220,7 +218,7 @@ twostage.lvmfit <- function(object, model2, data=NULL,
         if (is.null(id2)) id2 <- seq(nrow(model.frame(model2)))
         model1 <- object
         if (!inherits(object,"estimate")) {
-            model1 <- estimate(NULL,coef=p1,id=id1,iid=iid(object))
+            model1 <- estimate(NULL, coef=p1, id=id1, IC=IC(object))
         }
 
         e2 <- estimate(model2, id=id2)
@@ -278,7 +276,6 @@ estimate.twostage.lvm <- function(x,data,...) {
 ##' @export
 twostage.twostage.lvm <- function(object,...) estimate.twostage.lvm(object,...)
 
-
 ##' @export
 twostage.lvm <- function(object,model2,data=NULL, ...) {
     if (is.null(data)) {
@@ -304,7 +301,6 @@ print.twostage.lvm <- function(x,...) {
     printline()
     cat("Model 2:\n")
     print(Model(x$call$model2))
-
 }
 
 ##' @export
@@ -508,14 +504,13 @@ twostageCV <- function(model1, model2, data, control1=list(trace=0), control2=li
     ff <- lapply(MM,
                  function(m) function(data,e0,...)  twostage(e0,m,data=data,std.derr=FALSE))
     a <- cv(ff, data=data, K=nfolds, rep=rep, shared=f0)
-    M <- MM[[which.min(coef(a))]]
+    M <- MM[[which.min(a$coef)]]
     e2 <- twostage(e1, M, data, control=control2, std.err=std.err)
     options(op)
-    res <- list(AIC1=cbind(AIC1), model1=e1, model2=e2, cv=coef(a), knots=c(list(NA),Knots),
+    res <- list(AIC1=cbind(AIC1), model1=e1, model2=e2, cv=a$coef, knots=c(list(NA), Knots),
                 nfolds=nfolds, rep=rep)
     structure(res, class="twostageCV")
 }
-
 
 ##' @export
 print.twostageCV <- function(x,...) {
@@ -549,18 +544,20 @@ coef.twostageCV <- function(object,...) {
     coef(Model(object),...)
 }
 
+##' @export
 vcov.twostageCV <- function(object,...) {
     vcov(Model(object),...)
 }
 
-iid.twostageCV <- function(object,...) {
-    iid(Model(object),...)
+##' @export
+IC.twostageCV <- function(x,...) {
+    IC(Model(x),...)
 }
 
+##' @export
 Model.twostageCV <- function(x,...) {
     x$model2
 }
-
 
 ##' @export
 summary.twostageCV <- function(object,...) {
@@ -574,8 +571,6 @@ summary.twostageCV <- function(object,...) {
 print.summary.twostageCV <- function(x,...) {
     print.twostageCV(x, ...)
 }
-
-
 
 ##' @export
 predict.twostageCV <- function(object,... ) {

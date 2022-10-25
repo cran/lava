@@ -1,17 +1,26 @@
-##' Wrapper function for mclapply
+##' Monte Carlo simulation
 ##'
+##' Applies a function repeatedly for a specified number of replications or over
+##' a list/data.frame with plot and summary methods for summarizing the Monte
+##' Carlo experiment. Can be parallelized via the future package (use the
+##' future::plan function).
 ##' @export
 ##' @param x function or 'sim' object
 ##' @param R Number of replications or data.frame with parameters
 ##' @param f Optional function (i.e., if x is a matrix)
 ##' @param colnames Optional column names
-##' @param messages Messages
 ##' @param seed (optional) Seed (needed with cl=TRUE)
 ##' @param args (optional) list of named arguments passed to (mc)mapply
-##' @param iter If TRUE the iteration number is passed as first argument to (mc)mapply
+##' @param iter If TRUE the iteration number is passed as first argument to
+##'   (mc)mapply
 ##' @param ... Additional arguments to (mc)mapply
 ##' @aliases sim.default as.sim
 ##' @seealso summary.sim plot.sim print.sim
+##' @details To parallelize the calculation use the future::plan function (e.g.,
+##'   future::plan(multisession()) to distribute the calculations over the R
+##'   replications on all available cores). The output is controlled via the
+##'   progressr package (e.g., progressr::handlers(global=TRUE) to enable
+##'   progress information).
 ##' @examples
 ##' m <- lvm(y~x+e)
 ##' distribution(m,~y) <- 0
@@ -28,7 +37,7 @@
 ##'                     "Sandwich.se","Sandwich.lo","Sandwich.hi")
 ##'     res
 ##' }
-##' val <- sim(onerun,R=10,b0=1,messages=0)
+##' val <- sim(onerun,R=10,b0=1)
 ##' val
 ##'
 ##' val <- sim(val,R=40,b0=1) ## append results
@@ -46,7 +55,7 @@
 ##'     plot(val,estimate=c(1,1),se=c(2,5),true=c(1,1),
 ##'          names=c("Model","Sandwich"))
 ##' }
-##''
+##'
 ##' f <- function(a=1, b=1) {
 ##'   rep(a*b, 5)
 ##' }
@@ -55,7 +64,6 @@
 ##' sim(function(a,b) f(a,b), 3, args=c(a=5,b=5))
 ##' sim(function(iter=1,a=5,b=5) iter*f(a,b), iter=TRUE, R=5)
 sim.default <- function(x=NULL, R=100, f=NULL, colnames=NULL,
-                messages=lava.options()$messages,
                 seed=NULL, args=list(),
                 iter=FALSE, ...) {
     stm <- proc.time()
@@ -101,10 +109,11 @@ sim.default <- function(x=NULL, R=100, f=NULL, colnames=NULL,
             }
         }
         base::colnames(res) <- colnames
-        if (!is.null(olddata)) res <- rbind(olddata,res)
+        if (!is.null(olddata)) res <- rbind(olddata, res)
         attr(res, "call") <- mycall
         attr(res, "f") <- x
-        class(res) <- c("sim", "matrix")
+        cls <- ifelse(is.data.frame(res), "data.frame", "matrix")
+        class(res) <- c("sim", cls)
         attr(res, "time") <- proc.time()-stm+oldtm
         return(res)
     })
@@ -139,29 +148,47 @@ sim.default <- function(x=NULL, R=100, f=NULL, colnames=NULL,
 }
 
 ##' @export
-"[.sim" <- function (x, i, j, drop = FALSE) {
+cbind.sim <- function(x, ...) {
+  res <- cbind(as.data.frame(x), ...)
+  as.sim(res)
+}
+
+##' @export
+rbind.sim <- function(x, ...) {
+  res <- rbind(as.data.frame(x), ...)
+  as.sim(res)
+}
+
+##' @export
+as.vector.sim <- function(x, mode="any") {
+  as.vector(x[,,drop=TRUE], mode=mode)
+}
+
+##' @export
+"[.sim" <- function(x, i, j, drop = FALSE) {
     atr <- attributes(x)
     if (!is.null(dim(x))) {
-        class(x) <- "matrix"
+        class(x) <- class(x)[2]
     } else {
         class(x) <- class(x)[-1]
     }
-    x <- NextMethod("[",drop=drop)
-    atr.keep <- c("call","time")
-    if (missing(j)) atr.keep <- c(atr.keep,"f")
+    x <- NextMethod("[", drop=drop)
+    atr.keep <- c("call", "time")
+    if (missing(j)) atr.keep <- c(atr.keep, "f")
     attributes(x)[atr.keep] <- atr[atr.keep]
-    if (!drop) class(x) <- c("sim",class(x))
+    if (!drop) class(x) <- c("sim", class(x))
     x
 }
 
 ##' @export
 "as.sim" <- function (object, name, ...) {
-    if (is.vector(object)) {
-        object <- (structure(cbind(object), class=c("sim", "matrix")))
-        if (!missing(name)) colnames(object) <- name
-        return(object)
-    }
-    structure(object, class=c("sim", class(object)))
+  if (is.vector(object)) {
+    cl <- ifelse(inherits(class(object), "data.frame"), "data.frame", "matrix")
+    object <- structure(cbind(object), class=c("sim", cl))
+    if (!missing(name)) colnames(object) <- name
+    return(object)
+  }
+  structure(object, class=c("sim", class(object)))
 }
 
 Time <- function(sec,print=FALSE,...) {
@@ -169,17 +196,17 @@ Time <- function(sec,print=FALSE,...) {
     m0 <- (sec%%3600)
     m <- m0%/%60
     s <- m0%%60
-    res <- c(h=h,m=m,s=s)
+    res <- c(h=h, m=m, s=s)
     if (print) {
-        if (h>0) cat(h,"h ",sep="")
-        if (m>0) cat(m,"m ",sep="")
-        cat(s,"s",sep="")
+        if (h>0) cat(h, "h ", sep="")
+        if (m>0) cat(m, "m ", sep="")
+        cat(s, "s", sep="")
         return(invisible(res))
     }
     return(res)
 }
 
-Print <- function(x,n=5,digits=max(3,getOption("digits")-3),...) {
+Print <- function(x, n=5, digits=max(3, getOption("digits")-3), ...) {
     mat <- !is.null(dim(x))
     if (!mat) {
         x <- cbind(x)
@@ -188,40 +215,32 @@ Print <- function(x,n=5,digits=max(3,getOption("digits")-3),...) {
     if (is.null(rownames(x))) {
         rownames(x) <- seq(nrow(x))
     }
-    sep <- rbind("---"=rep('',ncol(x)))
+    sep <- rbind("---"=rep('', ncol(x)))
     if (n<1) {
-        print(x,quote=FALSE,digits=digits,...)
+        print(x, quote=FALSE, digits=digits, ...)
     } else {
-        ## hd <- base::as.matrix(base::format(utils::head(x,n),digits=digits,...))
-        ## tl <- base::as.matrix(base::format(utils::tail(x,n),digits=digits,...))
-        ## print(rbind(hd,sep,tl),quote=FALSE,...)
-        if (NROW(x)<=(2*n)) {
-            hd <- base::format(utils::head(x,2*n),digits=digits,...)
-            print(hd, quote=FALSE,...)
-        } else {
-            hd <- base::format(utils::head(x,n),digits=digits,...)
-            tl <- base::format(utils::tail(x,n),digits=digits,...)
-            print(rbind(base::as.matrix(hd),sep,base::as.matrix(tl)),
-                  quote=FALSE,...)
-        }
+      if (NROW(x)<=(2*n)) {
+        hd <- base::format(x, digits=digits, ...)
+        print(hd, quote=FALSE, ...)
+      } else {
+        hd <- base::format(utils::head(x, n), digits=digits, ...)
+        tl <- base::format(utils::tail(x, n), digits=digits, ...)
+        print(rbind(base::as.matrix(hd), sep, base::as.matrix(tl)),
+              quote=FALSE, ...)
+      }
     }
     invisible(x)
 }
 
 ##' @export
-print.sim <- function(x,...) {
-    s <- summary(x,minimal=TRUE,...)
+print.sim <- function(x, ...) {
+    s <- summary(x, minimal=TRUE, ...)
     attr(x, "f") <- attr(x, "call") <- NULL
-    if (!is.null(dim(x))) {
-        class(x) <- "matrix"
-    }
-    Print(x,...)
+    Print(x, ...)
     cat("\n")
-    print(s,extra=FALSE,...)
+    print(s, extra=FALSE, ...)
     return(invisible(x))
 }
-
-
 
 ##' @export
 print.summary.sim <- function(x,group=list(c("^mean$","^sd$","^se$","^se/sd$","^coverage"),
@@ -274,11 +293,11 @@ print.summary.sim <- function(x,group=list(c("^mean$","^sd$","^se$","^se/sd$","^
 ##' @param confint (optional) list of pairs of columns with confidence limits
 ##' @param true (optional) vector of true parameter values
 ##' @param fun (optional) summary function
-##' @param names (optional) names of 
+##' @param names (optional) names of estimates
 ##' @param unique.names if TRUE, unique.names will be applied to column names
 ##' @param minimal if TRUE, minimal summary will be returned
-##' @param level confidence level 
-##' @param quantiles quantiles
+##' @param level confidence level (0.95)
+##' @param quantiles quantiles (0,0.025,0.5,0.975,1)
 ##' @param ... additional levels to lower-level functions
 summary.sim <- function(object,estimate=NULL,se=NULL,
                 confint=!is.null(se)&&!is.null(true),true=NULL,
@@ -400,13 +419,17 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
             confint <- c()
             pos <- ncol(object)
             for (i in seq_along(estimate)) {
-                z <- 1-(1-level)/2
+              z <- 1-(1-level)/2
+              if (is.na(se[i])) {
+                CI <- matrix(NA, nrow=NROW(object), ncol=2)
+              } else {
                 CI <- cbind(object[,estimate[i]]-qnorm(z)*object[,se[i]],
                             object[,estimate[i]]+qnorm(z)*object[,se[i]])
-                colnames(CI) <- NULL
-                object <- cbind(object,CI)
-                confint <- c(confint,pos+1:2)
-                pos <- pos+2
+              }
+              colnames(CI) <- NULL
+              object <- cbind(object,CI)
+              confint <- c(confint,pos+1:2)
+              pos <- pos+2
             }
         }
         if (length(confint)!=2*length(estimate)) stop("'confint' should be of length 2*length(estimate).")
@@ -417,6 +440,7 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
         }
         est <- rbind(est,Coverage=Coverage)
     }
+
     if (!is.null(names)) {
          if (length(names)<ncol(est)) {
             uest <- unique(estimate)

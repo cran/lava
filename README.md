@@ -1,8 +1,6 @@
 <!-- badges: start -->
-
   [![R-CMD-check](https://github.com/kkholst/lava/workflows/R-CMD-check/badge.svg)](https://github.com/kkholst/lava/actions)
-  
-[![coverage](https://codecov.io/github/kkholst/lava/coverage.svg?branch=master)](https://codecov.io/github/kkholst/lava?branch=master)
+  [![coverage](https://codecov.io/github/kkholst/lava/coverage.svg?branch=master)](https://codecov.io/github/kkholst/lava?branch=master)
   [![cran](https://www.r-pkg.org/badges/version-last-release/lava)](https://CRAN.R-project.org/package=lava)
   [![cran-dl](https://cranlogs.r-pkg.org/badges/lava)](https://cranlogs.r-pkg.org/downloads/total/last-month/lava)
 <!-- badges: end -->
@@ -12,7 +10,15 @@
 
 # Latent Variable Models: lava [<img src=man/figures/lvm1-1.png align="right" height="150">](https://kkholst.github.io/lava/)
 
-A general implementation of Structural Equation Models with latent variables (MLE, 2SLS, and composite likelihood estimators) with both continuous, censored, and ordinal outcomes (Holst and Budtz-Joergensen (2013) <10.1007/s00180-012-0344-y>). The package also provides methods for graph exploration (d-separation, back-door criterion), simulation of general non-linear latent variable models, and estimation of influence functions for a broad range of statistical models.
+A general implementation of Structural Equation Models with latent variables
+(MLE, 2SLS, and composite likelihood estimators) with both continuous, censored,
+and ordinal outcomes (Holst and Budtz-Joergensen (2013)
+<10.1007/s00180-012-0344-y>). Mixture latent variable models and non-linear
+latent variable models (Holst and Budtz-Joergensen (2020)
+<10.1093/biostatistics/kxy082>). The package also provides methods for graph
+exploration (d-separation, back-door criterion), simulation of general
+non-linear latent variable models, and estimation of influence functions for a
+broad range of statistical models.
 
 
 ## Installation
