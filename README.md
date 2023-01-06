@@ -1,5 +1,5 @@
 <!-- badges: start -->
-  [![R-CMD-check](https://github.com/kkholst/lava/workflows/R-CMD-check/badge.svg)](https://github.com/kkholst/lava/actions)
+  [![R-CMD-check](https://github.com/kkholst/lava/workflows/R-CMD-check/badge.svg?branch=master)](https://github.com/kkholst/lava/actions)
   [![coverage](https://codecov.io/github/kkholst/lava/coverage.svg?branch=master)](https://codecov.io/github/kkholst/lava?branch=master)
   [![cran](https://www.r-pkg.org/badges/version-last-release/lava)](https://CRAN.R-project.org/package=lava)
   [![cran-dl](https://cranlogs.r-pkg.org/badges/lava)](https://cranlogs.r-pkg.org/downloads/total/last-month/lava)
@@ -159,12 +159,12 @@ e
 
 ### Model assessment
 
-Assessing goodness-of-fit, here the linearity between eta2 and eta1 (requires the `gof` package which can installed from CRAN)
+Assessing goodness-of-fit, here the linearity between eta2 and eta1 (requires the `gof` package)
 
 
 ```r
-# install.packages("gof")
-library(gof)
+# install.packages("gof", repos="https://kkholst.github.io/r_repo/")
+library("gof")
 set.seed(1)
 g <- cumres(e, eta2 ~ eta1)
 plot(g)
