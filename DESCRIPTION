@@ -1,8 +1,8 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.7.1
-Date: 2023-01-05
+Version: 1.7.2
+Date: 2023-02-22
 Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
 		   person("Brice", "Ozenne", role = "ctb"),
 		   person("Thomas", "Gerds", role = "ctb"))
@@ -37,6 +37,6 @@ ByteCompile: yes
 Encoding: UTF-8
 RoxygenNote: 7.2.3
 NeedsCompilation: no
-Packaged: 2023-01-04 10:24:58 UTC; Klaus.Holst
+Packaged: 2023-02-23 09:34:37 UTC; Klaus.Holst
 Repository: CRAN
-Date/Publication: 2023-01-06 22:30:34 UTC
+Date/Publication: 2023-02-23 12:10:02 UTC

@@ -47,6 +47,12 @@ gethook <- function(hook="estimate.hooks",...) {
     get(hook,envir=lava.env)
 }
 
+char2num <- function(x,...) {
+    idx <- grep("^[-]*[0-9\\.]+",x,perl=TRUE,invert=TRUE)
+    if (length(idx)>0) x[idx] <- NA
+    as.numeric(x)
+}
+
 ##' @export
 addhook <- function(x,hook="estimate.hooks",...) {
     newhooks <- unique(c(gethook(hook),x))
@@ -54,18 +60,25 @@ addhook <- function(x,hook="estimate.hooks",...) {
     invisible(newhooks)
 }
 
+packagecheck <- function(pkg) {
+  nzchar(system.file(package=pkg))
+}
+
 versioncheck <- function(pkg="lava",geq,sep=".",...) {
-    xyz <- tryCatch(
-        char2num(strsplit(as.character(packageVersion(pkg)),sep,fixed=TRUE)[[1]]),
-        error=function(x) NULL)
-    if (is.null(xyz)) return(FALSE)
-    if (missing(geq)) return(xyz)
-    for (i in seq(min(length(xyz),length(geq)))) {
-        if (xyz[i]>geq[i]) return(TRUE)
-        if (xyz[i]<geq[i]) return(FALSE)
-    }
-    if (length(xyz)>=length(geq)) return(TRUE)
+  if (!is.character(pkg)) return(FALSE)
+  if (packagecheck(pkg)) {
+    xyz <- char2num(strsplit(as.character(utils::packageVersion(pkg)),
+                             split=sep,fixed=TRUE)[[1]])
+  } else {
     return(FALSE)
+  }
+  if (missing(geq)) return(xyz)
+  for (i in seq(min(length(xyz),length(geq)))) {
+    if (xyz[i]>geq[i]) return(TRUE)
+    if (xyz[i]<geq[i]) return(FALSE)
+  }
+  if (length(xyz)>=length(geq)) return(TRUE)
+  return(FALSE)
 }
 
 lava.env <- new.env()
@@ -90,7 +103,7 @@ assign("options", list(
                       allow.negative.variance=FALSE,
                       progressbarstyle=3,
                       itol=1e-16,
-                      cluster.index=versioncheck("mets",c(0,2,7)),
+                      cluster.index=packagecheck("mets"),
                       Dmethod="simple",
                       messages=ifelse(interactive(), 1, 0),
                       parallel=TRUE,
