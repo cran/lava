@@ -1,7 +1,7 @@
-c44a690e412626d0e68a0c467669e10e *DESCRIPTION
+70ae8a4bad5ddef277b4871f03aa696b *DESCRIPTION
 2d318b2ea20f2216256c709268407aa8 *INDEX
 238ac4ddb917179cc2a74611c4258318 *NAMESPACE
-86f56343a5ed3eb2a26f8ecc720f2996 *NEWS.md
+955a4e32f4a998e7435ae3a0d2e6083d *NEWS.md
 9b2b3e46eeca1420e8aaaddab38a8c37 *R/By.R
 4e1c001276de548dd651339a31ec4743 *R/Col.R
 eae50dce108c08c13350a2e3258a7dcb *R/Expand.R
@@ -34,7 +34,7 @@ afd0e151256192d70940f21c8090e217 *R/confband.R
 0ddb35002100d89369dbe45ee262d01f *R/confint.R
 2629faf57fd4f690da2959c78e77c7c5 *R/confpred.R
 976686ee1559659adb6aab49e988e9e0 *R/constrain.R
-98a5cd8d1dcf2f9d083a8720c1b013ae *R/contr.R
+a17284f9660fd29be5aa7d4a3ec77f37 *R/contr.R
 313634e227ab14c8e69cf0e5a328827f *R/correlation.R
 8a246954b5fa3ed6be1f14f12834a1da *R/covariance.R
 73f6b448c2306dad9a3b63d58f61f207 *R/csplit.R
@@ -170,7 +170,7 @@ ef670a9b5a126aa296c23165736511be *R/wrapvec.R
 86fd0e4c7fd1bb9bddfb47d7ca7e5be0 *R/zgetmplus.R
 3a4ef8511d7e0e35a86c8a1d5c8653f8 *R/zgetsas.R
 9570af836c9aead1f70b309ce57f8987 *R/zib.R
-3ad4614ba9b5d5a824dccbb0925b2e1a *README.md
+67191127eaddb932fb7bee6b7865c0c6 *README.md
 2aa3c8210c6707399aaa695e5ea8da72 *build/vignette.rds
 2feb5db344bfce229c01a7de40929e85 *data/bmd.rda
 2d838f53ad9c3d58fd6a184ff6e3720e *data/bmidata.rda
@@ -195,10 +195,10 @@ a08f2482ed1aa2c382c8e518ecc4a779 *demo/model.R
 de900c16640f9ffaf822b8b4b716bbe8 *inst/CITATION
 0a8bfcfe458aa25ee8217dfcdaa79694 *inst/doc/correlation.R
 7fce12c6bc99a54192743e3dc69fe07d *inst/doc/correlation.Rmd
-e92bc3d4ac94f17370418f15f1e5b150 *inst/doc/correlation.html
+64541199909fdc756843f742414218a6 *inst/doc/correlation.html
 7f89874b563dd534cf9a9dafed2c4d6b *inst/doc/nonlinear.R
 87c0f0ba8c6a0a33ff897fddc06a4307 *inst/doc/nonlinear.Rmd
-546db79c0cbc8a4f88d61a010f8aceca *inst/doc/nonlinear.html
+8efa5a78d11ff7175444243a37ee53ab *inst/doc/nonlinear.html
 7b6ffb90e95d2678700214aa78fa5f1d *man/By.Rd
 98b24f20cb0e1506699848299a4fc37a *man/Col.Rd
 b1af3c10bb1131414d2a2cb7bb09eb01 *man/Combine.Rd
