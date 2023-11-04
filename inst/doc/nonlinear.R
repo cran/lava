@@ -74,7 +74,7 @@ m2d <- nonlinear(m2, type="spline", knots=kn2, eta2~eta1)
 #  ## Repeated 5-fold cross-validation:
 #  ff <- lapply(list(linear=m2a,quadratic=m2b,spline4=m2c,spline6=m2d),
 #  	    function(m) function(data,...) twostage(m1,m,data=data,stderr=FALSE,control=list(start=coef(e0),contrain=TRUE)))
-#  fit.cv <- cv(ff,data=d,K=5,rep=2,mc.cores=parallel::detectCores(),seed=1)
+#  fit.cv <- lava:::cv(ff,data=d,K=5,rep=2,mc.cores=parallel::detectCores(),seed=1)
 
 ## ----results="hide", echo=FALSE-----------------------------------------------
 ## To save time building the vignettes on CRAN, we cache time consuming computations
@@ -190,4 +190,7 @@ confband(pm[,1], lower=pm[,4], upper=pm[,5], polygon=TRUE,
 	 border=NA, col=Col("darkred",0.2))
 legend("bottomright", c("Gaussian","Mixture"),
        col=c("darkblue","darkred"), lwd=2, bty="n")
+
+## -----------------------------------------------------------------------------
+sessionInfo()
 

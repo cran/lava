@@ -13,7 +13,8 @@
 ##' @param args (optional) list of named arguments passed to (mc)mapply
 ##' @param iter If TRUE the iteration number is passed as first argument to
 ##'   (mc)mapply
-##' @param ... Additional arguments to (mc)mapply
+##' @param mc.cores Optional number of cores. Will use parallel::mcmapply instead of future
+##' @param ... Additional arguments to future.apply::future_mapply
 ##' @aliases sim.default as.sim
 ##' @seealso summary.sim plot.sim print.sim
 ##' @details To parallelize the calculation use the future::plan function (e.g.,
@@ -65,7 +66,7 @@
 ##' sim(function(iter=1,a=5,b=5) iter*f(a,b), iter=TRUE, R=5)
 sim.default <- function(x=NULL, R=100, f=NULL, colnames=NULL,
                 seed=NULL, args=list(),
-                iter=FALSE, ...) {
+                iter=FALSE, mc.cores, ...) {
     stm <- proc.time()
     oldtm <- rep(0,5)
     if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
@@ -137,9 +138,19 @@ sim.default <- function(x=NULL, R=100, f=NULL, colnames=NULL,
     }
     if (iter) formals(robx)[[1]] <- NULL
 
-    pp <- c(as.list(parval),dots,
-            list(FUN=robx, SIMPLIFY=FALSE, MoreArgs=as.list(args), future.seed=TRUE))
-    val <- do.call(future.apply::future_mapply, pp)
+    pp <- c(
+        as.list(parval), dots,
+      list(FUN = robx, SIMPLIFY = FALSE, MoreArgs = as.list(args)))
+    if (is.null(pp$future.seed)) {
+      pp$future.seed <- TRUE
+    }
+    if (!missing(mc.cores)) {
+      pp$future.seed <- NULL
+      pp$mc.cores <- mc.cores
+      val <- do.call(parallel::mcmapply, pp)
+    } else {
+      val <- do.call(future.apply::future_mapply, pp)
+    }
     res <- do.call(rbind, val)
     if (is.null(res)) {
       res <- matrix(NA, ncol=length(val[[1]]), nrow=R)
@@ -209,9 +220,14 @@ Time <- function(sec,print=FALSE,...) {
 Print <- function(x, n=5, digits=max(3, getOption("digits")-3), ...) {
     mat <- !is.null(dim(x))
     if (!mat) {
-        x <- cbind(x)
-        colnames(x) <- ""
-    }
+      if (is.vector(x)) {
+          x <- cbind(x)
+          colnames(x) <- ""
+      } else {
+        print(x, ...)
+        return(invisible(x))
+      }
+    } 
     if (is.null(rownames(x))) {
         rownames(x) <- seq(nrow(x))
     }

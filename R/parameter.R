@@ -11,6 +11,7 @@
 ##' @export
 "parameter<-.lvm" <- function(x,constrain,start,remove=FALSE,...,value) {
   if (inherits(value,"formula")) value <- all.vars(value)
+  x <- rmvar(x, value)
   if (remove) {
       x$expar[value] <- NULL
       x$exfix[value] <- NULL
@@ -41,8 +42,11 @@
 }
 
 ##' @export
-parameter <- function(x,var,...) {
+parameter <- function(x,...,value) UseMethod("parameter")
+
+##' @export
+parameter.default <- function(x, var, ...) {
     if (missing(var)) return (names(unlist(x$attributes$parameter)))
-    parameter(x,...) <- var
+    parameter(x, ...) <- var
     return(x)
 }
