@@ -39,7 +39,7 @@ GLMest <- function(m,data,control=list(),...) {
 
     for (y in yvar) {
         count <- count+1
-        xx <- parents(m,y)
+        xx <- parents(m, y)
         fam <- attributes(distribution(m)[[y]])$family
         if (is.null(fam)) fam <- stats::gaussian()
         if (!is.null(fam$link)) {
@@ -54,16 +54,17 @@ GLMest <- function(m,data,control=list(),...) {
         ## if (isEventTime) {
         ##     y <- yvar.et[y]
         ## }
-        #nn0 <- paste(y,xx,sep=lava.options()$symbol[1])
+        # nn0 <- paste(y,xx,sep=lava.options()$symbol[1])
 
-        f <- as.formula(paste0(y,"~",paste(xx,collapse="+")))
-        isSurv <- inherits(data[1,y],"Surv")
+        f <- as.formula(paste0(y, "~",
+          paste(xx, collapse = "+")
+        ))
+        isSurv <- inherits(data[1, y], "Surv")
         if (isSurv) {
-            g <- survival::survreg(f,data=data,dist=fam$family,...)
+          g <- survival::survreg(f,data=data,dist=fam$family,...)
         } else {
-            g <- glm(f,family=fam,data=data,...)
+          g <- glm(f,family=fam,data=data,...)
         }
-
         p <- pars(g)
         ii <- IC(g)
         V0 <- attr(ii, "bread")
@@ -71,9 +72,12 @@ GLMest <- function(m,data,control=list(),...) {
         y <- y0
         names(p)[1] <- y
         if (length(p)>1) {
-            nn <- paste(y,xx,sep=lava.options()$symbol[1])
-            names(p)[seq_along(nn)+1] <- nn0
-            if (length(p)>length(nn)+1) names(p)[length(p)] <- paste(y,y,sep=lava.options()$symbol[2])
+          xx0 <- setdiff(xx, 1)
+          if (length(xx0) > 0) {
+            nn0 <- paste(y, xx0, sep = lava.options()$symbol[1])
+            names(p)[seq_along(nn0) + 1] <- nn0
+          }
+          if (length(p)>length(xx0)+1) names(p)[length(p)] <- paste(y,y,sep=lava.options()$symbol[2])
         }
         if (tolower(fam$family)%in%c("gaussian","gamma","inverse.gaussian") && !isSurv) {
             ics <- cbind(ics,0)
@@ -200,17 +204,21 @@ score.glm <- function(x,p=coef(x),data,indiv=FALSE,pearson=FALSE,
         y <- model.frame(formula(x),data=data)[,1]
     }
     if (is.character(y) || is.factor(y)) {
-        y <- as.numeric(as.factor(y))-1
+        y <- as.numeric(as.factor(y)) - 1
     }
     ## g <- link$linkfun
     ginv <- link$linkinv
     dginv <- link$mu.eta ## D[linkinv]
     ##dg <- function(x) 1/dginv(g(x)) ## Dh^-1 = 1/(h'(h^-1(x)))
-    canonf <- do.call(link$family,list())
-    ## caninvlink <- canonf$linkinv
-    canlink <- canonf$linkfun
-    Dcaninvlink <- canonf$mu.eta
-    Dcanlink <- function(x) 1/Dcaninvlink(canlink(x))
+    if (inherits(x, "negbin")) {
+        Dcanlink <- function(x) 1/x
+    } else {
+        canonf <- do.call(link$family,list())
+        ## caninvlink <- canonf$linkinv
+        canlink <- canonf$linkfun
+        Dcaninvlink <- canonf$mu.eta
+        Dcanlink <- function(x) 1 / Dcaninvlink(canlink(x))
+    }
     ##gmu <- function(x) g(caninvlink(x))
     ##invgmu <- function(z) canlink(ginv(z))
     h <- function(z) Dcanlink(ginv(z))*dginv(z)
@@ -228,14 +236,18 @@ score.glm <- function(x,p=coef(x),data,indiv=FALSE,pearson=FALSE,
     a.phi <- 1
     r <- r*weights
     rpearson <- as.vector(r)/link$variance(pi)^.5
-    if (length(p)>length(coef(x))) {
-        a.phi <- p[length(coef(x))+1]
-    } else if (tolower(family(x)$family)%in%c("gaussian","gamma","inverse.gaussian")) {
-        suppressWarnings(a.phi <- summary(x)$dispersion)
-        ##a.phi <- sum(rpearson^2)*x$df.residual/x$df.residual^2
+    if (length(p) > length(coef(x))) {
+        a.phi <- p[length(coef(x)) + 1]
+    } else { ## if (tolower(family(x)$family)%in%c("gaussian","gamma","inverse.gaussian"))
+        suppressWarnings(disp <- summary(x)$dispersion)
+        if (!is.null(disp)) a.phi <- disp
+        if (inherits(x, "negbin")) {
+            a.phi <- link$variance(pi) / pi
+        }
+        ## a.phi <- sum(rpearson^2)*x$df.residual/x$df.residual^2
     }
-    A <- as.vector(h(Xbeta)*r)/a.phi
-    S <- apply(X,2,function(x) x*A)
+    A <- as.vector(h(Xbeta) * r) / a.phi
+    S <- apply(X, 2, function(x) x * A)
     if (!indiv) return(colSums(S))
     if (pearson) attr(S,"pearson") <- rpearson
     suppressWarnings(attributes(S)$bread <- vcov(x)*NROW(S))

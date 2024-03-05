@@ -242,8 +242,8 @@ test_that("Optimization", {
     df2 <- function(x) 2*log(x) + 3
     op <- NR(5,f,df,df2,control=list(tol=1e-40)) ## Find root
     testthat::expect_equivalent(round(op$par,digits=7),.6065307)
-    op2 <- estfun0(5,gradient=df)
-    op3 <- estfun(5,gradient=df,hessian=df2,control=list(tol=1e-40))
+    op2 <- estimatingfunction0(5,gradient=df)
+    op3 <- estimatingfunction(5,gradient=df,hessian=df2,control=list(tol=1e-40))
     testthat::expect_equivalent(op$par,op2$par)
     testthat::expect_equivalent(op$par,op3$par)
 })
@@ -299,22 +299,23 @@ test_that("Prediction with missing data, random intercept", {
 })
 
 
-if (requireNamespace("lme4",quietly = TRUE) && requireNamespace("mets",quietly = TRUE))
+## if (requireNamespace("lme4", quietly = TRUE) && requireNamespace("mets", quietly = TRUE)) {
+if (requireNamespace("mets",quietly = TRUE))
 test_that("Random slope model", {
     set.seed(1)
     m <- lvm()
-    regression(m) <- y1 ~ 1*u+1*s
-    regression(m) <- y2 ~ 1*u+2*s
-    regression(m) <- y3 ~ 1*u+3*s
+    regression(m) <- y1 ~ 1*u + 1*s
+    regression(m) <- y2 ~ 1*u + 2*s
+    regression(m) <- y3 ~ 1*u + 3*s
     latent(m) <- ~u+s
     dw <- sim(m,20)
 
     dd <- mets::fast.reshape(dw)
     dd$num <- dd$num+runif(nrow(dd),0,0.2)
     dd0 <- dd[-c(1:2*3),]
-    library(lme4)
-    l <- lmer(y~ 1+num +(1+num|id),dd,REML=FALSE)
-    sl <- lava:::varcomp(l,profile=FALSE)
+    ##l <- lme4::lmer(y~ 1+num +(1+num|id),dd,REML=FALSE)
+    l <- nlme::lme(y ~ 1+num, random=~1+num|id, data=dd, method="ML")
+    sl <- lava:::varcomp(l)
 
     d <- mets::fast.reshape(dd,id="id")
     d0 <- mets::fast.reshape(dd0,id="id")
@@ -337,7 +338,8 @@ test_that("Random slope model", {
     ## missing
     testthat::expect_output(e0 <- estimate(m0,d0,missing=TRUE,param="none",control=list(method="NR",constrain=FALSE,start=coef(e),trace=1)),
                             "Iter=")
-    l0 <- lmer(y~ 1+num +(1+num|id),dd0,REML=FALSE)
+    ## l0 <- lmer(y ~ 1 + num + (1 + num | id), dd0, REML = FALSE)
+    l0 <- nlme::lme(y~ 1+num, random=~1+num|id, data=dd0, method="ML")
     testthat::expect_true((logLik(l0)-logLik(e0))^2<1e-5)
 
     m1 <- lvm(c(y1[0:v],y2[0:v],y3[0:v])~1*u)

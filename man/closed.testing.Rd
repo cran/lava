@@ -8,7 +8,8 @@
 closed.testing(
   object,
   idx = seq_along(coef(object)),
-  null = rep(0, length(idx)),
+  null,
+  return.all = FALSE,
   ...
 )
 }
@@ -18,6 +19,8 @@ closed.testing(
 \item{idx}{Index of parameters to adjust for multiple testing}
 
 \item{null}{Null hypothesis value}
+
+\item{return.all}{If TRUE details on all intersection hypotheses are returned}
 
 \item{...}{Additional arguments}
 }

@@ -5,6 +5,7 @@
 \alias{estimate}
 \alias{estimate.estimate}
 \alias{merge.estimate}
+\alias{estimate.mlm}
 \title{Estimation of functional of parameters}
 \usage{
 \method{estimate}{default}(
@@ -24,6 +25,7 @@
   keep,
   use,
   regex = FALSE,
+  ignore.case = FALSE,
   contrast,
   null,
   vcov,
@@ -74,6 +76,8 @@
 
 \item{regex}{If TRUE use regular expression (perl compatible) for keep,use arguments}
 
+\item{ignore.case}{Ignore case-sensitiveness in regular expression}
+
 \item{contrast}{(optional) Contrast matrix for final Wald test}
 
 \item{null}{(optional) null hypothesis to test}
@@ -111,8 +115,9 @@ Wald tests, robust standard errors, cluster robust standard errors,
 LRT (when \code{f} is not a function)...
 }
 \details{
-influence function decomposition
-\deqn{\sqrt{n}(\widehat{\theta}-\theta) = \sum_{i=1}^n\epsilon_i + o_p(1)}
+influence function decomposition of estimator \eqn{\widehat{\theta}} based on
+data \eqn{Z_1,\ldots,Z_n}:
+\deqn{\sqrt{n}(\widehat{\theta}-\theta) = \frac{1}{\sqrt{n}}\sum_{i=1}^n IC(Z_i; P) + o_p(1)}
 can be extracted with the \code{IC} method.
 }
 \examples{
@@ -228,4 +233,7 @@ null <- rep(mean(coef(l)),length(coef(l))) ## just need to make sure we simulate
 estimate(l,f,R=1e2,null.sim=null)
 
 estimate(l,f)
+}
+\seealso{
+estimate.array
 }

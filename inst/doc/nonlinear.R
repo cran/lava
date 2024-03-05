@@ -18,7 +18,8 @@ functional(m, eta2~eta1) <- f
 d <- sim(m, n=200, seed=42) # Default is all parameters are 1
 
 ## -----------------------------------------------------------------------------
-plot(m, plot.engine="visNetwork")
+## plot(m, plot.engine="visNetwork")
+plot(m)
 
 ## ----specifymodels------------------------------------------------------------
 m1 <- lvm(x1+x2+x3 ~ eta1, eta1 ~ z, latent=~eta1)
@@ -51,7 +52,7 @@ p <- cbind(eta1=newd$eta1,
 	  estimate(e2,f=function(p) predict(e2,p=p,newdata=newd))$coefmat)
 head(p)
 
-## ----fig:pred2----------------------------------------------------------------
+## ----figpred2-----------------------------------------------------------------
 plot(I(eta2-z) ~ eta1, data=d, col=Col("black",0.5), pch=16,
      xlab=expression(eta[1]), ylab=expression(eta[2]), xlim=c(-4,4))
 lines(Estimate ~ eta1, data=as.data.frame(p), col="darkblue", lwd=5)

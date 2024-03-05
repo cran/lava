@@ -9,7 +9,7 @@
 ##' <doi:10.1093/biostatistics/kxy082>). The package also provides methods for
 ##' graph exploration (d-separation, back-door criterion), simulation of general
 ##' non-linear latent variable models, and estimation of influence functions for
-##' a broad range of statistical models.##'
+##' a broad range of statistical models.
 ##' @name lava-package
 ##' @importFrom graphics plot lines points abline points text layout
 ##'     par plot.new plot.window title rect locator segments image
@@ -28,7 +28,7 @@
 ##'     pchisq confint.default formula fft uniroot rbinom predict sd
 ##'     addmargins residuals dnorm quantile qf cov2cor qchisq
 ##'     get_all_vars p.adjust rpois rt rmultinom rgamma printCoefmat 
-##'     glm nlminb na.pass na.omit influence
+##'     glm nlminb na.pass na.omit influence weights density.default
 ##' @importFrom survival is.Surv
 ##' @importFrom future.apply future_mapply future_lapply
 ##' @importFrom methods new as

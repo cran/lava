@@ -1,22 +1,17 @@
 ##' @export
-`%++%.lvm` <- function(x,y) merge(x,y)
+`%++%.lvm` <- function(x, y) merge(x, y)
 
 ##' @export
-"+.lvm" <- function(x,...) {
-  merge(x,...)
+"+.lvm" <- function(x, ...) {
+  merge(x, ...)
 }
 
-## ##' @export
-## "+.lm" <- function(x,...) {
-##   merge(x,...)
-## }
-
 ##' @export
-merge.lvm <- function(x,y,...) {
-  objects <- list(x,y,...)
+merge.lvm <- function(x, y, ...) {
+  objects <- list(x, y, ...)
   if (length(objects)<2) return(x)
   m <- objects[[1]]
-  for (i in seq(2,length(objects))) {
+  for (i in seq(2, length(objects))) {
     m2 <- objects[[i]]
     if (length(latent(m2))>0)
       latent(m) <- latent(m2)
@@ -58,30 +53,48 @@ merge.lvm <- function(x,y,...) {
 
 
 ##' @export
-"+.estimate" <- function(x,...) {
-  merge(x, ..., paired=TRUE)
+"+.estimate" <- function(x, ...) {
+  merge(x, ...)
 }
 
 ##' @export
 "-.estimate" <- function(x,...) {
-  res <- merge(x, ..., paired=TRUE)
+  res <- merge(x, ...)
   estimate(res, pairwise.diff(length(coef(res))))
 }
 
 ##' @export
-merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=NULL) {
+merge.estimate <- function(x,y,...,
+                           id,
+                           paired=FALSE,
+                           labels=NULL,
+                           keep=NULL,
+                           subset=NULL,
+                           regex=FALSE,
+                           ignore.case=FALSE) {
     objects <- list(x, estimate(y), ...)
     if (length(nai <- names(objects)=="NA")>0)
     names(objects)[which(nai)] <- ""
     if (!missing(subset)) {
-        coefs <- unlist(lapply(objects, function(x) coef(x)[subset]))
+      if (regex) {
+
+      }
+      coefs <- unlist(lapply(objects, function(x) coef(x)[subset]))
     } else {
-        coefs <- unlist(lapply(objects,coef))
+      coefs <- unlist(lapply(objects,coef))
     }
     if (!is.null(labels)) {
-        names(coefs) <- labels
+      names(coefs) <- labels
     } else {
-        names(coefs) <- make.unique(names(coefs))
+      names(coefs) <- make.unique(names(coefs))
+    }
+    if (regex) {
+      if (!is.null(keep)) {
+        cc <- names(coefs)
+        keep <- unlist(lapply(keep, function(x) {
+          cc[grepl(x, cc, perl = TRUE, ignore.case=ignore.case)]
+        }))
+      }
     }
     if (any(unlist(lapply(objects, function(x) is.null(IC(x)))))) {
       ## No iid decomposition/influence functions
@@ -90,16 +103,23 @@ merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=
       return(estimate(coef=coefs, vcov=V, keep=keep, ...))
     }
     if (!missing(id) && is.null(id)) { ## Independence between datasets in x,y,...
-        nn <- unlist(lapply(objects,function(x) nrow(x$IC)))
-        cnn <- c(0,cumsum(nn))
+        nn <- unlist(lapply(
+          objects,
+          function(x) nrow(x$IC)
+        ))
+        cnn <- c(0, cumsum(nn))
         id <- list()
-        for (i in seq_along(nn)) id <- c(id,list(seq(nn[i])+cnn[i]))
+        for (i in seq_along(nn)) {
+          id <- c(id, list(seq(nn[i]) + cnn[i]))
+        }
     }
     if (missing(id)) {
       if (paired) { ## One-to-one dependence between observations in x,y,...
-            id <- rep(list(seq(nrow(x$IC))),length(objects))
+        id <- lapply(objects, function(x) {
+          seq_len(NROW(x$IC))
+        })
         } else {
-            id <- lapply(objects,function(x) x$id)
+            id <- lapply(objects, function(x) x$id)
         }
     } else {
         nn <- unlist(lapply(objects,function(x) NROW(IC(x))))
@@ -148,8 +168,16 @@ merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=
     for (i in seq(length(objects))) {
         relpos <- seq_along(coef(objects[[i]]))        
         if (!missing(subset)) relpos <- seq_along(subset)
-        ic0[match(ids[[i]],id),relpos+colpos] <- ic_all[[i]]
-        model.index <- c(model.index,list(relpos+colpos))
+        ic0[match(ids[[i]], id), relpos + colpos] <- ic_all[[i]]
+        midx <- objects[[i]]$model.index
+        if (!is.null(midx)) {
+          midx <- lapply(midx, function(x) {
+            intersect(x, relpos) + colpos
+          })
+        } else {
+          midx <- list(relpos + colpos)
+        }
+        model.index <- c(model.index, midx)
         colpos <- colpos+tail(relpos,1)
     }
     rownames(ic0) <- id
@@ -160,9 +188,12 @@ merge.estimate <- function(x,y,...,id,paired=FALSE,labels=NULL,keep=NULL,subset=
     }
     ic0[is.na(ic0)] <- 0
 
-    res <- estimate.default(NULL, coef=coefs, stack=FALSE, data=NULL,
-                            IC=ic0, id=id, keep=keep)
-    res$model.index <- model.index
+    res <- estimate.default(NULL,
+      coef = coefs, stack = FALSE, data = NULL,
+      IC = ic0, id = id, keep = keep
+      )
+    if (is.null(keep))
+      res$model.index <- model.index
     return(res)
 }
 

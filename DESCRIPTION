@@ -1,8 +1,7 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.7.3
-Date: 2023-11-02
+Version: 1.8.0
 Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
 		   person("Brice", "Ozenne", role = "ctb"),
 		   person("Thomas", "Gerds", role = "ctb"))
@@ -24,19 +23,19 @@ URL: https://kkholst.github.io/lava/
 BugReports: https://github.com/kkholst/lava/issues
 License: GPL-3
 LazyLoad: yes
-Depends: R (>= 3.5.0)
-Imports: future.apply, grDevices, graphics, methods, numDeriv,
+Depends: R (>= 3.0)
+Imports: cli, future.apply, graphics, grDevices, methods, numDeriv,
         progressr, stats, survival, SQUAREM, utils
-Suggests: KernSmooth, Matrix, Rgraphviz, data.table, ellipse, fields,
-        geepack, graph, knitr, bookdown, rmarkdown, igraph (>= 0.6),
-        lavaSearch2, lme4, mets (>= 1.1), nlme, optimx, polycor,
-        quantreg, rgl, R.rsp (>= 0.40), targeted (>= 0.2), testthat (>=
-        0.11), visNetwork, zoo
+Suggests: KernSmooth, Rgraphviz, data.table, ellipse, fields, geepack,
+        graph, knitr, rmarkdown, igraph (>= 0.6), lavaSearch2, lme4 (>=
+        1.1.35.1), MASS, Matrix (>= 1.6.3), mets (>= 1.1), nlme,
+        optimx, polycor, quantreg, rgl, targeted (>= 0.4), testthat (>=
+        0.11), visNetwork
 VignetteBuilder: knitr
 ByteCompile: yes
 Encoding: UTF-8
 RoxygenNote: 7.2.3
 NeedsCompilation: no
-Packaged: 2023-11-04 21:44:20 UTC; kkzh
+Packaged: 2024-03-05 09:41:13 UTC; kkzh
 Repository: CRAN
-Date/Publication: 2023-11-04 22:50:02 UTC
+Date/Publication: 2024-03-05 13:00:02 UTC

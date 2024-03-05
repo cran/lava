@@ -176,19 +176,31 @@ as.vector.sim <- function(x, mode="any") {
 }
 
 ##' @export
+as.matrix.sim <- function(x, ...) {
+  if (inherits(x, "data.frame")) {
+    return(as.matrix(as.data.frame(x)))
+  }
+  class(x) <- "matrix"
+  attr(x, "call") <- NULL
+  attr(x, "f") <- NULL
+  attr(x, "time") <- NULL
+  x
+}
+
+##' @export
 "[.sim" <- function(x, i, j, drop = FALSE) {
-    atr <- attributes(x)
-    if (!is.null(dim(x))) {
-        class(x) <- class(x)[2]
-    } else {
-        class(x) <- class(x)[-1]
-    }
-    x <- NextMethod("[", drop=drop)
-    atr.keep <- c("call", "time")
-    if (missing(j)) atr.keep <- c(atr.keep, "f")
-    attributes(x)[atr.keep] <- atr[atr.keep]
-    if (!drop) class(x) <- c("sim", class(x))
-    x
+  atr <- attributes(x)
+  if (!is.null(dim(x))) {
+    class(x) <- class(x)[2]
+  } else {
+    class(x) <- class(x)[-1]
+  }
+  x <- NextMethod("[", drop=drop)
+  atr.keep <- c("call", "time")
+  if (missing(j)) atr.keep <- c(atr.keep, "f")
+  attributes(x)[atr.keep] <- atr[atr.keep]
+  if (!drop) class(x) <- c("sim", class(x))
+  return(x)
 }
 
 ##' @export
@@ -217,7 +229,18 @@ Time <- function(sec,print=FALSE,...) {
     return(res)
 }
 
-Print <- function(x, n=5, digits=max(3, getOption("digits")-3), ...) {
+
+##' Generic print method
+##'
+##' Nicer print method for tabular data. Falls back to standard print method for
+##' all other data types.
+##' @export
+##' @param x object to print
+##' @param n number of rows to show from top and bottom of tabular data
+##' @param digits precision
+##' @param ... additional arguments to print method
+Print <- function(x, n=5,
+                  digits=max(3, getOption("digits")-3), ...) {
     mat <- !is.null(dim(x))
     if (!mat) {
       if (is.vector(x)) {
@@ -254,7 +277,7 @@ print.sim <- function(x, ...) {
     attr(x, "f") <- attr(x, "call") <- NULL
     Print(x, ...)
     cat("\n")
-    print(s, extra=FALSE, ...)
+    if (nrow(x)>1) print(s, extra=FALSE, ...)
     return(invisible(x))
 }
 

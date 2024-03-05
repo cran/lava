@@ -23,11 +23,11 @@
 ##' g <- glm(y~x+z,data=d,family=binomial)
 ##' var_ic(IC(g))
 ##'
-IC <- function(x,...) UseMethod("IC")
+IC <- function(x, ...) UseMethod("IC")
 
 ##' @export
 influence.estimate <- function(model, ...)
-  IC(model, ...)
+    IC(model, ...)
 
 ##' @export
 IC.default <- function(x, bread, id=NULL,
@@ -119,8 +119,10 @@ IC.matrix <- function(x,...) {
             nn <- c(nn,paste(colnames(x)[c(i,j)],collapse=lava.options()$symbols[2]))
         }
     colnames(ic1) <- colnames(x); colnames(ic2) <- nn
-    names(cc) <- c(colnames(ic1),colnames(ic2))
-    structure(cbind(ic1,ic2),
+    names(cc) <- c(colnames(ic1), colnames(ic2))
+    res <- cbind(ic1, ic2)
+    rownames(res) <- rownames(x)
+    structure(res,
               coef=cc,
               mean=mu, var=S)
 }
