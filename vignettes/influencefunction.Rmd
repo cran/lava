@@ -23,7 +23,9 @@ library("lava")
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
-)
+  )
+has_mets <- lava:::versioncheck('mets', 1)
+has_geepack <- lava:::versioncheck('geepack', 1)
 ```
 
 \newcommand{\arctanh}{\operatorname{arctanh}}
@@ -122,7 +124,7 @@ To illustrate the methods we consider data arising from the model \(Y_{ij} \sim
 Bernoulli\{\operatorname{expit}(X_{ij} + A_{i} + W_{i})\}, A_{i} \sim
 Bernoulli\{\operatorname{expit}(W_{i})\}\) 
 with independent covariates
-\(X_{ij}\sim\mathcal{N}(0,1), U_{i}\sim\mathcal{N}(0,1)\). 
+\(X_{ij}\sim\mathcal{N}(0,1), W_{i}\sim\mathcal{N}(0,1)\).
 ```{r sim_model}
 m <- lvm() |>
   regression(y1 ~ x1 + a + w) |>
@@ -141,7 +143,13 @@ dw <- sim(m, n, seed = 1) |>
   transform(y3 = y3 * ifelse(id > n / 2, NA, 1))
 Print(dw)
 ## Data in long format
-dl <- mets::fast.reshape(dw, varying = c("y", "x")) |> na.omit()
+dl <- reshape(dw,
+        varying = list(paste0("y",1:4),
+                       paste0("x",1:4)),
+        v.names=c("y", "x"), direction="long") |>
+  na.omit()
+dl <- dl[order(dl$id), ]
+## dl <- mets::fast.reshape(dw, varying = c("y", "x")) |> na.omit()
 Print(dl)
 ```
 
@@ -157,7 +165,7 @@ The main functions for working with influence functions are
 
 The `estimate` function is the primary tool for obtaining parameter estimates
 and related information. It returns an object of the class type `estimate`,
-which is general container for holding information about estimated parameters.
+which is a general container for holding information about estimated parameters.
 The estimate function takes as input either a model object (the first argument
 `x`), or a parameter vector and corresponding influence function (IF) matrix
 specified using the `coef` and `IF` arguments. If the primary goal is to apply the
@@ -289,7 +297,7 @@ data(pbc, package="survival")
 The Cox proportional hazards model can be fitted with the `mets::phreg` method
 which can estimate the IF for both the partial likelihood parameters and the
 baseline hazard. Here we fit a survival model with right-censored event times
-```{r phreg}
+```{r phreg, eval=has_mets }
 fit.phreg <- mets::phreg(Surv(time, status > 0) ~ age + sex, data = pbc)
 fit.phreg
 IC(fit.phreg) |> head()
@@ -300,7 +308,7 @@ The IF for the baseline cumulative hazard at a specific time point
 \Lambda_0(t) = \int_0^t \lambda_0(u)\,du, 
 \end{align*}
 where \(\lambda_0(t)\) is the baseline hazard, can be estimated in similar way:
-```{r phreg-baseline}
+```{r phreg-baseline, eval=has_mets }
 baseline <- function(object, time, ...) {
   ic <- mets::IC(object, baseline = TRUE, time = time, ...)
   est <- mets::predictCumhaz(object$cumhaz, new.time = time)[1, 2]
@@ -312,7 +320,7 @@ baseline(fit.phreg, tt)
 
 The `estimate` and `IF` methods are also available for parametric survival
 models via `survival::survreg`, here a Weibull model:
-```{r survreg}
+```{r survreg, eval=has_mets }
 survival::survreg(Surv(time, status > 0) ~ age + sex, data = pbc, dist="weibull") |>
   estimate()
 ```
@@ -333,7 +341,7 @@ Here we fit a random effects probit model
 \pr(Y_{ij} = 1 \mid U_{i}, W_{ij})=\Phi(\mu_{j} + \beta_{j} W_{ij} + U_{i}), \quad U_{i}\sim\mathcal{N}(0,\sigma_{u}^{2}),\quad j=1,2
 \]
 to the simulated dataset
-```{r semfit}
+```{r semfit, eval=has_mets }
 sem <- lvm(y1 + y2 ~ 1 * u + w) |>
   latent(~ u) |>
   ordinal(K=2, ~ y1 + y2)
@@ -569,7 +577,7 @@ estimate(g0, id=dl$id)
 ```
 We can confirm that this situation is equivalent to the variance estimates we 
 obtain from a GEE marginal model with working independence correlation structure [@r_geepack]
-```{r geepack}
+```{r geepack, eval=has_geepack }
 gee0 <- geepack::geeglm(y ~ a + w + x, data = dl, id = dl$id, family=binomial)
 summary(gee0)
 ```
@@ -786,7 +794,7 @@ adjusted \(p\)-values can then be calculated as \[P(Z_{max} >
 in [@RitzPipper_multcomp] the joint distribution of \(Z_{1},\ldots,Z_{p}\)
 can be estimated from the IFs. This is implemented in the `p.correct` method
 
-```{r pcorrect}
+```{r pcorrect, eval=has_mets }
 gg0 <- estimate(gg, use="^a", regex=TRUE, null=rep(.8, 3))
 p.correct(gg0)
 ```
@@ -804,7 +812,7 @@ adjusted \(p\)-values can here be obtained as the maximum \(p\)-value across all
 the composite hypothesis tests. Unfortunately, this only works for relatively
 few comparisons as the number of tests grows exponentially.
 
-```{r closedtesting}
+```{r closedtesting, eval=has_mets}
 closed.testing(gg0)
 ```
 
@@ -875,20 +883,21 @@ ea
 IC(ea) |> head()
 ```
 
-## Example: Average Treatment Effects
+<!-- ## Example: Average Treatment Effects -->
 
-```{r targeted, cache=TRUE}
-a1 <- targeted::cate(a ~ 1,
+<!-- ```{r targeted, cache=TRUE, eval=has_targeted } -->
+<!-- a1 <- targeted::cate(a ~ 1, -->
 
 
 
-                     data = dw,
-                     response_model = y1 ~ x1+w+a,
-                     propensity_model = a ~ x1*w
-                     )
-a1
-IC(a1) |> head()
-```
+<!--                      data = dw, -->
+<!--                      response_model = y1 ~ x1+w+a, -->
+<!--                      propensity_model = a ~ x1*w -->
+<!--                      ) -->
+<!-- a1 -->
+<!-- IC(a1) |> head() -->
+<!-- ``` -->
+
 # SessionInfo
 
 ```{r sessionInfo}

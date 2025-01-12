@@ -1,3 +1,5 @@
+#' @keywords internal
+"_PACKAGE"
 
 ##' Estimation and simulation of latent variable models
 ##'
@@ -33,7 +35,6 @@
 ##' @importFrom future.apply future_mapply future_lapply
 ##' @importFrom methods new as
 ##' @aliases lava-package lava
-##' @docType package
 ##' @author Klaus K. Holst Maintainer: <klaus@@holst.it>
 ##' @keywords package
 ##' @examples
@@ -250,7 +251,7 @@ NULL
 ##' starter.multigroup
 ##' addattr modelPar modelVar matrices pars pars.lvm
 ##' pars.lvmfit pars.glm score.glm procdata.lvmfit modelPar modelVar
-##' matrices reorderdata graph2lvm igraph.lvm subgraph finalize
+##' mat.lvm matrices reorderdata graph2lvm igraph.lvm subgraph finalize
 ##' index.lvm index.lvmfit index reindex index<-
 ##' rmvn0 dmvn0 logit expit tigol
 ##' randomslope randomslope<- lisrel variances offdiags describecoef

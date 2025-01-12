@@ -12,7 +12,7 @@
 
 <meta name="author" content="Klaus Kähler Holst" />
 
-<meta name="date" content="2024-03-05" />
+<meta name="date" content="2025-01-11" />
 
 <title>Estimating partial correlations with lava</title>
 
@@ -50,8 +50,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -62,7 +63,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -364,7 +365,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <h1 class="title toc-ignore">Estimating partial correlations with
 lava</h1>
 <h4 class="author">Klaus Kähler Holst</h4>
-<h4 class="date">2024-03-05</h4>
+<h4 class="date">2025-01-11</h4>
 
 
 
@@ -635,18 +636,18 @@ the <code>mets</code> package) in the data frame.</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>e3</span>
 <span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="co">#&gt;                        Estimate Std. Error  Z-value  P-value</span></span>
 <span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="co">#&gt; Regressions:                                                </span></span>
-<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="co">#&gt;    y1~x                 0.93300    0.04443 20.99875   &lt;1e-12</span></span>
-<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="co">#&gt;     s2~x                0.92401    0.04643 19.90112   &lt;1e-12</span></span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="co">#&gt;    y1~x                 0.93301    0.04443 20.99866   &lt;1e-12</span></span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="co">#&gt;     s2~x                0.92402    0.04643 19.90113   &lt;1e-12</span></span>
 <span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a><span class="co">#&gt; Intercepts:                                                 </span></span>
-<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="co">#&gt;    y1                  -0.00541    0.04482 -0.12079   0.9039</span></span>
-<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a><span class="co">#&gt;    s2                  -0.02119    0.04638 -0.45684   0.6478</span></span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="co">#&gt;    y1                  -0.00541    0.04482 -0.12064    0.904</span></span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a><span class="co">#&gt;    s2                  -0.02118    0.04638 -0.45674   0.6479</span></span>
 <span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a><span class="co">#&gt; Additional Parameters:                                      </span></span>
-<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a><span class="co">#&gt;    l1                   0.00418    0.06325  0.06607   0.9473</span></span>
-<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a><span class="co">#&gt;    l2                   0.06317    0.06492  0.97306   0.3305</span></span>
-<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a><span class="co">#&gt;    z                    1.42834    0.04546 31.41848   &lt;1e-12</span></span></code></pre></div>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a><span class="co">#&gt;    l1                   0.00419    0.06325  0.06628   0.9472</span></span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a><span class="co">#&gt;    l2                   0.06318    0.06492  0.97322   0.3304</span></span>
+<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a><span class="co">#&gt;    z                    1.42835    0.04546 31.41843   &lt;1e-12</span></span></code></pre></div>
 <div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="fu">estimate</span>(e3, <span class="st">&#39;z&#39;</span>, <span class="at">back.transform=</span>tanh)</span>
 <span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a><span class="co">#&gt;     Estimate Std.Err  2.5%  97.5%    P-value</span></span>
-<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a><span class="co">#&gt; [z]   0.8913         0.872 0.9079 1.492e-226</span></span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a><span class="co">#&gt; [z]   0.8913         0.872 0.9079 1.491e-226</span></span>
 <span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a><span class="co">#&gt;  Null Hypothesis: </span></span>
 <span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a><span class="co">#&gt;   [z] = 0</span></span></code></pre></div>
@@ -660,30 +661,30 @@ and <code>s2</code> right-censored:</p>
 <span id="cb23-6"><a href="#cb23-6" tabindex="-1"></a>e3b</span>
 <span id="cb23-7"><a href="#cb23-7" tabindex="-1"></a><span class="co">#&gt;                        Estimate Std. Error  Z-value  P-value</span></span>
 <span id="cb23-8"><a href="#cb23-8" tabindex="-1"></a><span class="co">#&gt; Regressions:                                                </span></span>
-<span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a><span class="co">#&gt;    s1~x                 0.92835    0.04479 20.72748   &lt;1e-12</span></span>
-<span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a><span class="co">#&gt;     s2~x                0.92466    0.04648 19.89523   &lt;1e-12</span></span>
+<span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a><span class="co">#&gt;    s1~x                 0.92834    0.04479 20.72738   &lt;1e-12</span></span>
+<span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a><span class="co">#&gt;     s2~x                0.92466    0.04648 19.89515   &lt;1e-12</span></span>
 <span id="cb23-11"><a href="#cb23-11" tabindex="-1"></a><span class="co">#&gt; Intercepts:                                                 </span></span>
-<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a><span class="co">#&gt;    s1                  -0.00233    0.04492 -0.05186   0.9586</span></span>
-<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a><span class="co">#&gt;    s2                  -0.02082    0.04641 -0.44866   0.6537</span></span>
+<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a><span class="co">#&gt;    s1                  -0.00233    0.04492 -0.05189   0.9586</span></span>
+<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a><span class="co">#&gt;    s2                  -0.02082    0.04641 -0.44871   0.6536</span></span>
 <span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a><span class="co">#&gt; Additional Parameters:                                      </span></span>
-<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a><span class="co">#&gt;    l1                  -0.00076    0.06500 -0.01162   0.9907</span></span>
-<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a><span class="co">#&gt;    l2                   0.06424    0.06498  0.98863   0.3228</span></span>
-<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a><span class="co">#&gt;    z                    1.42627    0.04609 30.94273   &lt;1e-12</span></span></code></pre></div>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a><span class="co">#&gt;    l1                  -0.00076    0.06501 -0.01163   0.9907</span></span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a><span class="co">#&gt;    l2                   0.06425    0.06498  0.98864   0.3228</span></span>
+<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a><span class="co">#&gt;    z                    1.42627    0.04609 30.94217   &lt;1e-12</span></span></code></pre></div>
 <div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a>e3b</span>
 <span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a><span class="co">#&gt;                        Estimate Std. Error  Z-value  P-value</span></span>
 <span id="cb24-3"><a href="#cb24-3" tabindex="-1"></a><span class="co">#&gt; Regressions:                                                </span></span>
-<span id="cb24-4"><a href="#cb24-4" tabindex="-1"></a><span class="co">#&gt;    s1~x                 0.92835    0.04479 20.72748   &lt;1e-12</span></span>
-<span id="cb24-5"><a href="#cb24-5" tabindex="-1"></a><span class="co">#&gt;     s2~x                0.92466    0.04648 19.89523   &lt;1e-12</span></span>
+<span id="cb24-4"><a href="#cb24-4" tabindex="-1"></a><span class="co">#&gt;    s1~x                 0.92834    0.04479 20.72738   &lt;1e-12</span></span>
+<span id="cb24-5"><a href="#cb24-5" tabindex="-1"></a><span class="co">#&gt;     s2~x                0.92466    0.04648 19.89515   &lt;1e-12</span></span>
 <span id="cb24-6"><a href="#cb24-6" tabindex="-1"></a><span class="co">#&gt; Intercepts:                                                 </span></span>
-<span id="cb24-7"><a href="#cb24-7" tabindex="-1"></a><span class="co">#&gt;    s1                  -0.00233    0.04492 -0.05186   0.9586</span></span>
-<span id="cb24-8"><a href="#cb24-8" tabindex="-1"></a><span class="co">#&gt;    s2                  -0.02082    0.04641 -0.44866   0.6537</span></span>
+<span id="cb24-7"><a href="#cb24-7" tabindex="-1"></a><span class="co">#&gt;    s1                  -0.00233    0.04492 -0.05189   0.9586</span></span>
+<span id="cb24-8"><a href="#cb24-8" tabindex="-1"></a><span class="co">#&gt;    s2                  -0.02082    0.04641 -0.44871   0.6536</span></span>
 <span id="cb24-9"><a href="#cb24-9" tabindex="-1"></a><span class="co">#&gt; Additional Parameters:                                      </span></span>
-<span id="cb24-10"><a href="#cb24-10" tabindex="-1"></a><span class="co">#&gt;    l1                  -0.00076    0.06500 -0.01162   0.9907</span></span>
-<span id="cb24-11"><a href="#cb24-11" tabindex="-1"></a><span class="co">#&gt;    l2                   0.06424    0.06498  0.98863   0.3228</span></span>
-<span id="cb24-12"><a href="#cb24-12" tabindex="-1"></a><span class="co">#&gt;    z                    1.42627    0.04609 30.94273   &lt;1e-12</span></span></code></pre></div>
+<span id="cb24-10"><a href="#cb24-10" tabindex="-1"></a><span class="co">#&gt;    l1                  -0.00076    0.06501 -0.01163   0.9907</span></span>
+<span id="cb24-11"><a href="#cb24-11" tabindex="-1"></a><span class="co">#&gt;    l2                   0.06425    0.06498  0.98864   0.3228</span></span>
+<span id="cb24-12"><a href="#cb24-12" tabindex="-1"></a><span class="co">#&gt;    z                    1.42627    0.04609 30.94217   &lt;1e-12</span></span></code></pre></div>
 <div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="fu">estimate</span>(e3b, <span class="st">&#39;z&#39;</span>, <span class="at">back.transform=</span>tanh)</span>
 <span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a><span class="co">#&gt;     Estimate Std.Err   2.5%  97.5%    P-value</span></span>
-<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a><span class="co">#&gt; [z]   0.8909         0.8713 0.9077 9.012e-222</span></span>
+<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a><span class="co">#&gt; [z]   0.8909         0.8713 0.9077 9.015e-222</span></span>
 <span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a><span class="co">#&gt;  Null Hypothesis: </span></span>
 <span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a><span class="co">#&gt;   [z] = 0</span></span></code></pre></div>
@@ -695,13 +696,13 @@ and <code>s2</code> right-censored:</p>
 <div id="sessioninfo" class="section level1">
 <h1>SessionInfo</h1>
 <div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
-<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a><span class="co">#&gt; R version 4.3.2 (2023-10-31)</span></span>
-<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a><span class="co">#&gt; Platform: aarch64-apple-darwin22.6.0 (64-bit)</span></span>
-<span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a><span class="co">#&gt; Running under: macOS Sonoma 14.3.1</span></span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a><span class="co">#&gt; R version 4.4.2 (2024-10-31)</span></span>
+<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a><span class="co">#&gt; Platform: aarch64-apple-darwin24.2.0</span></span>
+<span id="cb27-4"><a href="#cb27-4" tabindex="-1"></a><span class="co">#&gt; Running under: macOS Sequoia 15.2</span></span>
 <span id="cb27-5"><a href="#cb27-5" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb27-6"><a href="#cb27-6" tabindex="-1"></a><span class="co">#&gt; Matrix products: default</span></span>
-<span id="cb27-7"><a href="#cb27-7" tabindex="-1"></a><span class="co">#&gt; BLAS:   /Users/kkzh/.asdf/installs/R/4.3.2/lib/R/lib/libRblas.dylib </span></span>
-<span id="cb27-8"><a href="#cb27-8" tabindex="-1"></a><span class="co">#&gt; LAPACK: /Users/kkzh/.asdf/installs/R/4.3.2/lib/R/lib/libRlapack.dylib;  LAPACK version 3.11.0</span></span>
+<span id="cb27-7"><a href="#cb27-7" tabindex="-1"></a><span class="co">#&gt; BLAS:   /Users/klaus/.asdf/installs/R/4.4.2/lib/R/lib/libRblas.dylib </span></span>
+<span id="cb27-8"><a href="#cb27-8" tabindex="-1"></a><span class="co">#&gt; LAPACK: /Users/klaus/.asdf/installs/R/4.4.2/lib/R/lib/libRlapack.dylib;  LAPACK version 3.12.0</span></span>
 <span id="cb27-9"><a href="#cb27-9" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb27-10"><a href="#cb27-10" tabindex="-1"></a><span class="co">#&gt; locale:</span></span>
 <span id="cb27-11"><a href="#cb27-11" tabindex="-1"></a><span class="co">#&gt; [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8</span></span>
@@ -713,23 +714,23 @@ and <code>s2</code> right-censored:</p>
 <span id="cb27-17"><a href="#cb27-17" tabindex="-1"></a><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span id="cb27-18"><a href="#cb27-18" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb27-19"><a href="#cb27-19" tabindex="-1"></a><span class="co">#&gt; other attached packages:</span></span>
-<span id="cb27-20"><a href="#cb27-20" tabindex="-1"></a><span class="co">#&gt; [1] lava_1.8.0</span></span>
+<span id="cb27-20"><a href="#cb27-20" tabindex="-1"></a><span class="co">#&gt; [1] lava_1.8.1</span></span>
 <span id="cb27-21"><a href="#cb27-21" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb27-22"><a href="#cb27-22" tabindex="-1"></a><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
-<span id="cb27-23"><a href="#cb27-23" tabindex="-1"></a><span class="co">#&gt;  [1] progressr_0.14.0    mets_1.3.4          cli_3.6.2          </span></span>
-<span id="cb27-24"><a href="#cb27-24" tabindex="-1"></a><span class="co">#&gt;  [4] knitr_1.45          rlang_1.1.3         xfun_0.41          </span></span>
-<span id="cb27-25"><a href="#cb27-25" tabindex="-1"></a><span class="co">#&gt;  [7] highr_0.10          jsonlite_1.8.8      future.apply_1.11.1</span></span>
-<span id="cb27-26"><a href="#cb27-26" tabindex="-1"></a><span class="co">#&gt; [10] listenv_0.9.1       htmltools_0.5.6.1   graph_1.80.0       </span></span>
-<span id="cb27-27"><a href="#cb27-27" tabindex="-1"></a><span class="co">#&gt; [13] stats4_4.3.2        sass_0.4.7          rmarkdown_2.25     </span></span>
-<span id="cb27-28"><a href="#cb27-28" tabindex="-1"></a><span class="co">#&gt; [16] grid_4.3.2          evaluate_0.23       jquerylib_0.1.4    </span></span>
-<span id="cb27-29"><a href="#cb27-29" tabindex="-1"></a><span class="co">#&gt; [19] fastmap_1.1.1       numDeriv_2016.8-1.1 mvtnorm_1.2-4      </span></span>
-<span id="cb27-30"><a href="#cb27-30" tabindex="-1"></a><span class="co">#&gt; [22] yaml_2.3.7          timereg_2.0.5       compiler_4.3.2     </span></span>
-<span id="cb27-31"><a href="#cb27-31" tabindex="-1"></a><span class="co">#&gt; [25] codetools_0.2-19    Rcpp_1.0.12         future_1.33.1      </span></span>
-<span id="cb27-32"><a href="#cb27-32" tabindex="-1"></a><span class="co">#&gt; [28] Rgraphviz_2.46.0    lattice_0.22-5      digest_0.6.34      </span></span>
-<span id="cb27-33"><a href="#cb27-33" tabindex="-1"></a><span class="co">#&gt; [31] R6_2.5.1            parallelly_1.37.1   parallel_4.3.2     </span></span>
-<span id="cb27-34"><a href="#cb27-34" tabindex="-1"></a><span class="co">#&gt; [34] splines_4.3.2       bslib_0.5.1         Matrix_1.6-5       </span></span>
-<span id="cb27-35"><a href="#cb27-35" tabindex="-1"></a><span class="co">#&gt; [37] tools_4.3.2         globals_0.16.2      BiocGenerics_0.48.0</span></span>
-<span id="cb27-36"><a href="#cb27-36" tabindex="-1"></a><span class="co">#&gt; [40] survival_3.5-7      cachem_1.0.8</span></span></code></pre></div>
+<span id="cb27-23"><a href="#cb27-23" tabindex="-1"></a><span class="co">#&gt;  [1] progressr_0.15.1    mets_1.3.5          cli_3.6.3          </span></span>
+<span id="cb27-24"><a href="#cb27-24" tabindex="-1"></a><span class="co">#&gt;  [4] knitr_1.49          rlang_1.1.4         xfun_0.50          </span></span>
+<span id="cb27-25"><a href="#cb27-25" tabindex="-1"></a><span class="co">#&gt;  [7] jsonlite_1.8.9      future.apply_1.11.3 listenv_0.9.1      </span></span>
+<span id="cb27-26"><a href="#cb27-26" tabindex="-1"></a><span class="co">#&gt; [10] htmltools_0.5.8.1   graph_1.84.0        stats4_4.4.2       </span></span>
+<span id="cb27-27"><a href="#cb27-27" tabindex="-1"></a><span class="co">#&gt; [13] sass_0.4.9          rmarkdown_2.29      grid_4.4.2         </span></span>
+<span id="cb27-28"><a href="#cb27-28" tabindex="-1"></a><span class="co">#&gt; [16] evaluate_1.0.1      jquerylib_0.1.4     fastmap_1.2.0      </span></span>
+<span id="cb27-29"><a href="#cb27-29" tabindex="-1"></a><span class="co">#&gt; [19] numDeriv_2016.8-1.1 mvtnorm_1.3-2       yaml_2.3.10        </span></span>
+<span id="cb27-30"><a href="#cb27-30" tabindex="-1"></a><span class="co">#&gt; [22] lifecycle_1.0.4     timereg_2.0.6       compiler_4.4.2     </span></span>
+<span id="cb27-31"><a href="#cb27-31" tabindex="-1"></a><span class="co">#&gt; [25] codetools_0.2-20    Rcpp_1.0.13-1       future_1.34.0      </span></span>
+<span id="cb27-32"><a href="#cb27-32" tabindex="-1"></a><span class="co">#&gt; [28] Rgraphviz_2.50.0    lattice_0.22-6      digest_0.6.37      </span></span>
+<span id="cb27-33"><a href="#cb27-33" tabindex="-1"></a><span class="co">#&gt; [31] R6_2.5.1            parallelly_1.41.0   parallel_4.4.2     </span></span>
+<span id="cb27-34"><a href="#cb27-34" tabindex="-1"></a><span class="co">#&gt; [34] splines_4.4.2       bslib_0.8.0         Matrix_1.7-1       </span></span>
+<span id="cb27-35"><a href="#cb27-35" tabindex="-1"></a><span class="co">#&gt; [37] tools_4.4.2         globals_0.16.3      BiocGenerics_0.52.0</span></span>
+<span id="cb27-36"><a href="#cb27-36" tabindex="-1"></a><span class="co">#&gt; [40] survival_3.8-3      cachem_1.1.0</span></span></code></pre></div>
 </div>
 <div id="bibliography" class="section level1 unnumbered">
 <h1 class="unnumbered">Bibliography</h1>

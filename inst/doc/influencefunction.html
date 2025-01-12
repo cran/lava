@@ -49,8 +49,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -61,7 +62,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -401,8 +402,6 @@ Example: survival</a></li>
 <li><a href="#linear-contrasts-and-hypothesis-testing" id="toc-linear-contrasts-and-hypothesis-testing">Linear contrasts and
 hypothesis testing</a></li>
 <li><a href="#averaging" id="toc-averaging">Averaging</a></li>
-<li><a href="#example-average-treatment-effects" id="toc-example-average-treatment-effects">Example: Average Treatment
-Effects</a></li>
 </ul></li>
 <li><a href="#sessioninfo" id="toc-sessioninfo">SessionInfo</a></li>
 <li><a href="#bibliography" id="toc-bibliography">Bibliography</a></li>
@@ -489,7 +488,7 @@ A=a,W] - \Psi_{a}(P)
 Bernoulli\{\operatorname{expit}(X_{ij} + A_{i} + W_{i})\}, A_{i} \sim
 Bernoulli\{\operatorname{expit}(W_{i})\}\)</span> with independent
 covariates <span class="math inline">\(X_{ij}\sim\mathcal{N}(0,1),
-U_{i}\sim\mathcal{N}(0,1)\)</span>.</p>
+W_{i}\sim\mathcal{N}(0,1)\)</span>.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>m <span class="ot">&lt;-</span> <span class="fu">lvm</span>() <span class="sc">|&gt;</span></span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>  <span class="fu">regression</span>(y1 <span class="sc">~</span> x1 <span class="sc">+</span> a <span class="sc">+</span> w) <span class="sc">|&gt;</span></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>  <span class="fu">regression</span>(y2 <span class="sc">~</span> x2 <span class="sc">+</span> a <span class="sc">+</span> w) <span class="sc">|&gt;</span></span>
@@ -517,20 +516,26 @@ subjects</p>
 <span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co">#&gt; 399 0  -0.71513 0 -2.59611 0  -1.63801 NA -2.62616 0   1.004233 399</span></span>
 <span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="co">#&gt; 400 1   0.86522 1  1.16912 0  -0.64140 NA  0.01746 1  -0.311973 400</span></span>
 <span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">## Data in long format</span></span>
-<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>dl <span class="ot">&lt;-</span> mets<span class="sc">::</span><span class="fu">fast.reshape</span>(dw, <span class="at">varying =</span> <span class="fu">c</span>(<span class="st">&quot;y&quot;</span>, <span class="st">&quot;x&quot;</span>)) <span class="sc">|&gt;</span> <span class="fu">na.omit</span>()</span>
-<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a><span class="fu">Print</span>(dl)</span>
-<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a><span class="co">#&gt;      a w      id  y x       num</span></span>
-<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co">#&gt; 1    1 1.074  1   1 -0.6265 1  </span></span>
-<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a><span class="co">#&gt; 2    1 1.074  1   0 -1.0869 2  </span></span>
-<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a><span class="co">#&gt; 3    1 1.074  1   1 -1.5570 3  </span></span>
-<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#&gt; 4    1 1.074  1   1  0.3442 4  </span></span>
-<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co">#&gt; 5    1 1.896  2   1  0.1836 1  </span></span>
-<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt; ---                            </span></span>
-<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt; 1594 0 -2.596 399 0 -1.6380 2  </span></span>
-<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt; 1596 0 -2.596 399 0  1.0042 4  </span></span>
-<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt; 1597 1  1.169 400 1  0.8652 1  </span></span>
-<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="co">#&gt; 1598 1  1.169 400 0 -0.6414 2  </span></span>
-<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a><span class="co">#&gt; 1600 1  1.169 400 1 -0.3120 4</span></span></code></pre></div>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>dl <span class="ot">&lt;-</span> <span class="fu">reshape</span>(dw,</span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>        <span class="at">varying =</span> <span class="fu">list</span>(<span class="fu">paste0</span>(<span class="st">&quot;y&quot;</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>),</span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>                       <span class="fu">paste0</span>(<span class="st">&quot;x&quot;</span>,<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)),</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>        <span class="at">v.names=</span><span class="fu">c</span>(<span class="st">&quot;y&quot;</span>, <span class="st">&quot;x&quot;</span>), <span class="at">direction=</span><span class="st">&quot;long&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>  <span class="fu">na.omit</span>()</span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>dl <span class="ot">&lt;-</span> dl[<span class="fu">order</span>(dl<span class="sc">$</span>id), ]</span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="do">## dl &lt;- mets::fast.reshape(dw, varying = c(&quot;y&quot;, &quot;x&quot;)) |&gt; na.omit()</span></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="fu">Print</span>(dl)</span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt;       a w      id  time y x      </span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt; 1.1   1 1.074  1   1    1 -0.6265</span></span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a><span class="co">#&gt; 1.2   1 1.074  1   2    0 -1.0869</span></span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt; 1.3   1 1.074  1   3    1 -1.5570</span></span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="co">#&gt; 1.4   1 1.074  1   4    1  0.3442</span></span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a><span class="co">#&gt; 2.1   1 1.896  2   1    1  0.1836</span></span>
+<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a><span class="co">#&gt; ---                              </span></span>
+<span id="cb2-33"><a href="#cb2-33" tabindex="-1"></a><span class="co">#&gt; 399.2 0 -2.596 399 2    0 -1.6380</span></span>
+<span id="cb2-34"><a href="#cb2-34" tabindex="-1"></a><span class="co">#&gt; 399.4 0 -2.596 399 4    0  1.0042</span></span>
+<span id="cb2-35"><a href="#cb2-35" tabindex="-1"></a><span class="co">#&gt; 400.1 1  1.169 400 1    1  0.8652</span></span>
+<span id="cb2-36"><a href="#cb2-36" tabindex="-1"></a><span class="co">#&gt; 400.2 1  1.169 400 2    0 -0.6414</span></span>
+<span id="cb2-37"><a href="#cb2-37" tabindex="-1"></a><span class="co">#&gt; 400.4 1  1.169 400 4    1 -0.3120</span></span></code></pre></div>
 <div id="example-population-mean" class="section level2">
 <h2>Example: population mean</h2>
 <p>The main functions for working with influence functions are</p>
@@ -544,14 +549,15 @@ via their estimated IFs</li>
 </ul>
 <p>The <code>estimate</code> function is the primary tool for obtaining
 parameter estimates and related information. It returns an object of the
-class type <code>estimate</code>, which is general container for holding
-information about estimated parameters. The estimate function takes as
-input either a model object (the first argument <code>x</code>), or a
-parameter vector and corresponding influence function (IF) matrix
-specified using the <code>coef</code> and <code>IF</code> arguments. If
-the primary goal is to apply the delta method or test linear hypotheses,
-it is also possible to provide the asymptotic variance estimate via the
-<code>vcov</code> argument, without specifying the IF matrix.</p>
+class type <code>estimate</code>, which is a general container for
+holding information about estimated parameters. The estimate function
+takes as input either a model object (the first argument
+<code>x</code>), or a parameter vector and corresponding influence
+function (IF) matrix specified using the <code>coef</code> and
+<code>IF</code> arguments. If the primary goal is to apply the delta
+method or test linear hypotheses, it is also possible to provide the
+asymptotic variance estimate via the <code>vcov</code> argument, without
+specifying the IF matrix.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">estimate</span>(<span class="at">x=</span>, ...)</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">estimate</span>(<span class="at">coef=</span>, <span class="at">IF=</span>, ...)</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="fu">estimate</span>(<span class="at">coef=</span>, <span class="at">vcov=</span>, ...)</span></code></pre></div>
@@ -797,8 +803,8 @@ j=1,2
 <span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="do">## Robust standard errors</span></span>
 <span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="fu">estimate</span>(semfit)</span>
 <span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="co">#&gt;      Estimate Std.Err    2.5%    97.5%   P-value</span></span>
-<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co">#&gt; y2   -0.21038 0.09391 -0.3944 -0.02631 2.508e-02</span></span>
-<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co">#&gt; u     0.36025 0.06659  0.2297  0.49076 6.293e-08</span></span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co">#&gt; y2   -0.21037 0.09391 -0.3944 -0.02630 2.509e-02</span></span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co">#&gt; u     0.36025 0.06659  0.2297  0.49075 6.295e-08</span></span>
 <span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt; y1~w  0.55425 0.06931  0.4184  0.69009 1.272e-15</span></span>
 <span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="co">#&gt; y2~w  0.59388 0.07510  0.4467  0.74107 2.623e-15</span></span>
 <span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co">#&gt; u~~u -0.09496 0.07360 -0.2392  0.04929 1.970e-01</span></span></code></pre></div>
@@ -821,20 +827,20 @@ for the 25%, 50%, and 75% quantiles of <span class="math inline">\(W\)</span> an
 <div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>eq <span class="ot">&lt;-</span> <span class="fu">estimate</span>(dw[, <span class="fu">c</span>(<span class="st">&quot;w&quot;</span>, <span class="st">&quot;x1&quot;</span>)], <span class="at">type =</span> <span class="st">&quot;quantile&quot;</span>, <span class="at">probs =</span> <span class="fu">c</span>(<span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="fl">0.75</span>))</span>
 <span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>eq</span>
 <span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a><span class="co">#&gt;        Estimate Std.Err    2.5%    97.5%   P-value</span></span>
-<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="co">#&gt; w.25%  -0.81214 0.07270 -0.9546 -0.66965 5.649e-29</span></span>
-<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="co">#&gt; w.50%  -0.11062 0.07195 -0.2516  0.03040 1.242e-01</span></span>
-<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="co">#&gt; w.75%   0.67716 0.07778  0.5247  0.82960 3.133e-18</span></span>
-<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="co">#&gt; x1.25% -0.57510 0.06334 -0.6992 -0.45096 1.090e-19</span></span>
-<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a><span class="co">#&gt; x1.50% -0.02664 0.06073 -0.1457  0.09238 6.609e-01</span></span>
-<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a><span class="co">#&gt; x1.75%  0.69590 0.06690  0.5648  0.82703 2.437e-25</span></span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a><span class="co">#&gt; w.25%  -0.81214 0.07277 -0.9548 -0.66951 6.390e-29</span></span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="co">#&gt; w.50%  -0.11062 0.07201 -0.2518  0.03052 1.245e-01</span></span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a><span class="co">#&gt; w.75%   0.67716 0.07784  0.5246  0.82973 3.353e-18</span></span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a><span class="co">#&gt; x1.25% -0.57510 0.06340 -0.6994 -0.45084 1.177e-19</span></span>
+<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a><span class="co">#&gt; x1.50% -0.02664 0.06078 -0.1458  0.09249 6.611e-01</span></span>
+<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a><span class="co">#&gt; x1.75%  0.69590 0.06696  0.5647  0.82715 2.683e-25</span></span>
 <span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a><span class="fu">IC</span>(eq) <span class="sc">|&gt;</span> <span class="fu">head</span>()</span>
-<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a><span class="co">#&gt;          w.25%     w.50%      w.75%     x1.25%    x1.50%     x1.75%</span></span>
-<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a><span class="co">#&gt; [1,] 0.8394734  1.438982  2.6942304 -2.1941660 -1.214564 -0.7725337</span></span>
-<span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a><span class="co">#&gt; [2,] 0.8394734  1.438982  2.6942304  0.7313887  1.214564 -0.7725337</span></span>
-<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a><span class="co">#&gt; [3,] 0.8394734 -1.438982 -0.8980768 -2.1941660 -1.214564 -0.7725337</span></span>
-<span id="cb18-15"><a href="#cb18-15" tabindex="-1"></a><span class="co">#&gt; [4,] 0.8394734 -1.438982 -0.8980768  0.7313887  1.214564  2.3176012</span></span>
-<span id="cb18-16"><a href="#cb18-16" tabindex="-1"></a><span class="co">#&gt; [5,] 0.8394734 -1.438982 -0.8980768  0.7313887  1.214564 -0.7725337</span></span>
-<span id="cb18-17"><a href="#cb18-17" tabindex="-1"></a><span class="co">#&gt; [6,] 0.8394734 -1.438982 -0.8980768 -2.1941660 -1.214564 -0.7725337</span></span></code></pre></div>
+<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a><span class="co">#&gt;          w.25%     w.50%      w.75%    x1.25%    x1.50%     x1.75%</span></span>
+<span id="cb18-12"><a href="#cb18-12" tabindex="-1"></a><span class="co">#&gt; [1,] 0.8402973  1.440254  2.6966215 -2.196201 -1.215663 -0.7732142</span></span>
+<span id="cb18-13"><a href="#cb18-13" tabindex="-1"></a><span class="co">#&gt; [2,] 0.8402973  1.440254  2.6966215  0.732067  1.215663 -0.7732142</span></span>
+<span id="cb18-14"><a href="#cb18-14" tabindex="-1"></a><span class="co">#&gt; [3,] 0.8402973 -1.440254 -0.8988738 -2.196201 -1.215663 -0.7732142</span></span>
+<span id="cb18-15"><a href="#cb18-15" tabindex="-1"></a><span class="co">#&gt; [4,] 0.8402973 -1.440254 -0.8988738  0.732067  1.215663  2.3196427</span></span>
+<span id="cb18-16"><a href="#cb18-16" tabindex="-1"></a><span class="co">#&gt; [5,] 0.8402973 -1.440254 -0.8988738  0.732067  1.215663 -0.7732142</span></span>
+<span id="cb18-17"><a href="#cb18-17" tabindex="-1"></a><span class="co">#&gt; [6,] 0.8402973 -1.440254 -0.8988738 -2.196201 -1.215663 -0.7732142</span></span></code></pre></div>
 </div>
 </div>
 <div id="combining-influence-functions" class="section level1">
@@ -1564,78 +1570,61 @@ at the value <span class="math inline">\(1\)</span></p>
 <span id="cb49-11"><a href="#cb49-11" tabindex="-1"></a><span class="co">#&gt; 4  0.03143</span></span>
 <span id="cb49-12"><a href="#cb49-12" tabindex="-1"></a><span class="co">#&gt; 5  0.02478</span></span>
 <span id="cb49-13"><a href="#cb49-13" tabindex="-1"></a><span class="co">#&gt; 6 -0.61997</span></span></code></pre></div>
-</div>
-<div id="example-average-treatment-effects" class="section level2">
-<h2>Example: Average Treatment Effects</h2>
-<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" tabindex="-1"></a>a1 <span class="ot">&lt;-</span> targeted<span class="sc">::</span><span class="fu">cate</span>(a <span class="sc">~</span> <span class="dv">1</span>,</span>
-<span id="cb50-2"><a href="#cb50-2" tabindex="-1"></a></span>
-<span id="cb50-3"><a href="#cb50-3" tabindex="-1"></a>                     <span class="at">data =</span> dw,</span>
-<span id="cb50-4"><a href="#cb50-4" tabindex="-1"></a>                     <span class="at">response_model =</span> y1 <span class="sc">~</span> x1<span class="sc">+</span>w<span class="sc">+</span>a,</span>
-<span id="cb50-5"><a href="#cb50-5" tabindex="-1"></a>                     <span class="at">propensity_model =</span> a <span class="sc">~</span> x1<span class="sc">*</span>w</span>
-<span id="cb50-6"><a href="#cb50-6" tabindex="-1"></a>                     )</span>
-<span id="cb50-7"><a href="#cb50-7" tabindex="-1"></a>a1</span>
-<span id="cb50-8"><a href="#cb50-8" tabindex="-1"></a><span class="co">#&gt;             Estimate Std.Err    2.5%  97.5%   P-value</span></span>
-<span id="cb50-9"><a href="#cb50-9" tabindex="-1"></a><span class="co">#&gt; E[y1(1)]      0.6983 0.03500 0.62970 0.7669 1.502e-88</span></span>
-<span id="cb50-10"><a href="#cb50-10" tabindex="-1"></a><span class="co">#&gt; E[y1(0)]      0.5375 0.03587 0.46725 0.6078 8.911e-51</span></span>
-<span id="cb50-11"><a href="#cb50-11" tabindex="-1"></a><span class="co">#&gt; ───────────                                          </span></span>
-<span id="cb50-12"><a href="#cb50-12" tabindex="-1"></a><span class="co">#&gt; (Intercept)   0.1608 0.04696 0.06871 0.2528 6.189e-04</span></span>
-<span id="cb50-13"><a href="#cb50-13" tabindex="-1"></a><span class="fu">IC</span>(a1) <span class="sc">|&gt;</span> <span class="fu">head</span>()</span>
-<span id="cb50-14"><a href="#cb50-14" tabindex="-1"></a><span class="co">#&gt;   E[y1(1)] E[y1(0)] (Intercept)</span></span>
-<span id="cb50-15"><a href="#cb50-15" tabindex="-1"></a><span class="co">#&gt; 1   0.3927  0.02231     0.37042</span></span>
-<span id="cb50-16"><a href="#cb50-16" tabindex="-1"></a><span class="co">#&gt; 2   0.2923  0.36519    -0.07294</span></span>
-<span id="cb50-17"><a href="#cb50-17" tabindex="-1"></a><span class="co">#&gt; 3  -0.2022 -0.71701     0.51486</span></span>
-<span id="cb50-18"><a href="#cb50-18" tabindex="-1"></a><span class="co">#&gt; 4   0.2210 -1.18578     1.40680</span></span>
-<span id="cb50-19"><a href="#cb50-19" tabindex="-1"></a><span class="co">#&gt; 5  -1.5965 -0.03709    -1.55939</span></span>
-<span id="cb50-20"><a href="#cb50-20" tabindex="-1"></a><span class="co">#&gt; 6  -0.2002 -0.82485     0.62466</span></span></code></pre></div>
+<!-- ## Example: Average Treatment Effects -->
+<!-- ```{r targeted, cache=TRUE, eval=has_targeted } -->
+<!-- a1 <- targeted::cate(a ~ 1, -->
+<!--                      data = dw, -->
+<!--                      response_model = y1 ~ x1+w+a, -->
+<!--                      propensity_model = a ~ x1*w -->
+<!--                      ) -->
+<!-- a1 -->
+<!-- IC(a1) |> head() -->
+<!-- ``` -->
 </div>
 </div>
 <div id="sessioninfo" class="section level1">
 <h1>SessionInfo</h1>
-<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
-<span id="cb51-2"><a href="#cb51-2" tabindex="-1"></a><span class="co">#&gt; R version 4.3.2 (2023-10-31)</span></span>
-<span id="cb51-3"><a href="#cb51-3" tabindex="-1"></a><span class="co">#&gt; Platform: aarch64-apple-darwin22.6.0 (64-bit)</span></span>
-<span id="cb51-4"><a href="#cb51-4" tabindex="-1"></a><span class="co">#&gt; Running under: macOS Sonoma 14.3.1</span></span>
-<span id="cb51-5"><a href="#cb51-5" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb51-6"><a href="#cb51-6" tabindex="-1"></a><span class="co">#&gt; Matrix products: default</span></span>
-<span id="cb51-7"><a href="#cb51-7" tabindex="-1"></a><span class="co">#&gt; BLAS:   /Users/kkzh/.asdf/installs/R/4.3.2/lib/R/lib/libRblas.dylib </span></span>
-<span id="cb51-8"><a href="#cb51-8" tabindex="-1"></a><span class="co">#&gt; LAPACK: /Users/kkzh/.asdf/installs/R/4.3.2/lib/R/lib/libRlapack.dylib;  LAPACK version 3.11.0</span></span>
-<span id="cb51-9"><a href="#cb51-9" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb51-10"><a href="#cb51-10" tabindex="-1"></a><span class="co">#&gt; locale:</span></span>
-<span id="cb51-11"><a href="#cb51-11" tabindex="-1"></a><span class="co">#&gt; [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8</span></span>
-<span id="cb51-12"><a href="#cb51-12" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb51-13"><a href="#cb51-13" tabindex="-1"></a><span class="co">#&gt; time zone: Europe/Copenhagen</span></span>
-<span id="cb51-14"><a href="#cb51-14" tabindex="-1"></a><span class="co">#&gt; tzcode source: internal</span></span>
-<span id="cb51-15"><a href="#cb51-15" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb51-16"><a href="#cb51-16" tabindex="-1"></a><span class="co">#&gt; attached base packages:</span></span>
-<span id="cb51-17"><a href="#cb51-17" tabindex="-1"></a><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
-<span id="cb51-18"><a href="#cb51-18" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb51-19"><a href="#cb51-19" tabindex="-1"></a><span class="co">#&gt; other attached packages:</span></span>
-<span id="cb51-20"><a href="#cb51-20" tabindex="-1"></a><span class="co">#&gt; [1] survival_3.5-7 lava_1.8.0    </span></span>
-<span id="cb51-21"><a href="#cb51-21" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb51-22"><a href="#cb51-22" tabindex="-1"></a><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
-<span id="cb51-23"><a href="#cb51-23" tabindex="-1"></a><span class="co">#&gt;  [1] tidyr_1.3.0          sass_0.4.7           utf8_1.2.4          </span></span>
-<span id="cb51-24"><a href="#cb51-24" tabindex="-1"></a><span class="co">#&gt;  [4] future_1.33.1        generics_0.1.3       futile.options_1.0.1</span></span>
-<span id="cb51-25"><a href="#cb51-25" tabindex="-1"></a><span class="co">#&gt;  [7] lattice_0.22-5       pracma_2.4.4         listenv_0.9.1       </span></span>
-<span id="cb51-26"><a href="#cb51-26" tabindex="-1"></a><span class="co">#&gt; [10] digest_0.6.34        magrittr_2.0.3       evaluate_0.23       </span></span>
-<span id="cb51-27"><a href="#cb51-27" tabindex="-1"></a><span class="co">#&gt; [13] grid_4.3.2           mvtnorm_1.2-4        fastmap_1.1.1       </span></span>
-<span id="cb51-28"><a href="#cb51-28" tabindex="-1"></a><span class="co">#&gt; [16] jsonlite_1.8.8       Matrix_1.6-5         backports_1.4.1     </span></span>
-<span id="cb51-29"><a href="#cb51-29" tabindex="-1"></a><span class="co">#&gt; [19] graph_1.80.0         formatR_1.14         targeted_0.5        </span></span>
-<span id="cb51-30"><a href="#cb51-30" tabindex="-1"></a><span class="co">#&gt; [22] purrr_1.0.2          fansi_1.0.6          Rgraphviz_2.46.0    </span></span>
-<span id="cb51-31"><a href="#cb51-31" tabindex="-1"></a><span class="co">#&gt; [25] codetools_0.2-19     numDeriv_2016.8-1.1  jquerylib_0.1.4     </span></span>
-<span id="cb51-32"><a href="#cb51-32" tabindex="-1"></a><span class="co">#&gt; [28] cli_3.6.2            rlang_1.1.3          futile.logger_1.4.3 </span></span>
-<span id="cb51-33"><a href="#cb51-33" tabindex="-1"></a><span class="co">#&gt; [31] mets_1.3.4           parallelly_1.37.1    future.apply_1.11.1 </span></span>
-<span id="cb51-34"><a href="#cb51-34" tabindex="-1"></a><span class="co">#&gt; [34] splines_4.3.2        geepack_1.3.9        cachem_1.0.8        </span></span>
-<span id="cb51-35"><a href="#cb51-35" tabindex="-1"></a><span class="co">#&gt; [37] yaml_2.3.7           tools_4.3.2          parallel_4.3.2      </span></span>
-<span id="cb51-36"><a href="#cb51-36" tabindex="-1"></a><span class="co">#&gt; [40] nloptr_2.0.3         dplyr_1.1.3          optimx_2023-10.21   </span></span>
-<span id="cb51-37"><a href="#cb51-37" tabindex="-1"></a><span class="co">#&gt; [43] lambda.r_1.2.4       globals_0.16.2       BiocGenerics_0.48.0 </span></span>
-<span id="cb51-38"><a href="#cb51-38" tabindex="-1"></a><span class="co">#&gt; [46] broom_1.0.5          vctrs_0.6.5          R6_2.5.1            </span></span>
-<span id="cb51-39"><a href="#cb51-39" tabindex="-1"></a><span class="co">#&gt; [49] stats4_4.3.2         lifecycle_1.0.4      MASS_7.3-60         </span></span>
-<span id="cb51-40"><a href="#cb51-40" tabindex="-1"></a><span class="co">#&gt; [52] pkgconfig_2.0.3      timereg_2.0.5        progressr_0.14.0    </span></span>
-<span id="cb51-41"><a href="#cb51-41" tabindex="-1"></a><span class="co">#&gt; [55] bslib_0.5.1          pillar_1.9.0         data.table_1.15.2   </span></span>
-<span id="cb51-42"><a href="#cb51-42" tabindex="-1"></a><span class="co">#&gt; [58] glue_1.7.0           Rcpp_1.0.12          tidyselect_1.2.0    </span></span>
-<span id="cb51-43"><a href="#cb51-43" tabindex="-1"></a><span class="co">#&gt; [61] xfun_0.41            tibble_3.2.1         highr_0.10          </span></span>
-<span id="cb51-44"><a href="#cb51-44" tabindex="-1"></a><span class="co">#&gt; [64] knitr_1.45           htmltools_0.5.6.1    rmarkdown_2.25      </span></span>
-<span id="cb51-45"><a href="#cb51-45" tabindex="-1"></a><span class="co">#&gt; [67] compiler_4.3.2</span></span></code></pre></div>
+<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb50-2"><a href="#cb50-2" tabindex="-1"></a><span class="co">#&gt; R version 4.4.2 (2024-10-31)</span></span>
+<span id="cb50-3"><a href="#cb50-3" tabindex="-1"></a><span class="co">#&gt; Platform: aarch64-apple-darwin24.2.0</span></span>
+<span id="cb50-4"><a href="#cb50-4" tabindex="-1"></a><span class="co">#&gt; Running under: macOS Sequoia 15.2</span></span>
+<span id="cb50-5"><a href="#cb50-5" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb50-6"><a href="#cb50-6" tabindex="-1"></a><span class="co">#&gt; Matrix products: default</span></span>
+<span id="cb50-7"><a href="#cb50-7" tabindex="-1"></a><span class="co">#&gt; BLAS:   /Users/klaus/.asdf/installs/R/4.4.2/lib/R/lib/libRblas.dylib </span></span>
+<span id="cb50-8"><a href="#cb50-8" tabindex="-1"></a><span class="co">#&gt; LAPACK: /Users/klaus/.asdf/installs/R/4.4.2/lib/R/lib/libRlapack.dylib;  LAPACK version 3.12.0</span></span>
+<span id="cb50-9"><a href="#cb50-9" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb50-10"><a href="#cb50-10" tabindex="-1"></a><span class="co">#&gt; locale:</span></span>
+<span id="cb50-11"><a href="#cb50-11" tabindex="-1"></a><span class="co">#&gt; [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8</span></span>
+<span id="cb50-12"><a href="#cb50-12" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb50-13"><a href="#cb50-13" tabindex="-1"></a><span class="co">#&gt; time zone: Europe/Copenhagen</span></span>
+<span id="cb50-14"><a href="#cb50-14" tabindex="-1"></a><span class="co">#&gt; tzcode source: internal</span></span>
+<span id="cb50-15"><a href="#cb50-15" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb50-16"><a href="#cb50-16" tabindex="-1"></a><span class="co">#&gt; attached base packages:</span></span>
+<span id="cb50-17"><a href="#cb50-17" tabindex="-1"></a><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
+<span id="cb50-18"><a href="#cb50-18" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb50-19"><a href="#cb50-19" tabindex="-1"></a><span class="co">#&gt; other attached packages:</span></span>
+<span id="cb50-20"><a href="#cb50-20" tabindex="-1"></a><span class="co">#&gt; [1] survival_3.8-3 lava_1.8.1    </span></span>
+<span id="cb50-21"><a href="#cb50-21" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb50-22"><a href="#cb50-22" tabindex="-1"></a><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
+<span id="cb50-23"><a href="#cb50-23" tabindex="-1"></a><span class="co">#&gt;  [1] sass_0.4.9          future_1.34.0       generics_0.1.3     </span></span>
+<span id="cb50-24"><a href="#cb50-24" tabindex="-1"></a><span class="co">#&gt;  [4] tidyr_1.3.1         lattice_0.22-6      listenv_0.9.1      </span></span>
+<span id="cb50-25"><a href="#cb50-25" tabindex="-1"></a><span class="co">#&gt;  [7] digest_0.6.37       magrittr_2.0.3      evaluate_1.0.1     </span></span>
+<span id="cb50-26"><a href="#cb50-26" tabindex="-1"></a><span class="co">#&gt; [10] grid_4.4.2          mvtnorm_1.3-2       fastmap_1.2.0      </span></span>
+<span id="cb50-27"><a href="#cb50-27" tabindex="-1"></a><span class="co">#&gt; [13] jsonlite_1.8.9      Matrix_1.7-1        backports_1.5.0    </span></span>
+<span id="cb50-28"><a href="#cb50-28" tabindex="-1"></a><span class="co">#&gt; [16] graph_1.84.0        purrr_1.0.2         Rgraphviz_2.50.0   </span></span>
+<span id="cb50-29"><a href="#cb50-29" tabindex="-1"></a><span class="co">#&gt; [19] codetools_0.2-20    numDeriv_2016.8-1.1 jquerylib_0.1.4    </span></span>
+<span id="cb50-30"><a href="#cb50-30" tabindex="-1"></a><span class="co">#&gt; [22] cli_3.6.3           rlang_1.1.4         mets_1.3.5         </span></span>
+<span id="cb50-31"><a href="#cb50-31" tabindex="-1"></a><span class="co">#&gt; [25] parallelly_1.41.0   future.apply_1.11.3 splines_4.4.2      </span></span>
+<span id="cb50-32"><a href="#cb50-32" tabindex="-1"></a><span class="co">#&gt; [28] geepack_1.3.12      cachem_1.1.0        yaml_2.3.10        </span></span>
+<span id="cb50-33"><a href="#cb50-33" tabindex="-1"></a><span class="co">#&gt; [31] tools_4.4.2         parallel_4.4.2      dplyr_1.1.4        </span></span>
+<span id="cb50-34"><a href="#cb50-34" tabindex="-1"></a><span class="co">#&gt; [34] globals_0.16.3      BiocGenerics_0.52.0 broom_1.0.7        </span></span>
+<span id="cb50-35"><a href="#cb50-35" tabindex="-1"></a><span class="co">#&gt; [37] vctrs_0.6.5         R6_2.5.1            stats4_4.4.2       </span></span>
+<span id="cb50-36"><a href="#cb50-36" tabindex="-1"></a><span class="co">#&gt; [40] lifecycle_1.0.4     MASS_7.3-64         pkgconfig_2.0.3    </span></span>
+<span id="cb50-37"><a href="#cb50-37" tabindex="-1"></a><span class="co">#&gt; [43] timereg_2.0.6       progressr_0.15.1    bslib_0.8.0        </span></span>
+<span id="cb50-38"><a href="#cb50-38" tabindex="-1"></a><span class="co">#&gt; [46] pillar_1.10.1       glue_1.8.0          Rcpp_1.0.13-1      </span></span>
+<span id="cb50-39"><a href="#cb50-39" tabindex="-1"></a><span class="co">#&gt; [49] xfun_0.50           tibble_3.2.1        tidyselect_1.2.1   </span></span>
+<span id="cb50-40"><a href="#cb50-40" tabindex="-1"></a><span class="co">#&gt; [52] knitr_1.49          htmltools_0.5.8.1   rmarkdown_2.29     </span></span>
+<span id="cb50-41"><a href="#cb50-41" tabindex="-1"></a><span class="co">#&gt; [55] compiler_4.4.2</span></span></code></pre></div>
 </div>
 <div id="bibliography" class="section level1 unnumbered">
 <h1 class="unnumbered">Bibliography</h1>

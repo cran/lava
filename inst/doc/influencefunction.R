@@ -3,7 +3,9 @@ library("lava")
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
-)
+  )
+has_mets <- lava:::versioncheck('mets', 1)
+has_geepack <- lava:::versioncheck('geepack', 1)
 
 ## ----sim_model----------------------------------------------------------------
 m <- lvm() |>
@@ -21,13 +23,19 @@ dw <- sim(m, n, seed = 1) |>
   transform(y3 = y3 * ifelse(id > n / 2, NA, 1))
 Print(dw)
 ## Data in long format
-dl <- mets::fast.reshape(dw, varying = c("y", "x")) |> na.omit()
+dl <- reshape(dw,
+        varying = list(paste0("y",1:4),
+                       paste0("x",1:4)),
+        v.names=c("y", "x"), direction="long") |>
+  na.omit()
+dl <- dl[order(dl$id), ]
+## dl <- mets::fast.reshape(dw, varying = c("y", "x")) |> na.omit()
 Print(dl)
 
 ## ----estimate.syntax, eval=FALSE----------------------------------------------
-#  estimate(x=, ...)
-#  estimate(coef=, IF=, ...)
-#  estimate(coef=, vcov=, ...)
+# estimate(x=, ...)
+# estimate(coef=, IF=, ...)
+# estimate(coef=, vcov=, ...)
 
 ## ----inp1---------------------------------------------------------------------
 inp <- as.matrix(dw[, c("y1", "y2")])
@@ -76,12 +84,12 @@ ordreg(y1 ~ a + x1, dw, family=binomial(logit)) |> estimate()
 library("survival")
 data(pbc, package="survival")
 
-## ----phreg--------------------------------------------------------------------
+## ----phreg, eval=has_mets-----------------------------------------------------
 fit.phreg <- mets::phreg(Surv(time, status > 0) ~ age + sex, data = pbc)
 fit.phreg
 IC(fit.phreg) |> head()
 
-## ----phreg-baseline-----------------------------------------------------------
+## ----phreg-baseline, eval=has_mets--------------------------------------------
 baseline <- function(object, time, ...) {
   ic <- mets::IC(object, baseline = TRUE, time = time, ...)
   est <- mets::predictCumhaz(object$cumhaz, new.time = time)[1, 2]
@@ -90,11 +98,11 @@ baseline <- function(object, time, ...) {
 tt <- 2000
 baseline(fit.phreg, tt)
 
-## ----survreg------------------------------------------------------------------
+## ----survreg, eval=has_mets---------------------------------------------------
 survival::survreg(Surv(time, status > 0) ~ age + sex, data = pbc, dist="weibull") |>
   estimate()
 
-## ----semfit-------------------------------------------------------------------
+## ----semfit, eval=has_mets----------------------------------------------------
 sem <- lvm(y1 + y2 ~ 1 * u + w) |>
   latent(~ u) |>
   ordinal(K=2, ~ y1 + y2)
@@ -173,7 +181,7 @@ g0 <- glm(y ~ a + w + x, data = dl, family = binomial())
 ## ----cluster2-----------------------------------------------------------------
 estimate(g0, id=dl$id)
 
-## ----geepack------------------------------------------------------------------
+## ----geepack, eval=has_geepack------------------------------------------------
 gee0 <- geepack::geeglm(y ~ a + w + x, data = dl, id = dl$id, family=binomial)
 summary(gee0)
 
@@ -253,11 +261,11 @@ contr(list(1, c(1, 2), c(1, 4)), n = 5)
 pairwise.diff(3)
 estimate(gg, pairwise.diff(3), null=c(1,1,1), use=c(2,4,6))
 
-## ----pcorrect-----------------------------------------------------------------
+## ----pcorrect, eval=has_mets--------------------------------------------------
 gg0 <- estimate(gg, use="^a", regex=TRUE, null=rep(.8, 3))
 p.correct(gg0)
 
-## ----closedtesting------------------------------------------------------------
+## ----closedtesting, eval=has_mets---------------------------------------------
 closed.testing(gg0)
 
 ## ----estpred------------------------------------------------------------------
@@ -271,18 +279,6 @@ id <- foldr(NROW(dw), 100, list=FALSE)
 ea <- estimate(g, pr, average=TRUE, id=id)
 ea
 IC(ea) |> head()
-
-## ----targeted, cache=TRUE-----------------------------------------------------
-a1 <- targeted::cate(a ~ 1,
-
-
-
-                     data = dw,
-                     response_model = y1 ~ x1+w+a,
-                     propensity_model = a ~ x1*w
-                     )
-a1
-IC(a1) |> head()
 
 ## ----sessionInfo--------------------------------------------------------------
 sessionInfo()

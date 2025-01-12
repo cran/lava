@@ -1,7 +1,7 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.8.0
+Version: 1.8.1
 Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
 		   person("Brice", "Ozenne", role = "ctb"),
 		   person("Thomas", "Gerds", role = "ctb"))
@@ -31,11 +31,11 @@ Suggests: KernSmooth, Rgraphviz, data.table, ellipse, fields, geepack,
         1.1.35.1), MASS, Matrix (>= 1.6.3), mets (>= 1.1), nlme,
         optimx, polycor, quantreg, rgl, targeted (>= 0.4), testthat (>=
         0.11), visNetwork
-VignetteBuilder: knitr
+VignetteBuilder: knitr,rmarkdown
 ByteCompile: yes
 Encoding: UTF-8
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 NeedsCompilation: no
-Packaged: 2024-03-05 09:41:13 UTC; kkzh
+Packaged: 2025-01-11 22:47:53 UTC; klaus
 Repository: CRAN
-Date/Publication: 2024-03-05 13:00:02 UTC
+Date/Publication: 2025-01-12 11:40:02 UTC

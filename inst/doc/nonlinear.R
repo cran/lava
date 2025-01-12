@@ -68,14 +68,14 @@ m2c <- nonlinear(m2, type="spline", knots=kn1, eta2~eta1)
 m2d <- nonlinear(m2, type="spline", knots=kn2, eta2~eta1)
 
 ## ----cv_fit, cache=TRUE, eval=fullVignette------------------------------------
-#  ## Scale models in stage 2 to allow for a fair RMSE comparison
-#  d0 <- d
-#  for (i in endogenous(m2))
-#      d0[,i] <- scale(d0[,i],center=TRUE,scale=TRUE)
-#  ## Repeated 5-fold cross-validation:
-#  ff <- lapply(list(linear=m2a,quadratic=m2b,spline4=m2c,spline6=m2d),
-#  	    function(m) function(data,...) twostage(m1,m,data=data,stderr=FALSE,control=list(start=coef(e0),contrain=TRUE)))
-#  fit.cv <- lava:::cv(ff,data=d,K=5,rep=2,mc.cores=parallel::detectCores(),seed=1)
+# ## Scale models in stage 2 to allow for a fair RMSE comparison
+# d0 <- d
+# for (i in endogenous(m2))
+#     d0[,i] <- scale(d0[,i],center=TRUE,scale=TRUE)
+# ## Repeated 5-fold cross-validation:
+# ff <- lapply(list(linear=m2a,quadratic=m2b,spline4=m2c,spline6=m2d),
+# 	    function(m) function(data,...) twostage(m1,m,data=data,stderr=FALSE,control=list(start=coef(e0),contrain=TRUE)))
+# fit.cv <- lava:::cv(ff,data=d,K=5,rep=2,mc.cores=parallel::detectCores(),seed=1)
 
 ## ----results="hide", echo=FALSE-----------------------------------------------
 ## To save time building the vignettes on CRAN, we cache time consuming computations
@@ -109,8 +109,8 @@ legend("bottomright",
       col=col, lty=lty, lwd=3)
 
 ## ----twostageCV, cache=TRUE, eval=fullVignette--------------------------------
-#  selmod <- twostageCV(m1, m2, data=d, df=2:4, nmix=1:2,
-#  	    nfolds=2, rep=1, mc.cores=parallel::detectCores())
+# selmod <- twostageCV(m1, m2, data=d, df=2:4, nmix=1:2,
+# 	    nfolds=2, rep=1, mc.cores=parallel::detectCores())
 
 ## ----results="hide", echo=FALSE-----------------------------------------------
 ## To save time building the vignettes on CRAN, we cache time consuming computations
@@ -143,19 +143,19 @@ intercept(m1, ~x1+eta1) <- list(0,NA) ## Set intercept of x1 to zero. Remove the
 regression(m1,x1~eta1) <- 1 ## Factor loading fixed to 1
 
 ## ----mixture1, cache=TRUE, eval=fullVignette----------------------------------
-#  set.seed(1)
-#  em0 <- mixture(m1, k=2, data=d)
+# set.seed(1)
+# em0 <- mixture(m1, k=2, data=d)
 
 ## ----estmixture, cache=TRUE,warnings=FALSE,messages=FALSE,eval=FALSE----------
-#  em0 <- NULL
-#  ll <- c()
-#  for (i in 1:5) {
-#      set.seed(i)
-#      em <- mixture(m1, k=2, data=d, control=list(trace=0))
-#      ll <- c(ll,logLik(em))
-#      if (is.null(em0) || logLik(em0)<tail(ll,1))
-#  	em0 <- em
-#  }
+# em0 <- NULL
+# ll <- c()
+# for (i in 1:5) {
+#     set.seed(i)
+#     em <- mixture(m1, k=2, data=d, control=list(trace=0))
+#     ll <- c(ll,logLik(em))
+#     if (is.null(em0) || logLik(em0)<tail(ll,1))
+# 	em0 <- em
+# }
 
 ## ----results="hide", echo=FALSE-----------------------------------------------
 ## To save time building the vignettes on CRAN, we cache time consuming computations
