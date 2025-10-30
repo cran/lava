@@ -263,10 +263,10 @@ estimate(gg, pairwise.diff(3), null=c(1,1,1), use=c(2,4,6))
 
 ## ----pcorrect, eval=has_mets--------------------------------------------------
 gg0 <- estimate(gg, use="^a", regex=TRUE, null=rep(.8, 3))
-p.correct(gg0)
+alpha_zmax(gg0)
 
 ## ----closedtesting, eval=has_mets---------------------------------------------
-closed.testing(gg0)
+closed_testing(gg0)
 
 ## ----estpred------------------------------------------------------------------
 g <- glm(y1 ~ a + x1 + w, data=dw, family=binomial)

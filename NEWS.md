@@ -1,3 +1,8 @@
+# lava 1.8.2 (development version)
+ - Improved closed testing procedure `closed_testing` (depr. `closed.testing`)
+ - More tests and documentation
+ - New data `deprdiag`
+
 # lava 1.8.1
  - `sim.default` now accepts the argument `R` to be a list (of lists) of
  arguments.
