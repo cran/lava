@@ -1,68 +1,70 @@
+
+- [Latent Variable Models (`lava`)](#latent-variable-models-lava)
+  - [Installation](#installation)
+  - [Citation](#citation)
+  - [Examples](#examples)
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
 <!-- badges: start -->
-  [![R-CMD-check](https://github.com/kkholst/lava/workflows/R-CMD-check/badge.svg?branch=main)](https://github.com/kkholst/lava/actions)
-  [![coverage](https://codecov.io/github/kkholst/lava/coverage.svg?branch=main)](https://app.codecov.io/github/kkholst/lava?branch=main)
-  [![cran](https://www.r-pkg.org/badges/version-last-release/lava)](https://CRAN.R-project.org/package=lava)
-  [![cran-dl](https://cranlogs.r-pkg.org/badges/lava)](https://cranlogs.r-pkg.org/downloads/total/last-month/lava)
+
+[![R-CMD-check](https://github.com/kkholst/lava/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/kkholst/lava/actions/workflows/R-CMD-check.yaml)
+[![coverage](https://codecov.io/github/kkholst/lava/coverage.svg?branch=main)](https://app.codecov.io/github/kkholst/lava?branch=main)
+[![cran](https://www.r-pkg.org/badges/version-last-release/lava)](https://CRAN.R-project.org/package=lava)
+[![cran-dl](https://cranlogs.r-pkg.org/badges/lava)](https://cranlogs.r-pkg.org/downloads/total/last-month/lava)
 <!-- badges: end -->
 
+# Latent Variable Models (`lava`)
 
+<img src="man/figures/logo.png" align="right" height=250 style="float:right; height:250px;" class="pkgdown-hide" alt="lava website"/>
 
-# Latent Variable Models: `lava` <a href="https://kkholst.github.io/lava/"><img src="man/figures/logohex.png" align="right" height="200" style="float:right; height:250px;"  alt="lava website"/></a>
-
-A general implementation of Structural Equation Models with latent variables
-(MLE, 2SLS, and composite likelihood estimators) with both continuous, censored,
-and ordinal outcomes (Holst and Budtz-Joergensen (2013)
-<10.1007/s00180-012-0344-y>).
-Mixture latent variable models and non-linear
-latent variable models (Holst and Budtz-Joergensen (2020)
-<10.1093/biostatistics/kxy082>). The package also provides methods for graph
-exploration (d-separation, back-door criterion), simulation of general
-non-linear latent variable models, and estimation of influence functions for a
-broad range of statistical models.
-
+A general implementation of Structural Equation Models with latent
+variables (MLE, 2SLS, and composite likelihood estimators) with both
+continuous, censored, and ordinal outcomes (Holst and Budtz-Joergensen
+(2013) <doi:10.1007/s00180-012-0344-y>). Mixture latent variable models
+and non-linear latent variable models (Holst and Budtz-Joergensen (2020)
+<doi:10.1093/biostatistics/kxy082>). The package also provides methods
+for graph exploration (d-separation, back-door criterion), simulation of
+general non-linear latent variable models, and estimation of influence
+functions for a broad range of statistical models.
 
 ## Installation
 
-
-```r
+``` r
 install.packages("lava", dependencies=TRUE)
 library("lava")
 demo("lava")
 ```
 
-For graphical capabilities the `Rgraphviz` package is needed (first install the `BiocManager` package)
+For graphical capabilities the `Rgraphviz` package is needed (first
+install the `BiocManager` package)
 
-
-```r
+``` r
 # install.packages("BiocManager")
 BiocManager::install("Rgraphviz")
 ```
 
 or the `igraph` or `visNetwork` packages
 
-
-```r
+``` r
 install.packages("igraph")
 install.packages("visNetwork")
 ```
 
-The development version of `lava` may also be installed directly from `github`:
+The development version of `lava` may also be installed directly from
+`github`:
 
-
-```r
+``` r
 # install.packages("remotes")
 remotes::install_github("kkholst/lava")
 ```
-
 
 ## Citation
 
 To cite that `lava` package please use one of the following references
 
-> Klaus K. Holst and Esben Budtz-Joergensen (2013).
-> Linear Latent Variable Models: The lava-package.
-> Computational Statistics 28 (4), pp 1385-1453.
-> <http://dx.doi.org/10.1007/s00180-012-0344-y>
+> Klaus K. Holst and Esben Budtz-Joergensen (2013). Linear Latent
+> Variable Models: The lava-package. Computational Statistics 28 (4), pp
+> 1385-1453. <http://dx.doi.org/10.1007/s00180-012-0344-y>
 
     @article{lava,
       title = {Linear Latent Variable Models: The lava-package},
@@ -75,8 +77,9 @@ To cite that `lava` package please use one of the following references
       doi = {10.1007/s00180-012-0344-y}
     }
 
-> Klaus K. Holst and Esben Budtz-Jørgensen (2020). A two-stage estimation
-> procedure for non-linear structural equation models. Biostatistics 21 (4), pp 676-691.
+> Klaus K. Holst and Esben Budtz-Jørgensen (2020). A two-stage
+> estimation procedure for non-linear structural equation models.
+> Biostatistics 21 (4), pp 676-691.
 > <http://dx.doi.org/10.1093/biostatistics/kxy082>
 
     @article{lava_nlin,
@@ -90,95 +93,195 @@ To cite that `lava` package please use one of the following references
       doi = {10.1093/biostatistics/kxy082},
     }
 
-
 ## Examples
 
+### Influence functions
 
+Construct `estimate` objects from parameter coefficients and estimated
+influence functions
 
+``` r
+a <- estimate(coef=c("a"=0.5), IC=rnorm(10), id=1:10)
+b <- estimate(coef=c("b"=0.8), IC=rnorm(10), id=6:15)
+```
+
+Alternatively, we can construct estimate objects directly from an
+existing model object (`glm()`, `mets::phreg()`, `targeted::cate()`, …)
+
+``` r
+estimate(modelobj, id, ...)
+```
+
+We can now merge the `estimate` objects to obtain their joint
+distribution via their estimated influence functions
+
+``` r
+e <- c(a, b)
+vcov(e) # joint distribution
+#>             a           b
+#> a  0.07514259 -0.01509644
+#> b -0.01509644  0.03372599
+summary(e, null=c(0, 0))
+#> Call: estimate.default(contrast = as.list(seq_along(p)), null = ..1, 
+#>     vcov = vcov(object, messages = 0), coef = p)
+#> ────────────────────────────────────────────────────────────
+#>   Estimate Std.Err     2.5% 97.5%   P-value
+#> a      0.5  0.2741 -0.03727 1.037 6.815e-02
+#> b      0.8  0.1836  0.44006 1.160 1.323e-05
+#> ────────────────────────────────────────────────────────────
+#> Null Hypothesis: 
+#>   [a] = 0
+#>   [b] = 0 
+#>  
+#> chisq = 29.7439, df = 2, p-value = 3.477e-07
+```
+
+Parameter transformations can be calculated directly as in the following
+examples.
+
+Products
+
+``` r
+a * b
+#>   Estimate Std.Err    2.5%  97.5% P-value
+#> a      0.4  0.2108 -0.0132 0.8132 0.05778
+```
+
+General transformations
+
+``` r
+(3 * cos(a) / sqrt(b) + 1) / a^2
+#>   Estimate Std.Err   2.5% 97.5% P-value
+#> a    15.77    18.7 -20.87 52.42  0.3989
+```
+
+Inner product, sums, and products
+
+``` r
+c(iprod=e %*% c(a, b^2), sum=sum(e), prod=prod(e))
+#>       Estimate Std.Err     2.5%  97.5%   P-value
+#> iprod    0.762  0.3762  0.02473 1.4993 4.279e-02
+#> ─────                                           
+#> sum      1.300  0.2805  0.75025 1.8498 3.574e-06
+#> ─────                                           
+#> prod     0.400  0.2108 -0.01320 0.8132 5.778e-02
+```
+
+Exponentiation and renaming of parameter
+
+``` r
+c(pow = a^b)
+#>     Estimate Std.Err    2.5% 97.5% P-value
+#> pow   0.5743  0.2826 0.02051 1.128  0.0421
+```
+
+Transformation and subsetting
+
+``` r
+c(e["a"] * e["b"] / a, e["b"])
+#>   Estimate Std.Err   2.5% 97.5%   P-value
+#> a      0.8  0.1836 0.4401  1.16 1.323e-05
+#> ─                                        
+#> b      0.8  0.1836 0.4401  1.16 1.323e-05
+```
+
+For the `%*%*` operator we can also use a general contrast matrix
+
+``` r
+B <- rbind(c(1,-1), c(1,0), c(0,1))
+B %*% e
+#>           Estimate Std.Err     2.5%  97.5%   P-value
+#> [a] - [b]     -0.3  0.3729 -1.03089 0.4309 4.211e-01
+#> a              0.5  0.2741 -0.03727 1.0373 6.815e-02
+#> b              0.8  0.1836  0.44006 1.1599 1.323e-05
+#> ────────────────────────────────────────────────────────────
+#> Null Hypothesis: 
+#>   [a] - [b] = 0
+#>   [a] = 0
+#>   [b] = 0 
+#>  
+#> chisq = 29.7439, df = 2, p-value = 3.477e-07
+plot(B %*% e)
+```
+
+<img src="man/figures/estimate-contrast-1.svg" alt="" width="70%" />
 
 ### Structural Equation Model
 
 Specify structural equation models with two factors
 
-
-```r
+``` r
 m <- lvm()
-regression(m) <- y1 + y2 + y3 ~ eta1
-regression(m) <- z1 + z2 + z3 ~ eta2
-latent(m) <- ~ eta1 + eta2
-regression(m) <- eta2 ~ eta1 + x
-regression(m) <- eta1 ~ x
-
-labels(m) <- c(eta1=expression(eta[1]), eta2=expression(eta[2]))
+regression(m) <- y1 + y2 + y3 ~ u1
+regression(m) <- z1 + z2 + z3 ~ u2
+latent(m) <- ~ u1 + u2
+regression(m) <- u2 ~ u1 + x
+regression(m) <- u1 ~ x
+    
 plot(m)
 ```
 
-<img src="man/figures/lvm1-1.png" title="plot of chunk lvm1" alt="plot of chunk lvm1" width="50%" style="display: block; margin: auto;" />
+<img src="man/figures/lvm1-1.svg" alt="" width="70%" style="display: block; margin: auto;" />
 
 Simulation
 
-
-```r
+``` r
 d <- sim(m, 100, seed=1)
 ```
 
 Estimation
 
-
-```r
+``` r
 e <- estimate(m, d)
 e
 #>                     Estimate Std. Error  Z-value   P-value
 #> Measurements:                                             
-#>    y2~eta1           0.95462    0.08083 11.80993    <1e-12
-#>    y3~eta1           0.98476    0.08922 11.03722    <1e-12
-#>     z2~eta2          0.97038    0.05368 18.07714    <1e-12
-#>     z3~eta2          0.95608    0.05643 16.94182    <1e-12
+#>    y2~u1             0.95462    0.08083 11.80993    <1e-12
+#>    y3~u1             0.98476    0.08922 11.03722    <1e-12
+#>     z2~u2            0.97038    0.05368 18.07714    <1e-12
+#>     z3~u2            0.95608    0.05643 16.94182    <1e-12
 #> Regressions:                                              
-#>    eta1~x            1.24587    0.11486 10.84694    <1e-12
-#>     eta2~eta1        0.95608    0.18008  5.30910 1.102e-07
-#>     eta2~x           1.11495    0.25228  4.41951 9.893e-06
+#>    u1~x              1.24587    0.11486 10.84694    <1e-12
+#>     u2~u1            0.95608    0.18008  5.30910 1.102e-07
+#>     u2~x             1.11495    0.25228  4.41951 9.893e-06
 #> Intercepts:                                               
 #>    y2               -0.13896    0.12458 -1.11537    0.2647
 #>    y3               -0.07661    0.13869 -0.55241    0.5807
-#>    eta1              0.15801    0.12780  1.23644    0.2163
+#>    u1                0.15801    0.12780  1.23644    0.2163
 #>    z2               -0.00441    0.14858 -0.02969    0.9763
 #>    z3               -0.15900    0.15731 -1.01076    0.3121
-#>    eta2             -0.14143    0.18380 -0.76949    0.4416
+#>    u2               -0.14143    0.18380 -0.76949    0.4416
 #> Residual Variances:                                       
 #>    y1                0.69684    0.14858  4.69004          
 #>    y2                0.89804    0.16630  5.40026          
 #>    y3                1.22456    0.21182  5.78109          
-#>    eta1              0.93620    0.19623  4.77084          
+#>    u1                0.93620    0.19623  4.77084          
 #>    z1                1.41422    0.26259  5.38570          
 #>    z2                0.87569    0.19463  4.49934          
 #>    z3                1.18155    0.22640  5.21883          
-#>    eta2              1.24430    0.28992  4.29195
+#>    u2                1.24430    0.28992  4.29195
 ```
-
 
 ### Model assessment
 
-Assessing goodness-of-fit, here the linearity between eta2 and eta1 (requires the `gof` package)
+Assessing goodness-of-fit, here the linearity between eta2 and eta1
+(requires the `gof` package)
 
-
-```r
+``` r
 # install.packages("gof", repos="https://kkholst.github.io/r_repo/")
 library("gof")
 set.seed(1)
-g <- cumres(e, eta2 ~ eta1)
+g <- cumres(e, u2 ~ u1)
 plot(g)
 ```
 
-<img src="man/figures/gof1-1.png" title="plot of chunk gof1" alt="plot of chunk gof1" width="50%" style="display: block; margin: auto;" />
-
+<img src="man/figures/gof1-1.svg" alt="" width="70%" style="display: block; margin: auto;" />
 
 ### Non-linear measurement error model
 
 Simulate non-linear model
 
-
-```r
+``` r
 m <- lvm(y1 + y2 + y3 ~ u, u ~ x)
 transform(m,u2 ~ u) <- function(x) x^2
 regression(m) <- z~u2+u
@@ -188,8 +291,7 @@ d <- sim(m,200,p=c("z"=-1, "z~u2"=-0.5), seed=1)
 
 Stage 1:
 
-
-```r
+``` r
 m1 <- lvm(c(y1[0:s], y2[0:s], y3[0:s]) ~ 1*u, u ~ x)
 latent(m1) <- ~ u
 (e1 <- estimate(m1, d))
@@ -205,83 +307,80 @@ latent(m1) <- ~ u
 
 Stage 2
 
-
-```r
+``` r
 pp <- function(mu,var,data,...) cbind(u=mu[,"u"], u2=mu[,"u"]^2+var["u","u"])
 (e <- measurement.error(e1, z~1+x, data=d, predictfun=pp))
 #>             Estimate Std.Err    2.5%   97.5%   P-value
-#> (Intercept)  -1.1181 0.13795 -1.3885 -0.8477 5.273e-16
-#> x            -0.0537 0.13213 -0.3127  0.2053 6.844e-01
-#> u             1.0039 0.11504  0.7785  1.2294 2.609e-18
-#> u2           -0.4718 0.05213 -0.5740 -0.3697 1.410e-19
+#> (Intercept)  -1.1181 0.13555 -1.3838 -0.8524 1.602e-16
+#> x            -0.0537 0.14361 -0.3352  0.2278 7.085e-01
+#> u             1.0039 0.12651  0.7560  1.2519 2.093e-15
+#> u2           -0.4718 0.05858 -0.5867 -0.3570 7.974e-16
 ```
 
-
-```r
+``` r
 f <- function(p) p[1]+p["u"]*u+p["u2"]*u^2
 u <- seq(-1, 1, length.out=100)
 plot(e, f, data=data.frame(u))
 ```
 
-<img src="man/figures/nlin1-1.png" title="plot of chunk nlin1" alt="plot of chunk nlin1" width="50%" style="display: block; margin: auto;" />
-
+<img src="man/figures/nlin1-1.svg" alt="" width="70%" style="display: block; margin: auto;" />
 
 ### Simulation
 
 Studying the small-sample properties of a mediation analysis
 
-
-```r
+``` r
 m <- lvm(y~x, c~1)
 regression(m) <- y+x ~ z
 eventTime(m) <- t~min(y=1, c=0)
 transform(m,S~t+status) <- function(x) survival::Surv(x[,1],x[,2])
 ```
 
+plot(m)
 
-```r
+``` r
 plot(m)
 ```
 
-<img src="man/figures/mediation1-1.png" title="plot of chunk mediation1" alt="plot of chunk mediation1" width="50%" style="display: block; margin: auto;" />
+<img src="man/figures/mediation1-1.svg" alt="" width="70%" style="display: block; margin: auto;" />
 
 Simulate from model and estimate indirect effects
 
-
-```r
+``` r
+future::plan("multicore") # parallelization via future
+## progressr::handlers(global=TRUE) # add progress-bar
 onerun <- function(...) {
-    d <- sim(m, 100)
-    m0 <- lvm(S~x+z, x~z)
-    e <- estimate(m0, d, estimator="glm")
-    vec(summary(effects(e, S~z))$coef[,1:2])
+  d <- sim(m, 100)
+  m0 <- lvm(S~x+z, x~z)
+  e <- estimate(m0, d, estimator="glm")
+  vec(summary(effects(e, S~z))$coef[,1:2])
 }
 val <- sim(onerun, 100)
 summary(val, estimate=1:4, se=5:8, short=TRUE)
-#> 100 replications					Time: 3.667s
+#> 100 replications                 Time: 3.275s
 #> 
 #>         Total.Estimate Direct.Estimate Indirect.Estimate S~x~z.Estimate
-#> Mean           1.97292         0.96537           1.00755        1.00755
-#> SD             0.16900         0.18782           0.15924        0.15924
-#> SE             0.18665         0.18090           0.16431        0.16431
-#> SE/SD          1.10446         0.96315           1.03183        1.03183
+#> Mean           1.99533         1.00468           0.99066        0.99066
+#> SD             0.18662         0.16553           0.17792        0.17792
+#> SE             0.18258         0.17507           0.16503        0.16503
+#> SE/SD          0.97835         1.05767           0.92755        0.92755
 #>                                                                        
-#> Min            1.47243         0.54497           0.54554        0.54554
-#> 2.5%           1.63496         0.61228           0.64914        0.64914
-#> 50%            1.95574         0.97154           0.99120        0.99120
-#> 97.5%          2.27887         1.32443           1.27807        1.27807
-#> Max            2.45746         1.49491           1.33446        1.33446
+#> Min            1.49759         0.56922           0.50331        0.50331
+#> 2.5%           1.66826         0.68806           0.67154        0.67154
+#> 50%            1.96614         1.00175           0.97848        0.97848
+#> 97.5%          2.39620         1.29212           1.35790        1.35790
+#> Max            2.63461         1.42005           1.47636        1.47636
 #>                                                                        
 #> Missing        0.00000         0.00000           0.00000        0.00000
 ```
 
 Add additional simulations and visualize results
 
-
-```r
+``` r
 val <- sim(val,500) ## Add 500 simulations
 plot(val, estimate=c("Total.Estimate", "Indirect.Estimate"),
      true=c(2, 1), se=c("Total.Std.Err", "Indirect.Std.Err"),
      scatter.plot=TRUE)
 ```
 
-<img src="man/figures/simres1-1.png" title="plot of chunk simres1" alt="plot of chunk simres1" width="50%" style="display: block; margin: auto;" />
+<img src="man/figures/simres1-1.svg" alt="" width="70%" style="display: block; margin: auto;" />

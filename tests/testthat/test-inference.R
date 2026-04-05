@@ -54,7 +54,6 @@ test_that("glm-estimator", {
     distribution(m,~y+z) <- binomial.lvm("logit")
     set.seed(1)
     d <- sim(m,1e3,seed=1)
-    head(d)
     e <- estimate(m,d,estimator="glm")
     c1 <- coef(e,2)[c("y","y~x","y~z"),1:2]
     c2 <- estimate(glm(y~x+z,d,family=binomial))$coefmat[,1:2]
@@ -71,6 +70,15 @@ test_that("gaussian", {
     s1 <- numDeriv::grad(f,c(0,1,1))
     s2 <- g(c(0,1,1))
     testthat::expect_equal(s1,-colSums(s2),tolerance=0.1)
+
+    e <- estimate(m, d, estimator="gaussian")
+    e0 <- estimate(m, d, estimator="gaussian0") # numerical grad.
+    expect_true(mean((coef(e)- coef(e0))^2)<1e-9)
+    expect_equivalent(logLik(e), logLik(e0))
+    e1 <- estimate(m, d, estimator="gaussian1") # numerical hessian
+    expect_equivalent(logLik(e), logLik(e1))
+    e2 <- estimate(m, d, estimator="gaussian2") # numerical hessian
+    expect_equivalent(logLik(e), logLik(e2)) # BHHH
 })
 
 if (requireNamespace("mets",quietly = TRUE))
@@ -86,7 +94,6 @@ test_that("Association measures", {
     ## m <- ordinal(lvm(y~x),~y, K=3)#, breaks=c(-q,q))
     ## normal.threshold(m,p=c(0,1,2))
 })
-
 
 test_that("equivalence", {
     m <- lvm(c(y1,y2,y3)~u,u~x,y1~x)
@@ -111,7 +118,6 @@ test_that("multiple testing", {
     testthat::expect_true(all(ci1[,3]>ci2[,3]))
 })
 
-
 test_that("modelsearch and GoF", {
     m <- lvm(c(y1,y2)~x)
     d <- sim(m,100,seed=1)
@@ -135,7 +141,7 @@ test_that("modelsearch and GoF", {
     testthat::expect_true(inherits(ee,"lvm"))
 
     ## TODO
-    gof(e,all=TRUE)
+    g <- gof(e,all=TRUE)
     r <- rsq(e)[[1]]
     testthat::expect_true(abs(summary(lm(y1~x,d))$r.square-r["y1"])<1e-5)
 })
@@ -163,7 +169,6 @@ test_that("Bootstrap", {
     testthat::expect_output(print(b),"alpha")
 })
 
-
 test_that("Survreg", {
     m <- lvm(y0~x)
     transform(m,y~y0) <- function(x) pmin(x[,1],2)
@@ -178,7 +183,17 @@ test_that("Survreg", {
     testthat::expect_equivalent(vcov(m), attr(s,'bread')/nrow(d))
 })
 
-
+test_that("diagtest", {
+  M <- as.table(matrix(c(42,12,
+                         35,28),ncol=2,byrow=TRUE,
+                       dimnames=list(rater=c("no","yes"),gold=c("no","yes"))))
+  d1 <- diagtest(M,exact=TRUE)
+  d2 <- diagtest(M,exact=FALSE)
+  e1 <- d1$coefmat[1:7,]
+  e2 <- d2$coefmat[1:7,]
+  expect_equivalent(e1[,1], e2[,1])
+  expect_true(e1[1,1] == (sum(M[,2])/sum(M)))
+})
 
 test_that("Combine", { ## Combine model output
     data(serotonin)
@@ -208,7 +223,7 @@ test_that("zero-inflated binomial regression (zib)", {
     ## Estimation
     e0 <- zibreg(y~x*z,~1+z+age,data=d)
     e <- zibreg(y~x,~1+z+age,data=d)
-    compare(e,e0)
+    lrt <- compare(e,e0)
     testthat::expect_equivalent(score(e,data=d),
                       colSums(score(e,indiv=TRUE)))
     testthat::expect_equivalent(logLik(e,data=d),
@@ -217,7 +232,7 @@ test_that("zero-inflated binomial regression (zib)", {
 
     testthat::expect_output(print(e), "Prevalence probabilities:")
 
-    PD(e0,intercept=c(1,3),slope=c(2,6))
+    pdval <- PD(e0,intercept=c(1,3),slope=c(2,6))
 
     B <- rbind(c(1,0,0,0,20),
                c(1,1,0,0,20),
@@ -229,25 +244,6 @@ test_that("zero-inflated binomial regression (zib)", {
     newdata <- expand.grid(x=x,age=20,z=levels(d$z))
     fit <- predict(e,newdata=newdata)
 })
-
-test_that("Optimization", {
-    m <- lvm(y~x+z)
-    d <- simulate(m,20,seed=1)
-    e1 <- estimate(m,d,control=list(method="nlminb0"))
-    e2 <- estimate(m,d,control=list(method="NR"))
-    testthat::expect_equivalent(round(coef(e1),3),round(coef(e2),3))
-
-    f <- function(x) x^2*log(x) # x>0
-    df <- function(x) 2*x*log(x) + x
-    df2 <- function(x) 2*log(x) + 3
-    op <- NR(5,f,df,df2,control=list(tol=1e-40)) ## Find root
-    testthat::expect_equivalent(round(op$par,digits=7),.6065307)
-    op2 <- estimatingfunction0(5,gradient=df)
-    op3 <- estimatingfunction(5,gradient=df,hessian=df2,control=list(tol=1e-40))
-    testthat::expect_equivalent(op$par,op2$par)
-    testthat::expect_equivalent(op$par,op3$par)
-})
-
 
 if (requireNamespace("nlme",quietly = TRUE) && requireNamespace("mets",quietly = TRUE))
 test_that("Prediction with missing data, random intercept", {
@@ -295,9 +291,7 @@ test_that("Prediction with missing data, random intercept", {
     testthat::expect_true(inherits(e0$estimate,"multigroupfit"))
     testthat::expect_output(print(e0$estimate),"Group 1")
     testthat::expect_output(print(summary(e0$estimate)),paste0("observations = ",nrow(d0)))
-
 })
-
 
 ## if (requireNamespace("lme4", quietly = TRUE) && requireNamespace("mets", quietly = TRUE)) {
 if (requireNamespace("mets",quietly = TRUE))
@@ -336,7 +330,8 @@ test_that("Random slope model", {
     testthat::expect_true(mean(diag(sl$varcomp)-coef(e)[varcomp.nam])^2<1e-5)
 
     ## missing
-    testthat::expect_output(e0 <- estimate(m0,d0,missing=TRUE,param="none",control=list(method="NR",constrain=FALSE,start=coef(e),trace=1)),
+    testthat::expect_output(e0 <- estimate(m0,d0,missing=TRUE,param="none",
+                                           control=list(method="NR",constrain=FALSE,start=coef(e),trace=1)),
                             "Iter=")
     ## l0 <- lmer(y ~ 1 + num + (1 + num | id), dd0, REML = FALSE)
     l0 <- nlme::lme(y~ 1+num, random=~1+num|id, data=dd0, method="ML")
@@ -406,7 +401,7 @@ test_that("multinomial", {
     e <- estimate(l <- lm(d[,5]==lev[1]~1))
     testthat::expect_true(abs(vcov(e)[1]-vcov(m)[1])<1e-9)
 
-    (a1 <- multinomial(d[,5:6],marginal=TRUE))
+    a1 <- multinomial(d[,5:6],marginal=TRUE)
     K1 <- kappa(a1) ## Cohen's kappa
     P <- a1$P
     marg1 <- rowSums(P)
@@ -428,8 +423,8 @@ test_that("multinomial", {
 
 
     ## TODO
-    lava:::independence(d[,5:6])
-    information(d[,5:6])
+    indep <- lava:::independence(d[,5:6])
+    inf <- information(d[,5:6])
 
     ## pcor
     if (requireNamespace("polycor",quietly=TRUE)) {
@@ -467,7 +462,7 @@ test_that("partialcor", {
     c1 <- partialcor(~x1+x2,d)
     e <- estimate(m,d)
     ec <- correlation(e)
-    c2 <- coef(summary(correlation(e)))
+    c2 <- parameter(ec)
     testthat::expect_true(mean(c1[,1]-c2[,1])^2<1e-9)
     ## CI, note difference var(z)=1/(n-k-3) vs var(z)=1/(n-3)
     testthat::expect_true(mean(c1[,4]-c2[,3])^2<1e-3)
@@ -478,10 +473,27 @@ test_that("partialcor", {
 ## TODO
 ## })
 
-## test_that("multipletesting", {
-## TODO
-## })
+test_that("correlation", {
+  set.seed(1)
+  d <- matrix(rnorm(500), ncol=2)
+  e1 <- parameter(correlation(d, z=FALSE))
+  e2 <- cor.test(d[,1],d[,2])
+  expect_equivalent(e2$estimate, e1[1])
+  ci <- e1[3:4]
+  ci2 <- e2$conf.int
+  expect_true(mean((ci-ci2)^2)< sqrt(1/nrow(d))) # df discrepancy
+  e1 <- parameter(correlation(d, z=TRUE))
+  ci <- e1[3:4]
+  ci2 <- atanh(e2$estimate) + qnorm(0.975)*c(-1,1)*1/sqrt(nrow(d))
+  expect_true(mean((ci-ci2)^2)< sqrt(1/nrow(d)))
 
+  d <- matrix(rnorm(500), ncol=5)
+  e1 <- parameter(correlation(d, z=FALSE))
+  e2 <- parameter(correlation(d, z=TRUE))
+  e3 <- parameter(correlation(d, z=TRUE, back.transform=FALSE))
+  expect_equivalent(e1[,1], e2[,1]) # est same, but not pval
+  expect_equivalent(e2[,5], e3[,5]) # p.vals same, but z vs r
+})
 
 if (requireNamespace("mets",quietly = TRUE))
 test_that("Weighted",{
@@ -493,9 +505,11 @@ test_that("Weighted",{
     l <- lm(y~x,data=d)
     testthat::expect_true(mean((coef(e)[1:2]-coef(l))^2)<1e-12)
 
-    w <- estimate(m,data=d,weights=d$w,estimator="normal",control=list(trace=1))
+    w2 <- estimate(m,data=d,weights=d$w,control=list(trace=0))
+    w <- estimate(m,data=d,weights=d$w,estimator="normal",control=list(trace=0))
+    expect_equivalent(coef(w2), coef(w))
     lw <- lm(y~x,data=d, weights=d$w)
-    testthat::expect_true(mean((coef(e)[1:2]-coef(l))^2)<1e-12)
+    testthat::expect_true(mean((coef(w)[1:2]-coef(lw))^2)<1e-12)
 })
 
 

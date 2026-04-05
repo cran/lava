@@ -6,7 +6,7 @@
 ##' Applies a function repeatedly for a specified number of replications or over
 ##' a list/data.frame with plot and summary methods for summarizing the Monte
 ##' Carlo experiment. Can be parallelized via the future package (use the
-##' future::plan function).
+##' [future::plan()] function).
 ##' @export
 ##' @param x function or 'sim' object
 ##' @param R Number of replications or data.frame with parameters
@@ -19,13 +19,15 @@
 ##' @param mc.cores Optional number of cores. Will use parallel::mcmapply
 ##'   instead of future
 ##' @param progressr.message Optional message for the progressr progress-bar
-##' @param ... Additional arguments to future.apply::future_mapply
+##' @param estimate.index If return object inherits from `estimate` then only
+##'   these column indices are extracted (estimate, se, lower, upper, p-val)
+##' @param ... Additional arguments to [future.apply::future_mapply()]
 ##' @aliases sim sim.default as.sim
-##' @seealso summary.sim plot.sim print.sim sim.lvm
-##' @details To parallelize the calculation use the future::plan function (e.g.,
-##'   future::plan(multisession()) to distribute the calculations over the R
-##'   replications on all available cores). The output is controlled via the
-##'   progressr package (e.g., progressr::handlers(global=TRUE) to enable
+##' @seealso [summary.sim()] [plot.sim()] [sim.lvm()]
+##' @details To parallelize the calculation use the [future::plan()] function
+##'   (e.g., `future::plan(multisession())` to distribute the calculations over
+##'   the `R` replications on all available cores). The output is controlled via
+##'   the progressr package (e.g., `progressr::handlers(global=TRUE)` to enable
 ##'   progress information).
 ##' @examples
 ##' m <- lvm(y~x+e)
@@ -71,10 +73,12 @@
 ##' sim(f, R)
 ##' sim(function(a,b) f(a,b), 3, args=c(a=5,b=5))
 ##' sim(function(iter=1,a=5,b=5) iter*f(a,b), iter=TRUE, R=5)
-sim.default <- function(x = NULL, R = 100, f = NULL, colnames = NULL,
+sim.default <- function(x = NULL, R = 100, f = NULL,
+                        colnames = NULL,
                         seed = NULL, args = list(),
                         iter = FALSE, mc.cores,
                         progressr.message = NULL,
+                        estimate.index = 1:2,
                         ...) {
   stm <- proc.time()
   oldtm <- rep(0, 5)
@@ -110,6 +114,9 @@ sim.default <- function(x = NULL, R = 100, f = NULL, colnames = NULL,
     if (!is.function(x)) stop("Expected a function or 'sim' object.")
   }
   if (is.null(x)) stop("Must give new function argument 'f'.")
+  # `par.index`: list for storing position of estimate, se, confint when
+  # the returned simulation object is an `estimate` object
+  par.index <- list()
   res <- val <- NULL
   on.exit({
     if (is.null(colnames) && !is.null(val)) {
@@ -126,6 +133,7 @@ sim.default <- function(x = NULL, R = 100, f = NULL, colnames = NULL,
     cls <- ifelse(is.data.frame(res), "data.frame", "matrix")
     class(res) <- c("sim", cls)
     attr(res, "time") <- proc.time() - stm + oldtm
+    attr(res, "par.index") <- par.index
     return(res)
   })
   if (inherits(R, c("matrix", "data.frame")) || length(R) > 1) {
@@ -141,7 +149,10 @@ sim.default <- function(x = NULL, R = 100, f = NULL, colnames = NULL,
     parval <- as.data.frame(1:R)
     names(parval) <- NULL
   }
-
+  estimate.index <- sort(estimate.index)
+  if (!all(estimate.index %in% 1:5)) {
+    stop("wrong estimate.index")
+  }
   repl <- NROW(parval)
   pb <- progressr::progressor(steps = repl)
   robx <- function(iter__, ...) {
@@ -150,7 +161,22 @@ sim.default <- function(x = NULL, R = 100, f = NULL, colnames = NULL,
     } else {
       pb()
     }
-    tryCatch(x(...), error = function(e) NA)
+    res <- tryCatch(x(...), error = function(e) NA)
+    is_estimate <- inherits(res, c("estimate", "targeted"))
+    if (is_estimate) {
+      idx <- intersect(seq_len(5L), estimate.index)
+      cmat <- lava::parameter(res)[, idx, drop=FALSE]
+      res <- as.vector(cmat)
+      cn <- colnames(cmat)
+      nam <- c()
+      for (i in idx) {
+        newn <- rownames(cmat)
+        if (i > 1L) newn <- paste(cn[i], newn, sep=".")
+        nam <- c(nam, newn)
+      }
+      names(res) <- nam
+    }
+    return(structure(res, "estimate" = is_estimate))
   }
   if (iter || !is.data.frame(parval)) {
     formals(robx)[[1]] <- NULL
@@ -190,6 +216,33 @@ sim.default <- function(x = NULL, R = 100, f = NULL, colnames = NULL,
   res <- do.call(rbind, val)
   if (is.null(res)) {
     res <- matrix(NA, ncol=length(val[[1]]), nrow=repl)
+  }
+  if (attr(val[[1]], "estimate")) {
+    if (ncol(res) %% length(estimate.index) != 0L) {
+      warning("unexpected number of columns")
+    }
+    idx <- seq_len(ncol(res))
+    np <- ncol(res) / length(estimate.index)
+    if (1 %in% estimate.index) {
+      par.index[["estimate"]] <- seq_len(np)
+      idx <- setdiff(idx, par.index[["estimate"]])
+    }
+    if (2 %in% estimate.index) {
+      par.index[["se"]] <- idx[seq_len(np)]
+      idx <- setdiff(idx, par.index[["se"]])
+    }
+    if (3 %in% estimate.index) {
+      par.index[["lower"]] <- idx[seq_len(np)]
+      idx <- setdiff(idx, par.index[["lower"]])
+    }
+    if (4 %in% estimate.index) {
+      par.index[["upper"]] <- idx[seq_len(np)]
+      idx <- setdiff(idx, par.index[["upper"]])
+    }
+    if (5 %in% estimate.index) {
+      par.index[["pval"]] <- idx[seq_len(np)]
+      idx <- setdiff(idx, par.index[["pval"]])
+    }
   }
   res
 }
@@ -318,7 +371,8 @@ print.sim <- function(x, ...) {
 }
 
 ##' @export
-print.summary.sim <- function(x,group=list(c("^mean$","^sd$","^se$","^se/sd$","^coverage"),
+print.summary.sim <- function(x,
+                              group=list(c("^mean$","^sd$","^se$","^se/sd$","^coverage"),
                                    c("^min$","^[0-9.]+%$","^max$"),
                                    c("^na$","^missing$"),
                                    c("^true$","^bias$","^rmse$")),
@@ -328,7 +382,7 @@ print.summary.sim <- function(x,group=list(c("^mean$","^sd$","^se$","^se/sd$","^
                       quote=FALSE,
                       time=TRUE,
                       extra=TRUE,
-                      ...) {
+                      ...) {c
     if (extra) {
         cat(attr(x,"n")," replications",sep="")
         if (time && !is.null(attr(x,"time"))) {
@@ -373,11 +427,17 @@ print.summary.sim <- function(x,group=list(c("^mean$","^sd$","^se$","^se/sd$","^
 ##' @param minimal if TRUE, minimal summary will be returned
 ##' @param level confidence level (0.95)
 ##' @param quantiles quantiles (0,0.025,0.5,0.975,1)
+##' @param df degrees of freedom in t-distribution used for constructing CIs
+##'   (default Gaussian approximation)
 ##' @param ... additional levels to lower-level functions
 summary.sim <- function(object,estimate=NULL,se=NULL,
-                confint=!is.null(se)&&!is.null(true),true=NULL,
+                confint,
+                true=NULL,
                 fun,names=NULL,unique.names=TRUE,minimal=FALSE,
-                level=0.95,quantiles=c(0,.025,0.5,.975,1),...) {
+                level=0.95,
+                quantiles=c(0,.025,0.5,.975,1),
+                df = Inf,
+                ...) {
     if (is.list(estimate)) {
         est <- estimate
         if (is.null(names)) names <- base::names(est)
@@ -393,6 +453,27 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
         }
         cl <- match.call()
         cl[c("estimate","se","true","names")] <- list(estimate,se,true,names)
+    }
+    par.index <- attr(object, "par.index")
+    if (is.null(estimate) && length(par.index) > 0) {
+      estimate <- par.index[["estimate"]]
+    }
+    np <- length(estimate)
+    if (is.null(se) && length(par.index) > 0) {
+      se <- par.index[["se"]]
+    }
+    if (missing(confint)) {
+      lo <- par.index[["lower"]]
+      up <- par.index[["upper"]]
+      if (length(par.index) > 0 &&
+          (!is.null(lo) || !is.null(up))) {
+        if (is.null(lo)) lo <- rep(-Inf, np)
+        if (is.null(up)) up <- rep(Inf, np)
+        confint <- list()
+        for (i in seq_len(np)) {
+          confint <- c(confint, list(c(lo[i], up[i])))
+        }
+      } else confint <- !is.null(se)&&!is.null(true)
     }
     if (minimal) {
         fun <- function(x,se,confint,...) {
@@ -434,6 +515,7 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
     if (!is.null(estimate) && is.character(estimate)) {
         estimate <- match(estimate,colnames(object))
     }
+    if (is.list(confint)) confint <- unlist(confint)
     if (!missing(fun)) {
         if (!is.null(estimate)) m.est <- object[,estimate,drop=FALSE]
         else m.est <- object
@@ -442,7 +524,10 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
         m.ci <- NULL
         if (!is.null(confint)) m.ci <- object[,confint,drop=FALSE]
         res <- lapply(seq(ncol(m.est)),
-                      function(i,...) fun(m.est[,i,drop=TRUE],se=m.se[,i,drop=TRUE],confint=m.ci[,1:2+(i-1)*2],...,INDEX=i),...)
+                      function(i,...) fun(m.est[,i,drop=TRUE],
+                                          se=m.se[,i,drop=TRUE],
+                                          confint=m.ci[,1:2+(i-1)*2],...,
+                                          INDEX=i),...)
         res <- matrix(unlist(res),nrow=length(res[[1]]),byrow=FALSE)
         if (is.null(dim(res))) {
             res <- rbind(res)
@@ -498,8 +583,9 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
               if (is.na(se[i])) {
                 CI <- matrix(NA, nrow=NROW(object), ncol=2)
               } else {
-                CI <- cbind(object[,estimate[i]]-qnorm(z)*object[,se[i]],
-                            object[,estimate[i]]+qnorm(z)*object[,se[i]])
+                q <- qt(z, df = df)
+                CI <- cbind(object[,estimate[i]] - q*object[,se[i]],
+                            object[,estimate[i]] + q*object[,se[i]])
               }
               colnames(CI) <- NULL
               object <- cbind(object,CI)

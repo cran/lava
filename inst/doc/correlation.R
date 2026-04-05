@@ -1,19 +1,18 @@
 ## ----include=FALSE------------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  dev = "svg",
+  fig.ext = "svg"
 )
 mets <- lava:::versioncheck('mets', 1)
 
-## -----------------------------------------------------------------------------
-library('lava')
+## ----plotload, results="hide",message=FALSE,warning=FALSE---------------------
+library("lava")
 m0 <- lvm(y1+y2 ~ x, y1 ~~ y2)
-edgelabels(m0, y1 + y2 ~ x) <- c(expression(beta[1]), expression(beta[2]))
-edgelabels(m0, y1 ~ y2) <- expression(rho)
+edgelabels(m0, y1 + y2 ~ x) <- c(expression(b[1]), expression(b[2]))
+edgelabels(m0, y1 ~ y2) <- "r"
 plot(m0, layoutType="circo")
-
-## ----load, results="hide",message=FALSE,warning=FALSE-------------------------
-library('lava')
 
 ## ----m0-----------------------------------------------------------------------
 m0 <- lvm() |>
@@ -37,7 +36,7 @@ cens1 <- function(threshold,type='right') {
   }
 }
 
-m0 <- 
+m0 <-
   transform(m0, s1 ~ y1, cens1(-2, 'left')) |>
   transform(s2 ~ y2, cens1(2,  'right'))
 

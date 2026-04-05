@@ -1,19 +1,22 @@
 ## ----include=FALSE------------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  dev = "svg",
+  fig.ext = "svg"
 )
+## library("svglite")
 mets <- lava:::versioncheck('mets', 1)
 fullVignette <- Sys.getenv("_R_FULL_VIGNETTE_") %in% c("1","TRUE")
 
 ## ----load, results="hide",message=FALSE,warning=FALSE-------------------------
-library('lava')
+library("lava")
 
 ## ----sim----------------------------------------------------------------------
 f <- function(x) cos(1.25*x) + x - 0.25*x^2
-m <- lvm(x1+x2+x3 ~ eta1, y1+y2+y3 ~ eta2, latent=~eta1+eta2)
-regression(m) <- eta1+eta2 ~ z
-functional(m, eta2~eta1) <- f
+m <- lvm(x1+x2+x3 ~ u1, y1+y2+y3 ~ u2, latent=~u1+u2)
+regression(m) <- u1+u2 ~ z
+functional(m, u2~u1) <- f
 
 d <- sim(m, n=200, seed=42) # Default is all parameters are 1
 
@@ -22,50 +25,50 @@ d <- sim(m, n=200, seed=42) # Default is all parameters are 1
 plot(m)
 
 ## ----specifymodels------------------------------------------------------------
-m1 <- lvm(x1+x2+x3 ~ eta1, eta1 ~ z, latent=~eta1)
-m2 <- lvm(y1+y2+y3 ~ eta2, eta2 ~ z, latent=~eta2)
+m1 <- lvm(x1+x2+x3 ~ u1, u1 ~ z, latent=~u1)
+m2 <- lvm(y1+y2+y3 ~ u2, u2 ~ z, latent=~u2)
 
 ## -----------------------------------------------------------------------------
-nonlinear(m2, type="quadratic") <- eta2 ~ eta1
+nonlinear(m2, type="quadratic") <- u2 ~ u1
 
 ## ----twostage1----------------------------------------------------------------
 e1 <- twostage(m1, m2, data=d)
 e1
 
 ## ----linear_mle---------------------------------------------------------------
-e0 <- estimate(regression(m1%++%m2, eta2~eta1), d)
-estimate(e0,keep="^eta2~[a-z]",regex=TRUE) ## Extract coef. matching reg.ex.
+e0 <- estimate(regression(m1%++%m2, u2~u1), d)
+estimate(e0,keep="^u2~[a-z]",regex=TRUE) ## Extract coef. matching reg.ex.
 
 ## ----pred1--------------------------------------------------------------------
-newd <- expand.grid(eta1=seq(-4, 4, by=0.1), z=0)
+newd <- expand.grid(u1=seq(-4, 4, by=0.1), z=0)
 pred1 <- predict(e1, newdata=newd, x=TRUE)
 head(pred1)
 
 ## ----spline_twostage----------------------------------------------------------
 kn <- seq(-3,3,length.out=5)
-nonlinear(m2, type="spline", knots=kn) <- eta2 ~ eta1
+nonlinear(m2, type="spline", knots=kn) <- u2 ~ u1
 e2 <- twostage(m1, m2, data=d)
 e2
 
 ## ----spline_ci----------------------------------------------------------------
-p <- cbind(eta1=newd$eta1,
+p <- cbind(u1=newd$u1,
 	  estimate(e2,f=function(p) predict(e2,p=p,newdata=newd))$coefmat)
 head(p)
 
 ## ----figpred2-----------------------------------------------------------------
-plot(I(eta2-z) ~ eta1, data=d, col=Col("black",0.5), pch=16,
-     xlab=expression(eta[1]), ylab=expression(eta[2]), xlim=c(-4,4))
-lines(Estimate ~ eta1, data=as.data.frame(p), col="darkblue", lwd=5)
+plot(I(u2-z) ~ u1, data=d, col=Col("black",0.5), pch=16,
+     xlab=expression(u[1]), ylab=expression(u[2]), xlim=c(-4,4))
+lines(Estimate ~ u1, data=as.data.frame(p), col="darkblue", lwd=5)
 confband(p[,1], lower=p[,4], upper=p[,5], polygon=TRUE,
 	 border=NA, col=Col("darkblue",0.2))
 
 ## ----spline_several-----------------------------------------------------------
-m2a <- nonlinear(m2, type="linear", eta2~eta1)
-m2b <- nonlinear(m2, type="quadratic", eta2~eta1)
+m2a <- nonlinear(m2, type="linear", u2~u1)
+m2b <- nonlinear(m2, type="quadratic", u2~u1)
 kn1 <- seq(-3,3,length.out=5)
 kn2 <- seq(-3,3,length.out=8)
-m2c <- nonlinear(m2, type="spline", knots=kn1, eta2~eta1)
-m2d <- nonlinear(m2, type="spline", knots=kn2, eta2~eta1)
+m2c <- nonlinear(m2, type="spline", knots=kn1, u2~u1)
+m2d <- nonlinear(m2, type="spline", knots=kn2, u2~u1)
 
 ## ----cv_fit, cache=TRUE, eval=fullVignette------------------------------------
 # ## Scale models in stage 2 to allow for a fair RMSE comparison
@@ -87,30 +90,31 @@ if (fullVignette) {
 }
 
 ## -----------------------------------------------------------------------------
-summary(fit.cv)
+fit.cv$coef
 
 ## ----multifit-----------------------------------------------------------------
 fit <- lapply(list(m2a,m2b,m2c,m2d),
 	     function(x) {
 		 e <- twostage(m1,x,data=d)
-		 pr <- cbind(eta1=newd$eta1,predict(e,newdata=newd$eta1,x=TRUE))
+		 pr <- cbind(u1=newd$u1,predict(e,newdata=newd$u1,x=TRUE))
 		 return(list(estimate=e,predict=as.data.frame(pr)))
 	     })
 
-plot(I(eta2-z) ~ eta1, data=d, col=Col("black",0.5), pch=16,
+plot(I(u2-z) ~ u1, data=d, col=Col("black",0.5), pch=16,
      xlab=expression(eta[1]), ylab=expression(eta[2]), xlim=c(-4,4))
 col <- c("orange","darkred","darkgreen","darkblue")
 lty <- c(3,4,1,5)
 for (i in seq_along(fit)) {
-    with(fit[[i]]$pr, lines(eta2 ~ eta1, col=col[i], lwd=4, lty=lty[i]))
+    with(fit[[i]]$pr, lines(u2 ~ u1, col=col[i], lwd=4, lty=lty[i]))
 }
 legend("bottomright",
       c("linear","quadratic","spline(df=4)","spline(df=6)"),
       col=col, lty=lty, lwd=3)
 
 ## ----twostageCV, cache=TRUE, eval=fullVignette--------------------------------
+# set.seed(1)
 # selmod <- twostageCV(m1, m2, data=d, df=2:4, nmix=1:2,
-# 	    nfolds=2, rep=1, mc.cores=parallel::detectCores())
+# 	    nfolds=5, rep=2, mc.cores=parallel::detectCores())
 
 ## ----results="hide", echo=FALSE-----------------------------------------------
 ## To save time building the vignettes on CRAN, we cache time consuming computations
@@ -126,21 +130,21 @@ selmod
 ## -----------------------------------------------------------------------------
 d$g <- (d$z<0)*1 ## Group variable
 mm1 <- regression(m1, ~g)  # Add grouping variable as exogenous variable (effect specified via 'predict.fun')
-mm2 <- regression(m2, eta2~ u1+u2+u1:g+u2:g+z)
+mm2 <- regression(m2, u2~ u1+u2+u1:g+u2:g+z)
 pred <- function(mu,var,data,...) {
     cbind("u1"=mu[,1],"u2"=mu[,1]^2+var[1],
 	  "u1:g"=mu[,1]*data[,"g"],"u2:g"=(mu[,1]^2+var[1])*data[,"g"])
 }
 ee1 <- twostage(mm1, model2=mm2, data=d, predict.fun=pred)
-estimate(ee1,keep="eta2~u",regex=TRUE)
+estimate(ee1,keep="u2~u",regex=TRUE)
 
 ## -----------------------------------------------------------------------------
 summary(estimate(ee1,keep="(:g)", regex=TRUE))
 
 ## -----------------------------------------------------------------------------
 m1 <- baptize(m1)  ## Label all parameters
-intercept(m1, ~x1+eta1) <- list(0,NA) ## Set intercept of x1 to zero. Remove the label of eta1
-regression(m1,x1~eta1) <- 1 ## Factor loading fixed to 1
+intercept(m1, ~x1+u1) <- list(0,NA) ## Set intercept of x1 to zero. Remove the label of u1
+regression(m1,x1~u1) <- 1 ## Factor loading fixed to 1
 
 ## ----mixture1, cache=TRUE, eval=fullVignette----------------------------------
 # set.seed(1)
@@ -177,16 +181,16 @@ em2 <- twostage(em0,m2,data=d)
 em2
 
 ## ----mixturefit, eval=mets----------------------------------------------------
-plot(I(eta2-z) ~ eta1, data=d, col=Col("black",0.5), pch=16,
+plot(I(u2-z) ~ u1, data=d, col=Col("black",0.5), pch=16,
      xlab=expression(eta[1]), ylab=expression(eta[2]))
 
-lines(Estimate ~ eta1, data=as.data.frame(p), col="darkblue", lwd=5)
+lines(Estimate ~ u1, data=as.data.frame(p), col="darkblue", lwd=5)
 confband(p[,1], lower=p[,4], upper=p[,5], polygon=TRUE,
 	 border=NA, col=Col("darkblue",0.2))
 
-pm <- cbind(eta1=newd$eta1,
+pm <- cbind(u1=newd$u1,
 	    estimate(em2, f=function(p) predict(e2,p=p,newdata=newd))$coefmat)
-lines(Estimate ~ eta1, data=as.data.frame(pm), col="darkred", lwd=5)
+lines(Estimate ~ u1, data=as.data.frame(pm), col="darkred", lwd=5)
 confband(pm[,1], lower=pm[,4], upper=pm[,5], polygon=TRUE,
 	 border=NA, col=Col("darkred",0.2))
 legend("bottomright", c("Gaussian","Mixture"),

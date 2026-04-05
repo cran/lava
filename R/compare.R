@@ -34,7 +34,9 @@
 compare <- function(object,...) UseMethod("compare")
 
 ##' @export
-compare.default <- function(object,...,par,contrast,null,scoretest,Sigma,level=.95,df=NULL) {
+compare.default <- function(object,...,
+                            par,contrast,null,
+                            scoretest,Sigma,level=.95,df=NULL) {
     if (!missing(par) || (!missing(contrast) && is.character(contrast))) {
         if (!missing(contrast) && is.character(contrast)) par <- contrast
         contrast <- rep(0,length(coef(object)))
@@ -71,7 +73,12 @@ compare.default <- function(object,...,par,contrast,null,scoretest,Sigma,level=.
         colnames(ct) <- c("Estimate","Std.Err",paste0(c(1-p,p)*100,"%"))
         rownames(ct) <- rep("",nrow(ct))
         Q <- t(Bp-null)%*%Inverse(V)%*%(Bp-null)
-        df <- qr(B)$rank; names(df) <- "df"
+        if (any(is.nan(V)) ||any(is.na(V))) {
+          df <- 0
+        } else {
+          df <- tryCatch(qr(V)$rank, error=function(...) 0)
+        }
+        names(df) <- "df"
         attributes(Q) <- NULL; names(Q) <- "chisq";
         pQ <- ifelse(df==0,NA,pchisq(Q,df,lower.tail=FALSE))
 
@@ -88,7 +95,9 @@ compare.default <- function(object,...,par,contrast,null,scoretest,Sigma,level=.
                 } else {
                     sgn[1] <- "-"
                 }
-                cnames <- c(cnames,paste0(sgn,Bval,paste0("[",pname[Bidx],"]"),collapse=""))
+                cnames <- c(cnames,
+                            paste0(sgn,Bval,
+                                   paste0("[",pname[Bidx],"]"),collapse=""))
                 msg <- c(msg,paste0(cnames[i]," = ",null[i]))
             }
             method <- c(method,"","Null Hypothesis:",msg)

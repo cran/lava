@@ -1,33 +1,48 @@
-# lava 1.8.2 (development version)
- - Improved closed testing procedure `closed_testing` (depr. `closed.testing`)
- - More tests and documentation
- - New data `deprdiag`
+# lava 1.9.0
+  - `estimate`: estimate objects can now be transformed via functions: `log`,
+    `exp`, `+`, `-`, `*`, `/`, `^`, ... See the influence vignette for full
+    details and list of available mathematical transformations.
+  - breaking change: `+` operator for estimate objects no longer merges objects.
+  - `sim.default`: the simulation function `f`'s return object can now be an
+    `estimate` object
+  - `summary.sim`: automatically derives estimate, se, confint parameters if the
+     sim routine returns an `estimate` object
+  - `merge.estimate`: cast warning if `back.transform` was used
+  - `merge.estimate`: works with objects with and without influence function
+  - `summary.sim` `df` argument for calculating CIs based on t-dist. approximation
+
+# lava 1.8.2
+  - Improved closed testing procedure `closed_testing` (depr. `closed.testing`)
+  - More tests and documentation
+  - New data `deprdiag`
 
 # lava 1.8.1
- - `sim.default` now accepts the argument `R` to be a list (of lists) of
+  - `sim.default` now accepts the argument `R` to be a list (of lists) of
  arguments.
- - New methods `subset.estimate`, `transform.estimate`, `labels.estimate`
+  - New methods `subset.estimate`, `transform.estimate`, `labels.estimate`
 
 # lava 1.8.0
- - New methods `estimate.mlm`, `IC.mlm`, `pars.mlm`, `estimate.array`,
-   `estimate.data.frame`
- - `Print` method for tabular data (matrix, data.frame, data.table)
- - `merge` now supports regular expressions
- - `IC` returns row-names (default id) as obtained from model.matrix or similar
- - New vignette: Influence Functions
- - operators `%in.open%`, `%in.closed%` for checking if elements are within a range
-   `3 %in.open% c(0,1)`)
-- `estimate(..., estimator='glm')` now works with formulas with just an intercept
-- `as.data.frame.sim`, `as.matrix.sim`
-- fixed issues with quasi* families and negative binomial regr (MASS:glm.nb)
+  - New methods `estimate.mlm`, `IC.mlm`, `pars.mlm`, `estimate.array`,
+    `estimate.data.frame`
+  - `Print` method for tabular data (matrix, data.frame, data.table)
+  - `merge` now supports regular expressions
+  - `IC` returns row-names (default id) as obtained from model.matrix or similar
+  - New vignette: Influence Functions
+  - operators `%in.open%`, `%in.closed%` for checking if elements are within a range
+    `3 %in.open% c(0,1)`)
+  - `estimate(..., estimator='glm')` now works with formulas with just an intercept
+  - `as.data.frame.sim`, `as.matrix.sim`
+  - fixed issues with quasi* families and negative binomial regression (`MASS:glm.nb`)
 
 # lava 1.7.3 
-- `parameter.estimate` method to extract matrix with estimates, standard errors, and confidence limits from and estimate object (coefmat element)
-- pairwise difference with `'-'.estimate` and `pairwise.diff`
-- Optional mc.cores arguments to `cv` and `bootstrap`
-- `parameter.lvm` now automatically removes previously variables in the lvm object with same name as new added parameters.
-- `Print` function deals more gracefully with non-rectangular objects
-- bug-fix in `stack.estimate` (wrong stand-errors in `twostage` since version 1.7.0)
+ - `parameter.estimate` method to extract matrix with estimates, standard
+   errors, and confidence limits from and estimate object (coefmat element)
+  - pairwise difference with `'-'.estimate` and `pairwise.diff`
+  - optional mc.cores arguments to `cv` and `bootstrap`
+  - `parameter.lvm` now automatically removes previously variables in the lvm
+    object with same name as new added parameters.
+  - `Print` function deals more gracefully with non-rectangular objects
+  - bug-fix in `stack.estimate` (wrong stand-errors in `twostage` since version 1.7.0)
 
 # lava 1.7.2.1
   - Maintenance release as version 1.7.2 broke compatibility with R<4.1.

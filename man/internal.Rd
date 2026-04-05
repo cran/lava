@@ -5,14 +5,13 @@
 \alias{startvalues0}
 \alias{startvalues1}
 \alias{startvalues2}
-\alias{startvalues3}
 \alias{starter.multigroup}
-\alias{addattr}
 \alias{modelPar}
 \alias{modelVar}
 \alias{matrices}
 \alias{pars}
 \alias{pars.lvm}
+\alias{regfix}
 \alias{pars.lvmfit}
 \alias{pars.glm}
 \alias{score.glm}
@@ -23,16 +22,6 @@
 \alias{igraph.lvm}
 \alias{subgraph}
 \alias{finalize}
-\alias{index.lvm}
-\alias{index.lvmfit}
-\alias{index}
-\alias{reindex}
-\alias{index<-}
-\alias{rmvn0}
-\alias{dmvn0}
-\alias{logit}
-\alias{expit}
-\alias{tigol}
 \alias{randomslope}
 \alias{randomslope<-}
 \alias{lisrel}
@@ -50,7 +39,6 @@
 \alias{profci}
 \alias{estimate.MAR}
 \alias{missingModel}
-\alias{Inverse}
 \alias{Identical}
 \alias{gaussian_logLik.lvm}
 \alias{addhook}
@@ -58,16 +46,17 @@
 \alias{multigroup}
 \alias{Weights}
 \alias{fixsome}
-\alias{parfix}
-\alias{parfix<-}
-\alias{merge}
 \alias{IV}
 \alias{parameter}
 \alias{Specials}
 \alias{procformula}
 \alias{getoutcome}
 \alias{decomp.specials}
-\alias{na.pass0}
+\alias{rmvn0}
+\alias{dmvn0}
+\alias{logit}
+\alias{expit}
+\alias{tigol}
 \title{For internal use}
 \description{
 For internal use
@@ -75,4 +64,4 @@ For internal use
 \author{
 Klaus K. Holst
 }
-\keyword{utilities}
+\keyword{internal}

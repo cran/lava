@@ -6,27 +6,28 @@
 \alias{lava}
 \title{lava: Latent Variable Models}
 \description{
+\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
+
 A general implementation of Structural Equation Models with latent variables (MLE, 2SLS, and composite likelihood estimators) with both continuous, censored, and ordinal outcomes (Holst and Budtz-Joergensen (2013) \doi{10.1007/s00180-012-0344-y}). Mixture latent variable models and non-linear latent variable models (Holst and Budtz-Joergensen (2020) \doi{10.1093/biostatistics/kxy082}). The package also provides methods for graph exploration (d-separation, back-door criterion), simulation of general non-linear latent variable models, and estimation of influence functions for a broad range of statistical models.
 
 A general implementation of Structural Equation Models wth latent variables
 (MLE, 2SLS, and composite likelihood estimators) with both continuous,
 censored, and ordinal outcomes (Holst and Budtz-Joergensen (2013)
-<doi:10.1007/s00180-012-0344-y>). Mixture latent variable models and
+\url{doi:10.1007/s00180-012-0344-y}). Mixture latent variable models and
 non-linear latent variable models (Holst and Budtz-Joergensen (2020)
-<doi:10.1093/biostatistics/kxy082>). The package also provides methods for
+\url{doi:10.1093/biostatistics/kxy082}). The package also provides methods for
 graph exploration (d-separation, back-door criterion), simulation of general
 non-linear latent variable models, and estimation of influence functions for
 a broad range of statistical models.
 }
 \examples{
-
 lava()
-
 }
 \seealso{
 Useful links:
 \itemize{
   \item \url{https://kkholst.github.io/lava/}
+  \item \url{https://github.com/kkholst/lava}
   \item Report bugs at \url{https://github.com/kkholst/lava/issues}
 }
 
@@ -41,7 +42,7 @@ Other contributors:
 }
 
 
-Klaus K. Holst Maintainer: <klaus@holst.it>
+Klaus K. Holst Maintainer: \href{mailto:klaus@holst.it}{klaus@holst.it}
 }
 \keyword{internal}
 \keyword{package}

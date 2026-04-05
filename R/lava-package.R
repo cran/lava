@@ -38,9 +38,7 @@
 ##' @author Klaus K. Holst Maintainer: <klaus@@holst.it>
 ##' @keywords package
 ##' @examples
-##'
 ##' lava()
-##'
 NULL
 
 ##' Longitudinal Bone Mineral Density Data
@@ -48,8 +46,6 @@ NULL
 ##' Bone Mineral Density Data consisting of 112 girls randomized to receive
 ##' calcium og placebo. Longitudinal measurements of bone mineral density
 ##' (g/cm^2) measured approximately every 6th month in 3 years.
-##'
-##'
 ##' @name calcium
 ##' @docType data
 ##' @format A data.frame containing 560 (incomplete) observations. The 'person'
@@ -92,7 +88,6 @@ NULL
 ##' @keywords datasets
 NULL
 
-
 ##' 50 patients from Monash Medical Centre, Melbourne
 ##'
 ##' Diagnosis of depression (DSM-III-R MDD, Dysthymia, Adjustment Disorder with
@@ -111,7 +106,6 @@ NULL
 ##' 30 (6), pp. 483-492.
 ##' @keywords datasets
 NULL
-
 
 ##' Hubble data
 ##'
@@ -247,28 +241,26 @@ NULL
 ##' @source Simulated
 NULL
 
-
 ##' For internal use
 ##'
 ##' @title For internal use
 ##' @name startvalues
-##' @rdname internal
 ##' @author Klaus K. Holst
-##' @keywords utilities
+##' @keywords internal
+##' @rdname internal
 ##' @export
-##' @aliases
-##' startvalues0 startvalues1 startvalues2 startvalues3
-##' starter.multigroup
-##' addattr modelPar modelVar matrices pars pars.lvm
-##' pars.lvmfit pars.glm score.glm procdata.lvmfit modelPar modelVar
-##' mat.lvm matrices reorderdata graph2lvm igraph.lvm subgraph finalize
-##' index.lvm index.lvmfit index reindex index<-
-##' rmvn0 dmvn0 logit expit tigol
-##' randomslope randomslope<- lisrel variances offdiags describecoef
-##' parlabels rsq stdcoef CoefMat CoefMat.multigroupfit deriv updatelvm
-##' checkmultigroup profci estimate.MAR missingModel Inverse Identical
-##' gaussian_logLik.lvm addhook gethook multigroup Weights fixsome
-##' parfix parfix<- merge IV parameter index index<-
-##' Specials procformula getoutcome decomp.specials
-##' na.pass0
+##' @aliases startvalues startvalues0 startvalues1 startvalues2
+##'   starter.multigroup
+##'   modelPar modelVar matrices pars pars.lvm regfix
+##'   pars.lvmfit pars.glm score.glm procdata.lvmfit mat.lvm
+##'   matrices reorderdata graph2lvm igraph.lvm subgraph finalize
+##'   randomslope randomslope<- lisrel
+##'   variances offdiags describecoef parlabels rsq stdcoef CoefMat
+##'   CoefMat.multigroupfit deriv updatelvm checkmultigroup profci
+##'   estimate.MAR
+##'   missingModel Identical gaussian_logLik.lvm
+##'   addhook gethook multigroup
+##'   Weights fixsome IV parameter Specials
+##'   procformula getoutcome decomp.specials
+##'   rmvn0 dmvn0 logit expit tigol
 NULL

@@ -2,10 +2,26 @@
 library("lava")
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  cache = TRUE,
+  comment = "#>",
+  dev = "svg",
+  fig.ext = "svg"
   )
 has_mets <- lava:::versioncheck('mets', 1)
 has_geepack <- lava:::versioncheck('geepack', 1)
+
+## ----estimate.syntax, eval=FALSE----------------------------------------------
+# estimate(x=, ...)
+# estimate(coef=, IC=, ...)
+# estimate(coef=, vcov=, ...)
+
+## ----estimate.examples, eval=FALSE--------------------------------------------
+# merge(subset(estimate(x), 1), estimate(coef=p, IC=ic, id=id)) |>
+#   transform(function(x) c(exp(x), exp(x[1]))) |> # parameter transformation
+#   labels(c("a", "b")) # rename parameters
+
+## ----estimate.direct, eval=FALSE----------------------------------------------
+# c(exp(b)^0.5, exp(b * a) / (1 + exp(-b)))
 
 ## ----sim_model----------------------------------------------------------------
 m <- lvm() |>
@@ -32,11 +48,6 @@ dl <- dl[order(dl$id), ]
 ## dl <- mets::fast.reshape(dw, varying = c("y", "x")) |> na.omit()
 Print(dl)
 
-## ----estimate.syntax, eval=FALSE----------------------------------------------
-# estimate(x=, ...)
-# estimate(coef=, IF=, ...)
-# estimate(coef=, vcov=, ...)
-
 ## ----inp1---------------------------------------------------------------------
 inp <- as.matrix(dw[, c("y1", "y2")])
 e <- estimate(inp[, 1, drop = FALSE], type="mean") 
@@ -61,11 +72,14 @@ coef(e)
 ## ## Asymptotic (robust) variance estimate
 vcov(e)
 ## Matrix with estimates and confidence limits
-estimate(e, level = 0.99) |> parameter()
+estimate(e, null=0, level = 0.99) |> parameter()
 ## Influence curve
 IC(e) |> head()
 ## Join estimates
-e + e # Same as merge(e,e)
+ee <- merge(e, e)
+ee
+## Forest plots
+plot(ee, null=0.5, digits=2)
 
 ## ----glm----------------------------------------------------------------------
 g <- glm(y1 ~ a + x1, data = dw, family = binomial)
@@ -135,8 +149,9 @@ summary(g3)
 e2 <- estimate(g2, id = dw$id)
 e3 <- estimate(g3, id = "id", data=dwc)
 
-merge(e2,e3) |> IC() |> Print()
-vcov(e2 + e3)
+ecomb <- merge(e2, e3)
+IC(ecomb) |> Print()
+vcov(ecomb)
 ## Same marginals as
 list(vcov(e2), vcov(e3))
 
@@ -146,8 +161,8 @@ merge(e2, e3, id = list(dw$id, dwc$id))
 ## ----estimatenoid-------------------------------------------------------------
 estimate(g2) |>
   IC() |> head()
-vcov(estimate(g2) + estimate(g3))
-(estimate(g2) + estimate(g3)) |>
+vcov(merge(estimate(g2), estimate(g3)))
+merge(estimate(g2), estimate(g3)) |>
   (rownames %++% head %++% IC)()
 
 ## ----merge_idnull-------------------------------------------------------------
@@ -158,7 +173,7 @@ merge(g1, g2, id = NULL) |> vcov()
 merge(g1, g2, keep = c("(Intercept)", "(Intercept).1"))
 
 ## ----merge2-------------------------------------------------------------------
-merge(g1,g2, keep=c(1, 3))
+merge(g1, g2, keep=c(1, 3))
 
 ## ----merge3-------------------------------------------------------------------
 merge(g1, g2, keep = "cept", regex = TRUE)
@@ -204,6 +219,42 @@ estimate(g1, function(p) list(a = sum(p))) # named list
 estimate(g1, function(x) c(x, x[1] + exp(x[2]), inv = 1 / x[2]))
 estimate(g1, exp)         
 
+## ----estimate_calculus_models-------------------------------------------------
+a <- estimate(coef=c("a"=0.5), IC=rnorm(10), id=1:10)
+b <- estimate(coef=c("b"=0.8), IC=rnorm(10), id=1:10)
+
+## ----estimate_calc_ex---------------------------------------------------------
+a * b
+(3 * cos(a) / sqrt(b) + 1) / a
+c(sum=sum(e), sum2=a+b,
+  prod=prod(e), prod2=a*b) # sum and prod function
+e <- c(a,b) # merge
+e %*% e # inner prod.
+c(1, 2) %*% e
+c(pow = a^b) # power-function, rename parameter
+a^c(0.5, 2)
+c(e["a"] * e["b"] / a, e["b"])
+
+## ----estimate-contrast--------------------------------------------------------
+B <- rbind(c(1,-1), c(1,0), c(0,1))
+B %*% e
+B %*% e == c(1,1,0)
+
+## -----------------------------------------------------------------------------
+lava::logit
+logit(b)
+expit(c(a,b))
+
+## ----estimate-pipe------------------------------------------------------------
+merge(a, b) |>  # merges the two `estimate` objects
+  transform(prod) |> # calculates product of parameter estimates
+  subset(1) |> # nothing happens here as the result was already 1-dim.
+  labels("prod") # rename parameter
+
+## ----estimate-with------------------------------------------------------------
+e <- c("e1"=a, "e2"=b)
+with(e, c(est = e1*e2))
+
 ## ----cov----------------------------------------------------------------------
 Cov <- function(x, y, ...) {
   est <- mean(x * y)-mean(x)*mean(y)
@@ -216,22 +267,25 @@ Cov <- function(x, y, ...) {
 with(dw, Cov(x1, x2))
 
 ## ----cov2---------------------------------------------------------------------
-e1 <- lm(cbind(x1, x2, x1 * x2) ~ 1, data = dw) |>
-  estimate(labels = c("Ex1", "Ex2", "Ex1x2"))
-e1
-estimate(e1, function(x) c(x, cov=with(as.list(x), Ex1x2 - Ex2* Ex1)))
+est <- lm(cbind(x1, x2, x1 * x2) ~ 1, data = dw) |>
+  estimate(labels = c("E1", "E2", "E12"))
+est
+
+est["E12"] - est["E2"]*est["E1"] 
+# transform(e1, function(x) c(x, cov=with(as.list(x), E12 - E2* E1))) # Same result
 
 ## ----rho----------------------------------------------------------------------
-e2 <- with(dw, Cov(x1, x2, labels = "c", id = id) +
-               Cov(x1, x1, labels = "v1", id = id) +
-               Cov(x2, x2, labels = "v2", id = id))
-rho <- estimate(e2, function(x) list(rho = x[1] / (x[2] * x[3])^.5))
+v12 <- with(dw, Cov(x1, x2, id = id))
+v1  <- with(dw, Cov(x1, x1, id = id))
+v2  <- with(dw, Cov(x2, x2, id = id))
+
+rho <- c(rho = v12 / sqrt(v1 * v2)) 
 rho
 
 ## ----tanh---------------------------------------------------------------------
-estimate(rho, atanh, back.transform = tanh)
+estimate(atanh(rho), back.transform = tanh)
 
-## -----------------------------------------------------------------------------
+## ----estglmmerge--------------------------------------------------------------
 g <- lapply(
   list(y1 ~ a, y2 ~ a, y3 ~ a), #, y4 ~ a+x4),
   function(f) glm(f, family = binomial, data = dw)
@@ -266,7 +320,7 @@ gg0 <- estimate(gg, use="^a", regex=TRUE, null=rep(.8, 3))
 alpha_zmax(gg0)
 
 ## ----closedtesting, eval=has_mets---------------------------------------------
-closed_testing(gg0)
+closed_testing(gg0, test = test_wald)
 
 ## ----estpred------------------------------------------------------------------
 g <- glm(y1 ~ a + x1 + w, data=dw, family=binomial)
@@ -279,6 +333,46 @@ id <- foldr(NROW(dw), 100, list=FALSE)
 ea <- estimate(g, pr, average=TRUE, id=id)
 ea
 IC(ea) |> head()
+
+## ----ate-nuisancemodels-------------------------------------------------------
+qmod <- glm(y1 ~ a * w, family = binomial, data = dw) # E(Y|W,A) := Q(W,A)
+amod <- glm(a ~ w, family = binomial, data = dw) # P(A=1|W) = Pi_1(W)
+q0 <- predict(qmod, transform(dw, a=0), type="response") # Q(W,0)
+q1 <- predict(qmod, transform(dw, a=1), type="response") # Q(W,1)
+p1 <- predict(amod, dw, type="response") # P(A=1|W)
+e0 <- with(dw, (1-a) / (1-p1) * (y1 - q0) + q0)
+e1 <- with(dw, a / p1 * (y1 - q1) + q1)
+head(cbind(e0, e1))
+
+## ----est-potentialoutcomes----------------------------------------------------
+est0 <- estimate(coef=mean(e0), IC=e0-mean(e0)) # E[Y(0)]
+est1 <- estimate(coef=mean(e1), IC=e1-mean(e1)) # E[Y(1)]
+
+potential_outcomes <- merge(est0, est1, paired=TRUE, labels=c("y(0)", "y(1)"))
+potential_outcomes
+head(IC(potential_outcomes))
+vcov(potential_outcomes)
+
+## ----est-ate------------------------------------------------------------------
+estimate(potential_outcomes, cbind(-1, 1), labels="ate")
+
+## ----est-ate-or---------------------------------------------------------------
+est <- with(potential_outcomes, logit(`y(1)`)-logit(`y(0)`))
+est
+transform(est, labels="OR", back.transform=exp)
+#logor <- function(p) logit(p[2]) - logit(p[1])
+#transform(potential_outcomes, logor, labels="logOR")
+#transform(potential_outcomes, logor, labels="OR", back.transform=exp)
+
+## ----est-cate-----------------------------------------------------------------
+# amod <- targeted::learner_glm(a ~ w, family=binomial)
+# qmod <- targeted::learner_glm(y1 ~ a * w, family=binomial)
+# est <- targeted::cate(qmod, amod, data=dw, second.order = FALSE)
+# #>             Estimate Std.Err    2.5%  97.5%   P-value
+# #> E[y1(1)]      0.7050 0.03721 0.63207 0.7779 4.934e-80
+# #> E[y1(0)]      0.5359 0.03535 0.46666 0.6052 6.290e-52
+# #> ───────────
+# #> (Intercept)   0.1691 0.04996 0.07115 0.2670 7.138e-04
 
 ## ----sessionInfo--------------------------------------------------------------
 sessionInfo()

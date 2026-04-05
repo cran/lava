@@ -1,7 +1,7 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.8.2
+Version: 1.9.0
 Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
 		   person("Brice", "Ozenne", role = "ctb"),
 		   person("Thomas", "Gerds", role = "ctb"))
@@ -19,23 +19,23 @@ Description: A general implementation of Structural Equation Models
 	back-door criterion), simulation of general non-linear latent variable
 	models, and estimation of influence functions for a broad range of
 	statistical models.
-URL: https://kkholst.github.io/lava/
+URL: https://kkholst.github.io/lava/, https://github.com/kkholst/lava
 BugReports: https://github.com/kkholst/lava/issues
-License: GPL-3
+License: Apache License (== 2.0)
 LazyLoad: yes
-Depends: R (>= 3.0)
+Depends: R (>= 3.5.0)
 Imports: cli, future.apply, graphics, grDevices, methods, numDeriv,
         progressr, stats, survival, SQUAREM, utils
 Suggests: KernSmooth, Rgraphviz, data.table, ellipse, fields, geepack,
         graph, knitr, rmarkdown, igraph (>= 0.6), lavaSearch2, lme4 (>=
         1.1.35.1), MASS, Matrix (>= 1.6.3), mets (>= 1.1), nlme,
-        optimx, polycor, quantreg, rgl, targeted (>= 0.4), testthat (>=
-        0.11), visNetwork
+        optimx, polycor, quantreg, rgl, svglite, targeted (>= 0.4),
+        testthat (>= 0.11), vdiffr, visNetwork
 VignetteBuilder: knitr,rmarkdown
 ByteCompile: yes
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 NeedsCompilation: no
-Packaged: 2025-10-29 20:22:38 UTC; kkzh
+Packaged: 2026-04-04 21:38:29 UTC; klaus
 Repository: CRAN
-Date/Publication: 2025-10-30 06:10:02 UTC
+Date/Publication: 2026-04-05 05:10:02 UTC

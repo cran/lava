@@ -13,7 +13,6 @@ estimate.data.frame <- function(x, ...) {
   estimate(as.matrix(x), ...)
 }
 
-
 IC_quantile <- function(x, estimate, probs=0.5, ...) {
   x <- na.omit(x)
   f0 <- density(x, ...)
@@ -84,7 +83,7 @@ estimate.array <- function(x, type="mean", probs=0.5, ...) {
 ##' Estimation of functional of parameters
 ##'
 ##' Estimation of functional of parameters. Wald tests, robust standard errors,
-##' cluster robust standard errors, LRT (when \code{f} is not a function)...
+##' cluster robust standard errors
 ##' @param x model object (\code{glm}, \code{lvmfit}, ...)
 ##' @param f transformation of model parameters and (optionally) data, or
 ##'   contrast matrix (or vector)
@@ -145,37 +144,37 @@ estimate.array <- function(x, type="mean", probs=0.5, ...) {
 ##' g0 <- glm(y~1,data=d,family=binomial())
 ##'
 ##' ## LRT
-##' estimate(g,g0)
+##' estimate(g, g0)
 ##'
 ##' ## Plain estimates (robust standard errors)
 ##' estimate(g)
 ##'
 ##' ## Testing contrasts
-##' estimate(g,null=0)
-##' estimate(g,rbind(c(1,1,0),c(1,0,2)))
-##' estimate(g,rbind(c(1,1,0),c(1,0,2)),null=c(1,2))
-##' estimate(g,2:3) ## same as cbind(0,1,-1)
-##' estimate(g,as.list(2:3)) ## same as rbind(c(0,1,0),c(0,0,1))
+##' estimate(g, null=0)
+##' estimate(g, rbind(c(1,1,0), c(1,0,2)))
+##' estimate(g, rbind(c(1,1,0), c(1,0,2)), null=c(1,2))
+##' estimate(g, 2:3) ## same as cbind(0,1,-1)
+##' estimate(g, as.list(2:3)) ## same as rbind(c(0,1,0),c(0,0,1))
 ##' ## Alternative syntax
-##' estimate(g,"z","z"-"x",2*"z"-3*"x")
-##' estimate(g,"?")  ## Wildcards
-##' estimate(g,"*Int*","z")
-##' estimate(g,"1","2"-"3",null=c(0,1))
-##' estimate(g,2,3)
+##' estimate(g, "z", "z"-"x", 2*"z"-3*"x")
+##' estimate(g, "?")  ## Wildcards
+##' estimate(g, "*Int*", "z")
+##' estimate(g, "1", "2"-"3", null = c(0,1))
+##' estimate(g, 2, 3)
 ##'
 ##' ## Usual (non-robust) confidence intervals
-##' estimate(g,robust=FALSE)
+##' estimate(g, robust=FALSE)
 ##'
 ##' ## Transformations
-##' estimate(g,function(p) p[1]+p[2])
+##' estimate(g, function(p) p[1]+p[2])
 ##'
 ##' ## Multiple parameters
-##' e <- estimate(g,function(p) c(p[1]+p[2], p[1]*p[2]))
+##' e <- estimate(g, function(p) c(p[1]+p[2], p[1]*p[2]))
 ##' e
 ##' vcov(e)
 ##'
 ##' ## Label new parameters
-##' estimate(g,function(p) list("a1"=p[1]+p[2], "b1"=p[1]*p[2]))
+##' estimate(g, function(p) list("a1"=p[1]+p[2], "b1"=p[1]*p[2]))
 ##' ##'
 ##' ## Multiple group
 ##' m <- lvm(y~x)
@@ -248,14 +247,52 @@ estimate.array <- function(x, type="mean", probs=0.5, ...) {
 ##' estimate(l,f,R=1e2,null.sim=null)
 ##'
 ##' estimate(l,f)
+##'
+##' # ------ influence function calculus -------
+##' a <- estimate(coef = c("a" = 0.5), IC = rnorm(10), id = 1:10)
+##' b <- estimate(coef = c("b" = 0.8), IC = rnorm(10), id = 1:10)
+##'
+##' e <- c(a, b) # merge
+##' merge(a, b)
+##' c(e1=a, b) # naming of par
+##' labels(e, c("p1", "p2")) # renaming parameters
+##' e["a"] # subset
+##' subset(e, "a")
+##'
+##' # pipes
+##' # c(a, b) |>
+##' #  transform(function(x) x^2) |>
+##' #  subset("a") |>
+##' #  labels("sq")
+##'
+##' # Parameter transformation with automatic calculation of derivatives
+##' a * b
+##' (3 * cos(a) / sqrt(b) + 1) / a
+##' expit(c(a,b))
+##' c(sum=sum(e), sum2=a+b,
+##'   prod=prod(e), prod2=a*b)
+##' e %*% e # inner prod.
+##' c(1, 2) %*% e
+##' c(pow = a^b)
+##' a^c(0.5, 2)
+##' c(b=e["a"] * e["b"] / a, also.b=e["b"])
+##'
+##' B <- rbind(c(1,-1), c(1,0), c(0,1))
+##' B %*% e
+##' e == 1 # wald-test, null-hypothesis H0: b=1
+##' e == c(1,2)
+##' B %*% e == 1
 ##' @aliases estimate estimate.default estimate.estimate merge.estimate
 ##'   estimate.mlm
 ##' @seealso estimate.array
 ##' @method estimate default
 ##' @export
 estimate.default <- function(x=NULL, f=NULL, ..., data, id,
-                             iddata, stack=TRUE, average=FALSE, subset,
-                             score.deriv, level=0.95, IC=robust,
+                             iddata, stack=TRUE,
+                             average=FALSE, subset,
+                             score.deriv,
+                             level=0.95,
+                             IC=robust,
                              type=c("robust", "df", "mbn"),
                              keep, use,
                              regex=FALSE, ignore.case=FALSE,
@@ -288,7 +325,7 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
   if (!missing(coef)) {
     pp <- coef
   } else {
-    pp <- suppressWarnings(try(stats::coef(x), "try-error"))
+    pp <- suppressWarnings(try(stats::coef(x), silent = TRUE))
     if (inherits(x, "survreg") && length(pp) < NROW(x$var)) {
       pp <- c(pp, scale=x$scale)
     }
@@ -326,6 +363,9 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     if (missing(score.deriv)) {
       if (!is.logical(IC)) {
         ic_theta <- cbind(IC)
+        if (NCOL(ic_theta) != length(pp)) {
+          warning("Wrong dimension of influence function IC")
+        }
         IC <- TRUE
       } else {
         suppressWarnings(ic_theta <- IC(x, folds=folds))
@@ -428,7 +468,6 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     if (missing(vcov) && !is.null(x))
       suppressWarnings(vcov <- stats::vcov(x))
   }
-
   if (!is.null(ic_theta) && robust && (missing(vcov) || is.null(vcov))) {
     V <- var_ic(ic_theta)
     ## Small-sample corrections for clustered data
@@ -488,6 +527,7 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
                      estimate=est))
   }
 
+  derivative <- NULL
   if (!is.null(f)) {
     form <- names(formals(f))
     dots <- ("..."%in%names(form))
@@ -525,6 +565,7 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     k <- NCOL(val)
     N <- NROW(val)
     D <- attributes(val)$grad
+    if (!is.null(D)) derivative <- D
     if (is.null(D)) {
       D <- numDeriv::jacobian(function(p, ...) {
         if (length(form)==0) arglist[[1]] <- p
@@ -657,14 +698,10 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     if (missing(null)) null <- 0
     if (is.vector(contrast) || is.list(contrast)) {
       contrast <- contr(contrast, names(res$coef), ...)
-      ## if (length(contrast)==p) contrast <- rbind(contrast)
-      ## else {
-      ##     cont <- contrast
-      ##     contrast <- diag(nrow=p)[cont,,drop=FALSE]
-      ## }
     }
     cc <- compare(res, contrast=contrast, null=null,
                   vcov=V, level=level, df=df)
+    class(res) <- "list"
     res <- structure(c(res, list(compare=cc)), class="estimate")
     if (!is.null(df)) {
       pval <- with(cc, pt(abs(estimate[, 1]-null)/estimate[, 2],
@@ -683,8 +720,9 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     res$compare$estimate <- NULL
     res$coef <- res$compare$coef
     res$vcov <- res$compare$vcov
-    names(res$coef) <- gsub("(^\\[)|(\\]$)", "",
-                            rownames(res$coefmat))
+
+    names(res$coef) <- strip_bracket(rownames(res$coefmat))
+    rownames(res$coefmat) <- names(res$coef)
   }
 
   if (!is.null(back.transform)) {
@@ -712,26 +750,18 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     if (!is.null(res$IC)) res$IC <- res$IC[, keep, drop=FALSE]
     res$vcov <- res$vcov[keep, keep, drop=FALSE]
   }
-  if (!missing(labels)) {
-    names(res$coef) <- labels
-    if (!is.null(res$IC))
-      colnames(res$IC) <- labels
-    if (!is.null(res$vcov))
-      colnames(res$vcov) <- rownames(res$vcov) <- labels
-    rownames(res$coefmat) <- labels
-  }
-  if (!missing(label.width)) {
-    rownames(res$coefmat) <- make.unique(
-      unlist(lapply(rownames(res$coefmat),
-                    function(x) toString(x, width=label.width)))
-    )
-  }
+
+  res <- labels.estimate(
+    object = res, str = labels, label.width = label.width
+  )
+
   if (only.coef) return(res$coefmat)
   res$call <- cal
   res$back.transform <- back.transform
   res$n <- nrow(data)
   res$ncluster <- nrow(res$IC)
-  return(res)
+  res$derivative <- derivative
+  return(structure(res, class="estimate"))
 }
 
 simnull <- function(R, f, mu, sigma, labels=NULL) {
@@ -879,7 +909,7 @@ print.estimate <- function(x, type=0L, digits=4L, width=25L,
   if (type>0 && !is.null(x$call)) {
     cat("Call: ")
     print(x$call)
-    print(cli::rule())
+    print(cli::rule(width=min(cli::console_width(),60)))
   }
   if (type>0) {
     if (!is.null(x[["n"]]) && !is.null(x[["k"]])) {
@@ -944,7 +974,8 @@ print.estimate <- function(x, type=0L, digits=4L, width=25L,
   print(cc, digits=digits, na.print=na.print, ...)
 
   if (!is.null(x$compare)) {
-    cat("\n", x$compare$method[3], "\n")
+    print(cli::rule(width=min(cli::console_width(),60)))
+    cat(x$compare$method[3], "\n")
     cat(paste(" ", x$compare$method[-(1:3)], collapse="\n"), "\n")
     if (length(x$compare$method)>4) {
       out <- character()
@@ -992,9 +1023,10 @@ summary.estimate <- function(object, ...) {
   p <- coef(object, messages=0)
   test <- estimate(coef=p, vcov=vcov(object, messages=0),
                    contrast=as.list(seq_along(p)), ...)
-  object$compare <- test$compare
-  object <- object[c("coef", "coefmat", "vcov", "call",
-                     "ncluster", "model.index", "compare")]
+  class(test) <- "NULL"
+  test$compare <- test$compare
+  object <- test[c("coef", "coefmat", "vcov", "call",
+                   "ncluster", "model.index", "compare")]
   class(object) <- "summary.estimate"
   object
 }
@@ -1005,18 +1037,27 @@ coef.summary.estimate <- function(object, ...) {
 }
 
 ##' @export
-subset.estimate <- function(x, keep, ...) {
-  estimate(x, keep = keep, ...)
-}
-
-##' @export
 transform.estimate <- function(`_data`, ...) {
   estimate(`_data`, ...)
 }
 
 ##' @export
-labels.estimate <- function(object, str, ...) {
-  estimate(object, labels=str, ...)
+labels.estimate <- function(object, str, label.width, ...) {
+  if (!missing(str)) {
+    names(object$coef) <- str
+    if (!is.null(object$IC))
+      colnames(object$IC) <- str
+    if (!is.null(object$vcov))
+      colnames(object$vcov) <- rownames(object$vcov) <- str
+    rownames(object$coefmat) <- str
+  }
+  if (!missing(label.width)) {
+    rownames(object$coefmat) <- make.unique(
+      unlist(lapply(rownames(object$coefmat),
+                    function(x) toString(x, width = label.width)))
+    )
+  }
+  return(object)
 }
 
 ##' @export

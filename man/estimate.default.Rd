@@ -119,7 +119,7 @@ intervals}
 }
 \description{
 Estimation of functional of parameters. Wald tests, robust standard errors,
-cluster robust standard errors, LRT (when \code{f} is not a function)...
+cluster robust standard errors
 }
 \details{
 influence function decomposition of estimator \eqn{\widehat{\theta}} based
@@ -137,37 +137,37 @@ g <- glm(y~z+x,data=d,family=binomial())
 g0 <- glm(y~1,data=d,family=binomial())
 
 ## LRT
-estimate(g,g0)
+estimate(g, g0)
 
 ## Plain estimates (robust standard errors)
 estimate(g)
 
 ## Testing contrasts
-estimate(g,null=0)
-estimate(g,rbind(c(1,1,0),c(1,0,2)))
-estimate(g,rbind(c(1,1,0),c(1,0,2)),null=c(1,2))
-estimate(g,2:3) ## same as cbind(0,1,-1)
-estimate(g,as.list(2:3)) ## same as rbind(c(0,1,0),c(0,0,1))
+estimate(g, null=0)
+estimate(g, rbind(c(1,1,0), c(1,0,2)))
+estimate(g, rbind(c(1,1,0), c(1,0,2)), null=c(1,2))
+estimate(g, 2:3) ## same as cbind(0,1,-1)
+estimate(g, as.list(2:3)) ## same as rbind(c(0,1,0),c(0,0,1))
 ## Alternative syntax
-estimate(g,"z","z"-"x",2*"z"-3*"x")
-estimate(g,"?")  ## Wildcards
-estimate(g,"*Int*","z")
-estimate(g,"1","2"-"3",null=c(0,1))
-estimate(g,2,3)
+estimate(g, "z", "z"-"x", 2*"z"-3*"x")
+estimate(g, "?")  ## Wildcards
+estimate(g, "*Int*", "z")
+estimate(g, "1", "2"-"3", null = c(0,1))
+estimate(g, 2, 3)
 
 ## Usual (non-robust) confidence intervals
-estimate(g,robust=FALSE)
+estimate(g, robust=FALSE)
 
 ## Transformations
-estimate(g,function(p) p[1]+p[2])
+estimate(g, function(p) p[1]+p[2])
 
 ## Multiple parameters
-e <- estimate(g,function(p) c(p[1]+p[2], p[1]*p[2]))
+e <- estimate(g, function(p) c(p[1]+p[2], p[1]*p[2]))
 e
 vcov(e)
 
 ## Label new parameters
-estimate(g,function(p) list("a1"=p[1]+p[2], "b1"=p[1]*p[2]))
+estimate(g, function(p) list("a1"=p[1]+p[2], "b1"=p[1]*p[2]))
 ##'
 ## Multiple group
 m <- lvm(y~x)
@@ -240,6 +240,41 @@ null <- rep(mean(coef(l)),length(coef(l)))
 estimate(l,f,R=1e2,null.sim=null)
 
 estimate(l,f)
+
+# ------ influence function calculus -------
+a <- estimate(coef = c("a" = 0.5), IC = rnorm(10), id = 1:10)
+b <- estimate(coef = c("b" = 0.8), IC = rnorm(10), id = 1:10)
+
+e <- c(a, b) # merge
+merge(a, b)
+c(e1=a, b) # naming of par
+labels(e, c("p1", "p2")) # renaming parameters
+e["a"] # subset
+subset(e, "a")
+
+# pipes
+# c(a, b) |>
+#  transform(function(x) x^2) |>
+#  subset("a") |>
+#  labels("sq")
+
+# Parameter transformation with automatic calculation of derivatives
+a * b
+(3 * cos(a) / sqrt(b) + 1) / a
+expit(c(a,b))
+c(sum=sum(e), sum2=a+b,
+  prod=prod(e), prod2=a*b)
+e \%*\% e # inner prod.
+c(1, 2) \%*\% e
+c(pow = a^b)
+a^c(0.5, 2)
+c(b=e["a"] * e["b"] / a, also.b=e["b"])
+
+B <- rbind(c(1,-1), c(1,0), c(0,1))
+B \%*\% e
+e == 1 # wald-test, null-hypothesis H0: b=1
+e == c(1,2)
+B \%*\% e == 1
 }
 \seealso{
 estimate.array

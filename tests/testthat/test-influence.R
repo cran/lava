@@ -62,7 +62,6 @@ test_that("negative binomial regression (glm.nb)", {
   }
 })
 
-
 test_that("quasipossion", {
   set.seed(1)
   n <- 500
@@ -75,4 +74,53 @@ test_that("quasipossion", {
   i1 <- IC(m1)
   i2 <- IC(m2)
   testthat::expect_true(sum((i1 - i2)^2) < 1e-6)
+})
+
+test_that("merge back.transform", {
+  tmp <- estimate(coef = 1, IC = c(1,2,3), id = 1:3, f = exp, back.transform = log)
+  tmp2 <- estimate(coef = 2, IC = c(3,2,1), id = 1:3, f = exp, back.transform = log)
+
+  expect_warning(
+    m <- merge(tmp, tmp2) # should throw a warning
+  )
+  expect_equivalent(coef(m), exp(c(1, 2)))
+})
+
+test_that("IC.numeric", {
+  x <- rnorm(100)
+  res <- IC(x)
+  expect_true(ncol(res) == 2L)
+  ic1 <- IC(lm(x ~ 1))
+  expect_true(mean((ic1-res[,1])^2) < 1e-9)
+  expect_equal(mean(x), unname(attr(res, "coef")["mean"]))
+  expect_true(var(x)*(length(x)-1)/length(x) == attr(res, "coef")["var"])
+
+  res <- IC(cbind(x1=x, x2=x))
+  expect_true(NCOL(res) == 5) # 2 mean, 2 var, 1 cov
+  expect_equal(mean(x), unname(attr(res, "coef")["x1"]))
+  expect_equal(mean(x), unname(attr(res, "coef")["x2"]))
+  expect_equal(var(x)*(length(x)-1)/length(x), unname(attr(res, "coef")[3]))
+  expect_equal(var(x)*(length(x)-1)/length(x), unname(attr(res, "coef")[5]))
+})
+
+y <- rnorm(100)
+x <- rnorm(100)
+d <- data.frame(y=y,x=x)
+e <- estimate(l <- lm(y ~ x, data=d))
+
+test_that("influence", {
+  expect_equivalent(influence(e), IC(e))
+})
+
+test_that("IC misc", {
+  ic0 <- IC(e)
+  id <- rep(1:10, length.out=nrow(d))
+  opt <- lava.options(cluster.index=FALSE)
+  ic1 <- IC(l, id=id)
+  lava.options(cluster.index=TRUE)
+  ic2 <- IC(l, id=id)
+  expect_equivalent(ic1, ic2)
+
+  ic <- IC(l, folds=10)
+  ## lava.options(opt)
 })
