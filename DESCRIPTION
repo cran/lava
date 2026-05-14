@@ -1,11 +1,13 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.9.0
+Version: 1.9.1
 Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
+       person("Benedikt", "Sommer", role = "ctb"),
 		   person("Brice", "Ozenne", role = "ctb"),
 		   person("Thomas", "Gerds", role = "ctb"))
 Author: Klaus K. Holst [aut, cre],
+  Benedikt Sommer [ctb],
   Brice Ozenne [ctb],
   Thomas Gerds [ctb]
 Maintainer: Klaus K. Holst <klaus@holst.it>
@@ -26,16 +28,16 @@ LazyLoad: yes
 Depends: R (>= 3.5.0)
 Imports: cli, future.apply, graphics, grDevices, methods, numDeriv,
         progressr, stats, survival, SQUAREM, utils
-Suggests: KernSmooth, Rgraphviz, data.table, ellipse, fields, geepack,
-        graph, knitr, rmarkdown, igraph (>= 0.6), lavaSearch2, lme4 (>=
-        1.1.35.1), MASS, Matrix (>= 1.6.3), mets (>= 1.1), nlme,
-        optimx, polycor, quantreg, rgl, svglite, targeted (>= 0.4),
-        testthat (>= 0.11), vdiffr, visNetwork
+Suggests: KernSmooth, Rgraphviz, data.table, ellipse, fields, future,
+        geepack, graph, knitr, rmarkdown, igraph (>= 0.6), lavaSearch2,
+        lme4 (>= 1.1.35.1), MASS, Matrix (>= 1.6.3), mets (>= 1.1),
+        nlme, optimx, polycor, quantreg, rgl, svglite, targeted (>=
+        0.4), testthat (>= 0.11), vdiffr, visNetwork
 VignetteBuilder: knitr,rmarkdown
 ByteCompile: yes
 Encoding: UTF-8
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.0.0
 NeedsCompilation: no
-Packaged: 2026-04-04 21:38:29 UTC; klaus
+Packaged: 2026-05-14 16:46:12 UTC; kkzh
 Repository: CRAN
-Date/Publication: 2026-04-05 05:10:02 UTC
+Date/Publication: 2026-05-14 21:40:14 UTC

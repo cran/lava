@@ -1,12 +1,17 @@
-context("Inference")
+context("estimate calculus")
 
 set.seed(1)
-a1 <- estimate(coef=1, IC=rnorm(10), id=1:10, labels="a1")
-a2 <- estimate(coef=2, IC=rnorm(10), id=1:10, labels="a2")
+# Generate mean-zero random IC matrix (for internal testing)
+center_ic <- function(n, p = 1) {
+  x <- matrix(rnorm(n * p), n, p)
+  scale(x, center = TRUE, scale = FALSE)
+}
+a1 <- estimate(coef=1, IC=center_ic(10), id=1:10, labels="a1")
+a2 <- estimate(coef=2, IC=center_ic(10), id=1:10, labels="a2")
 a <- merge(a1, a2)
 
-b1 <- estimate(coef=0.5, IC=rnorm(10), id=1:10, labels="b1")
-b2 <- estimate(coef=0.9, IC=rnorm(10), id=1:10, labels="b2")
+b1 <- estimate(coef=0.5, IC=center_ic(10), id=1:10, labels="b1")
+b2 <- estimate(coef=0.9, IC=center_ic(10), id=1:10, labels="b2")
 b <- merge(b1, b2)
 
 test_that("+.estimate", {
@@ -326,3 +331,67 @@ test_that("custom functions", {
   testthat::expect_equivalent(IC(e1), IC(e2))
   testthat::expect_equivalent(coef(e1), coef(e2))
 })
+
+## ---------------------------------------------------------------------------
+## operator_grad shape correctness vs numerical jacobian (Issue C)
+## ---------------------------------------------------------------------------
+make_est <- function(coefs, seed) {
+  set.seed(seed)
+  k <- length(coefs)
+  ic <- center_ic(20, k)
+  nm <- if (is.null(names(coefs))) paste0("p", seq_along(coefs)) else names(coefs)
+  names(coefs) <- nm
+  estimate(coef = coefs, IC = ic, id = 1:20)
+}
+
+ops <- list(
+  "+" = `+`,
+  "-" = `-`,
+  "*" = `*`,
+  "/" = `/`,
+  "^" = `^`
+)
+
+shapes <- list(
+  c(1, 1),
+  c(1, 3),
+  c(3, 1),
+  c(3, 3)
+)
+
+for (opname in names(ops)) {
+  for (sh in shapes) {
+    nx <- sh[1]; ny <- sh[2]
+    label <- sprintf("operator_grad: %s with shape (%d,%d)", opname, nx, ny)
+    test_that(label, {
+      ## Use strictly positive coefs to keep ^ and / well-defined.
+      a <- make_est(setNames(seq_len(nx) + 1.0, paste0("a", seq_len(nx))),
+                    seed = 100 + nx)
+      b <- make_est(setNames(seq_len(ny) + 0.5, paste0("b", seq_len(ny))),
+                    seed = 200 + ny)
+      op_est <- ops[[opname]]
+      op_num <- switch(opname,
+                       "+" = function(p) p[seq_len(nx)] + p[nx + seq_len(ny)],
+                       "-" = function(p) p[seq_len(nx)] - p[nx + seq_len(ny)],
+                       "*" = function(p) p[seq_len(nx)] * p[nx + seq_len(ny)],
+                       "/" = function(p) p[seq_len(nx)] / p[nx + seq_len(ny)],
+                       "^" = function(p) p[seq_len(nx)] ^ p[nx + seq_len(ny)])
+      ## Analytic via the operator
+      res <- op_est(a, b)
+      res_coef <- coef(res)
+      ## Numerical jacobian
+      pp <- c(coef(a), coef(b))
+      Jnum <- numDeriv::jacobian(op_num, pp)
+      ## Reconstruct analytic D from IC: IC_res = IC_ab %*% t(D)
+      ## We instead validate by comparing variance: an incorrect D shape
+      ## would produce wrong vcov dims or wrong values.
+      ## Build merged IC manually:
+      ic_ab <- cbind(IC(a), IC(b))
+      V_expected <- Jnum %*% var_ic(ic_ab) %*% t(Jnum)
+      V_actual   <- vcov(res)
+      expect_equal(dim(V_actual), dim(V_expected))
+      expect_equivalent(V_actual, V_expected, tolerance = 1e-5)
+      expect_equal(length(res_coef), max(nx, ny))
+    })
+  }
+}

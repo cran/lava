@@ -1,6 +1,6 @@
-context("Inference")
+context("estimate.default")
 
-test_that("estimate.default", {
+test_that("estimate.default misc", {
     m <- lvm(c(y1,y2)~x+z,y1~~y2)
 ##    set.seed(1)
     d <- sim(m,20)
@@ -62,10 +62,15 @@ compute_wald <- function(B, p, S, null) {
 }
 
 set.seed(1)
-a1 <- estimate(coef = 1,   IC = rnorm(10), id = 1:10, labels = "a1")
-a2 <- estimate(coef = 2,   IC = rnorm(10), id = 1:10, labels = "a2")
-a3 <- estimate(coef = 3,   IC = rnorm(10), id = 1:10, labels = "a3")
-a4 <- estimate(coef = 4,   IC = rnorm(10), id = 1:10, labels = "a4")
+# Generate mean-zero random IC matrix (for internal testing)
+center_ic <- function(n, p = 1) {
+  x <- matrix(rnorm(n * p), n, p)
+  scale(x, center = TRUE, scale = FALSE)
+}
+a1 <- estimate(coef = 1,   IC = center_ic(10), id = 1:10, labels = "a1")
+a2 <- estimate(coef = 2,   IC = center_ic(10), id = 1:10, labels = "a2")
+a3 <- estimate(coef = 3,   IC = center_ic(10), id = 1:10, labels = "a3")
+a4 <- estimate(coef = 4,   IC = center_ic(10), id = 1:10, labels = "a4")
 a  <- merge(a1, a2)           # 2-dimensional
 a3d <- merge(a1, a2, a3)      # 3-dimensional
 a4d <- merge(a1, a2, a3, a4)  # 4-dimensional
@@ -76,9 +81,9 @@ test_that("summary.estimate compared with estimate", {
   null <- c(1,2,3)
   q <- compute_wald(B, coef(a3d), vcov(a3d), null)
   df <- attr(q, "df")
-  e1 <- estimate(a3d, contrast=B)
-  e1b <- estimate(a3d, contrast=B, null=null)
-  e1a <- estimate(e1, contrast=diag(3), null=null)
+  e1 <- estimate(a3d, f=B)
+  e1b <- estimate(a3d, f=B, null=null)
+  e1a <- estimate(e1, f=diag(3), null=null)
   expect_equal(unname(df), unname(e1a$compare$parameter))
   expect_equal(unname(df), unname(e1b$compare$parameter))
   expect_true(abs(pchisq(q, df=df, lower.tail=FALSE) - e1a$compare$p.value)<1e-16)
@@ -88,7 +93,7 @@ test_that("summary.estimate compared with estimate", {
   # function spec.
   e2 <- estimate(a3d, function(p) c(p[1]-p[2], p[2]-p[3], p[1]-p[3]))
   e2b <- estimate(a3d, function(p) c(p[1]-p[2], p[2]-p[3], p[1]-p[3]), null=null)
-  e2a <- estimate(e2, contrast=diag(3), null=null)
+  e2a <- estimate(e2, f=diag(3), null=null)
   expect_equal(unname(df), unname(e2a$compare$parameter))
   expect_equal(unname(df), unname(e2b$compare$parameter))
   expect_true(abs(pchisq(q, df=df, lower.tail=FALSE) - e2a$compare$p.value)<1e-16)
@@ -107,9 +112,9 @@ test_that("summary.estimate compared with estimate", {
   null <- c(1,0,1,0)
   q <- compute_wald(B, coef(a3d), vcov(a3d), null)
   df <- attr(q, "df")
-  e1 <- estimate(a3d, contrast=B)
-  e1b <- estimate(a3d, contrast=B, null=null)
-  e1a <- estimate(e1, contrast=diag(4), null=null)
+  e1 <- estimate(a3d, f=B)
+  e1b <- estimate(a3d, f=B, null=null)
+  e1a <- estimate(e1, f=diag(4), null=null)
   expect_equal(unname(df), unname(e1a$compare$parameter))
   expect_equal(unname(df), unname(e1b$compare$parameter))
   expect_true(abs(pchisq(q, df=df, lower.tail=FALSE) - e1a$compare$p.value)<1e-16)
@@ -126,7 +131,7 @@ test_that("summary.estimate compared with estimate", {
 test_that("1D: Identity contrast, null = 0", {
   B    <- matrix(1, nrow = 1, ncol = 1)
   null <- 0
-  e    <- estimate(a1, contrast = B, null = null)
+  e    <- estimate(a1, f = B, null = null)
   p <- coef(a1)
   S <- vcov(a1)
   expected <- compute_wald(B, p, S, null)
@@ -136,7 +141,7 @@ test_that("1D: Identity contrast, null = 0", {
 test_that("1D: Identity contrast, null = 1", {
   B    <- matrix(1, nrow = 1, ncol = 1)
   null <- 1
-  e <- estimate(a1, contrast = B, null = null)
+  e <- estimate(a1, f = B, null = null)
   p <- coef(a1)
   S <- vcov(a1)
   expected <- compute_wald(B, p, S, null)
@@ -146,7 +151,7 @@ test_that("1D: Identity contrast, null = 1", {
 test_that("1D: Scalar contrast (scaling), null = 0", {
   B    <- matrix(2, nrow = 1, ncol = 1)
   null <- 0
-  e <- estimate(a1, contrast = B, null = null)
+  e <- estimate(a1, f = B, null = null)
   p <- coef(a1)
   S <- vcov(a1)
   expected <- compute_wald(B, p, S, null)
@@ -156,7 +161,7 @@ test_that("1D: Scalar contrast (scaling), null = 0", {
 test_that("2D: Identity contrast, null = c(0, 0)", {
   B    <- diag(2)
   null <- c(0, 0)
-  e <- estimate(a, contrast = B, null = null)
+  e <- estimate(a, f = B, null = null)
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
@@ -166,7 +171,7 @@ test_that("2D: Identity contrast, null = c(0, 0)", {
 test_that("2D: Identity contrast, null equals true coefs", {
   B    <- diag(2)
   null <- c(1, 2)
-  e <- estimate(a, contrast = B, null = null)
+  e <- estimate(a, f = B, null = null)
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
@@ -179,7 +184,7 @@ test_that("2D: Identity contrast, null equals true coefs", {
 test_that("2D: Identity contrast, null = c(3, 4)", {
   B    <- diag(2)
   null <- c(3, 4)
-  e <- estimate(a, contrast = B, null = null)
+  e <- estimate(a, f = B, null = null)
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
@@ -189,7 +194,7 @@ test_that("2D: Identity contrast, null = c(3, 4)", {
 test_that("2D: Difference contrast c(1,-1), null = 0", {
   B    <- matrix(c(1, -1), nrow = 1)
   null <- 0
-  e <- estimate(a, contrast = B, null = null)
+  e <- estimate(a, f = B, null = null)
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
@@ -199,7 +204,7 @@ test_that("2D: Difference contrast c(1,-1), null = 0", {
 test_that("2D: Difference contrast c(1,-1), null = -1", {
   B    <- matrix(c(1, -1), nrow = 1)
   null <- -1  # Testing H0: a1 - a2 = -1 (true, since 1 - 2 = -1)
-  e <- estimate(a, contrast = B, null = null)
+  e <- estimate(a, f = B, null = null)
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
@@ -211,7 +216,7 @@ test_that("2D: Difference contrast c(1,-1), null = -1", {
 test_that("2D: Sum contrast c(1,1), null = 3", {
   B    <- matrix(c(1, 1), nrow = 1)
   null <- 3  # True sum = 1 + 2 = 3
-  e <- estimate(a, contrast = B, null = null)
+  e <- estimate(a, f = B, null = null)
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
@@ -223,7 +228,7 @@ test_that("2D: Sum contrast c(1,1), null = 3", {
 test_that("2D: Scaling contrast, null = c(2, 6)", {
   B    <- 2 * diag(2)
   null <- c(2, 6)  # True: 2*c(1,2) = c(2,4), so null != true
-  e <- estimate(a, contrast = B, null = null)
+  e <- estimate(a, f = B, null = null)
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
@@ -233,7 +238,7 @@ test_that("2D: Scaling contrast, null = c(2, 6)", {
 test_that("3D: Identity contrast, null = true coefs", {
   B    <- diag(3)
   null <- c(1, 2, 3)
-  e <- estimate(a3d, contrast = B, null = null)
+  e <- estimate(a3d, f = B, null = null)
   p <- coef(a3d)
   S <- vcov(a3d)
   expected <- compute_wald(B, p, S, null)
@@ -244,7 +249,7 @@ test_that("3D: Identity contrast, null = true coefs", {
 test_that("3D: Identity contrast, null = c(0, 0, 0)", {
   B    <- diag(3)
   null <- c(0, 0, 0)
-  e <- estimate(a3d, contrast = B, null = null)
+  e <- estimate(a3d, f = B, null = null)
   p <- coef(a3d)
   S <- vcov(a3d)
   expected <- compute_wald(B, p, S, null)
@@ -258,7 +263,7 @@ test_that("3D: Pairwise differences, null = c(-1, -2)", {
     0,  1, -1
   ), nrow = 2, byrow = TRUE)
   null <- c(-1, -1)
-  e <- estimate(a3d, contrast = B, null = null)
+  e <- estimate(a3d, f = B, null = null)
   p <- coef(a3d)
   S <- vcov(a3d)
   expected <- compute_wald(B, p, S, null)
@@ -270,7 +275,7 @@ test_that("3D: Single-row contrast, null = 6", {
   # H0: a1 + a2 + a3 = 6 (true: 1+2+3=6)
   B    <- matrix(c(1, 1, 1), nrow = 1)
   null <- 6
-  e <- estimate(a3d, contrast = B, null = null)
+  e <- estimate(a3d, f = B, null = null)
   p <- coef(a3d)
   S <- vcov(a3d)
   expected <- compute_wald(B, p, S, null)
@@ -281,7 +286,7 @@ test_that("3D: Single-row contrast, null = 6", {
 test_that("4D: Identity contrast, null equals true coefs", {
   B    <- diag(4)
   null <- c(1, 2, 3, 4)
-  e <- estimate(a4d, contrast = B, null = null)
+  e <- estimate(a4d, f = B, null = null)
   p <- coef(a4d)
   S <- vcov(a4d)
   expected <- compute_wald(B, p, S, null)
@@ -296,7 +301,7 @@ test_that("4D: Non-square contrast (2x4), null = c(0, 0)", {
     0,  0,  1, -1
   ), nrow = 2, byrow = TRUE)
   null <- c(0, 0)
-  e <- estimate(a4d, contrast = B, null = null)
+  e <- estimate(a4d, f = B, null = null)
   p <- coef(a4d)
   S <- vcov(a4d)
   expected <- compute_wald(B, p, S, null)
@@ -310,7 +315,7 @@ test_that("4D: Non-square contrast, null equals true values", {
     0,  0,  1, -1
   ), nrow = 2, byrow = TRUE)
   null <- c(-1, -1)
-  e <- estimate(a4d, contrast = B, null = null)
+  e <- estimate(a4d, f = B, null = null)
   p <- coef(a4d)
   S <- vcov(a4d)
   expected <- compute_wald(B, p, S, null)
@@ -321,10 +326,147 @@ test_that("4D: Non-square contrast, null equals true values", {
 test_that("Degrees of freedom equals nrow(B)", {
   B    <- diag(2)
   null <- c(0, 0)
-  e    <- estimate(a, contrast = B, null = null)
+  e    <- estimate(a, f = B, null = null)
   expect_identical(unname(e$compare$parameter), nrow(B))
   B    <- matrix(c(1, -1, 0, 0, 1, -1), nrow = 2, byrow = TRUE)
   null <- c(0, 0)
-  e    <- estimate(a3d, contrast = B, null = null)
+  e    <- estimate(a3d, f = B, null = null)
   expect_equal(unname(e$compare$parameter), nrow(B))
+})
+
+test_that("coef.estimate warns when back.transform is set and returns untransformed coefs", {
+  e_trans <- estimate(a1, back.transform = exp)
+  expect_warning(coef(e_trans), "back.transform")
+  suppressWarnings(expect_equal(coef(e_trans), coef(a1)))
+
+  # verify that estimate.summary casts only a single argument when used
+  # for a back.transformed object
+  warns <- character(0)
+  res <- withCallingHandlers(
+    summary(e_trans),
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_equal(sum(grepl("back.transform", warns)), 1L)
+  expect_equal(res$coefmat, summary(a1)$coefmat)
+})
+
+test_that("estimate warns when user-supplied IC has non-zero mean", {
+  set.seed(42)
+  ic_bad <- rnorm(50, mean = 10)
+  expect_warning(
+    estimate(coef = c(a = 1), IC = ic_bad, id = 1:50),
+    "mean zero"
+  )
+  ## IC with empirical mean zero — no warning
+  ic_good <- center_ic(50)
+  expect_no_warning(
+    estimate(coef = c(a = 1), IC = ic_good, id = 1:50)
+  )
+})
+
+test_that("merge.estimate warns when input IC has non-zero mean", {
+  set.seed(43)
+  ic_bad <- rnorm(50, mean = 5)
+  a <- suppressWarnings(estimate(coef = c(a = 1), IC = ic_bad, id = 1:50))
+  b <- estimate(coef = c(b = 2), IC = center_ic(50), id = 1:50)
+  expect_warning(merge(a, b), "mean zero")
+})
+
+test_that("IC mean-zero warning can be suppressed via lava.options", {
+  set.seed(44)
+  ic_bad <- rnorm(50, mean = 10)
+  old <- lava.options(check.ic = FALSE)
+  on.exit(lava.options(old))
+  expect_no_warning(
+    estimate(coef = c(a = 1), IC = ic_bad, id = 1:50)
+  )
+})
+
+test_that("estimate.default parsedesign dispatch", {
+  # Single character name selects that coefficient.
+  e <- estimate(a3d, "a2")
+  expect_equal(e$coefmat[, 1], 2)
+  ef <- estimate(a3d, \(x) x["a2"])
+  expect_equal(e$coefmat, ef$coefmat)
+
+  # Multiple symbolic ... args: arithmetic on quoted names captured unevaluated.
+  e <- estimate(a3d, "a1", "a2" - "a1", 2 * "a3" - 3 * "a1")
+  expect_equal(e$coefmat[1, 1], 1)
+  expect_equal(e$coefmat[2, 1], 2 - 1)
+  expect_equal(e$coefmat[3, 1], 2 * 3 - 3 * 1)
+
+  # Numeric (non-matrix) f treated as parameter index.
+  e1 <- estimate(a3d, 2, 3)
+  e2 <- estimate(a3d, "a2", "a3")
+  expect_equal(e1$coefmat[, 1], e2$coefmat[, 1])
+
+  # Multi-match wildcard "a*" produces pairwise contrasts (first vs rest).
+  e_multi <- estimate(a3d, "a*")
+  expect_equal(unname(e_multi$coefmat[, 1]), c(1 - 2, 1 - 3))
+
+  # regex argument: pattern ".*2" diverges between glob and regex semantics.
+  #   regex=FALSE: literal ".*2" matches nothing -> falls back to all coefs.
+  #   regex=TRUE:  regex ".*2" matches "a2" only.
+  e_glob  <- suppressWarnings(estimate(a3d, ".*2", regex = FALSE))
+  e_regex <- suppressWarnings(estimate(a3d, ".*2", regex = TRUE))
+  expect_equal(rownames(e_glob$coefmat), c("a1", "a2", "a3"))
+  expect_equal(rownames(e_regex$coefmat), "a2")
+
+  # Character f with user-supplied coef vector (no model object).
+  pp <- c("(Intercept)" = 1.0, x = 2.0, z = -0.5)
+  V  <- diag(3)
+  dimnames(V) <- list(names(pp), names(pp))
+  e <- estimate(f = "x", coef = pp, vcov = V)
+  expect_equal(e$coefmat[, 1], 2.0)
+
+  # Character contrasts combine with null hypothesis vector.
+  e <- estimate(a3d, "a1", "a1", null = c(0, 1))
+  expect_true(e$coefmat[1, "P-value"] != e$coefmat[2, "P-value"])
+})
+
+test_that("estimate.default keep with regex=TRUE", {
+  e0 <- estimate(a3d, keep = ".*2", regex = TRUE)
+  expect_equal(rownames(e0$coefmat), "a2")
+  # the regex behavior differs from the above tests when supplying strings
+  # to obtain contrasts (no matches return all coefficients)
+  e1 <- estimate(a3d, keep = ".*2") # no literal matches return object with NAs
+  expect_true(all(is.na(e1$coefmat)))
+  expect_true(nrow(e1$coefmat) == 1)
+})
+
+test_that("robust argument backwards compatibility", {
+  d <- data.frame(y = rnorm(50), x = rnorm(50))
+  g <- lm(y ~ x, data = d)
+
+  # Both robust=TRUE and robust=FALSE emit a deprecation warning
+  e0 <- expect_warning(estimate(g, robust = FALSE), "deprecated and ignored")
+  e1 <- expect_warning(estimate(g, robust = TRUE), "deprecated and ignored")
+  expect_equal(e0$coefmat, e1$coefmat)
+
+  e <- estimate(g)
+  # The robust argument is ignored: results are identical to the default
+  # (sandwich SEs)
+  expect_equal(e$coefmat, e0$coefmat)
+
+  expect_equal(e$coefmat, e0$coefmat)
+
+  # model-based SE can be obtained either via logical variable or supplying
+  # covariance matrix
+  e0m <- estimate(g, vcov = TRUE)
+  expect_false(all(e$coefmat == e0m$coefmat))
+  e1m <- estimate(g, vcov = vcov(g))
+  expect_equal(e0m$coefmat, e1m$coefmat)
+})
+
+test_that("only.coef argument is deprecated", {
+  expect_warning(
+    result <- estimate(a3d, only.coef = TRUE),
+    regexp = "only.coef.*deprecated"
+  )
+
+  # Verify it still returns the coefficient matrix
+  expect_equal(result, coef(estimate(a3d), mat = TRUE))
 })

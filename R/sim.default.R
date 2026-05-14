@@ -1,78 +1,78 @@
-##' @export
+#' @export
 "sim" <- function(x,...) UseMethod("sim")
 
-##' Monte Carlo simulation
-##'
-##' Applies a function repeatedly for a specified number of replications or over
-##' a list/data.frame with plot and summary methods for summarizing the Monte
-##' Carlo experiment. Can be parallelized via the future package (use the
-##' [future::plan()] function).
-##' @export
-##' @param x function or 'sim' object
-##' @param R Number of replications or data.frame with parameters
-##' @param f Optional function (i.e., if x is a matrix)
-##' @param colnames Optional column names
-##' @param seed (optional) Seed (needed with cl=TRUE)
-##' @param args (optional) list of named arguments passed to (mc)mapply
-##' @param iter If TRUE the iteration number is passed as first argument to
-##'   (mc)mapply
-##' @param mc.cores Optional number of cores. Will use parallel::mcmapply
-##'   instead of future
-##' @param progressr.message Optional message for the progressr progress-bar
-##' @param estimate.index If return object inherits from `estimate` then only
-##'   these column indices are extracted (estimate, se, lower, upper, p-val)
-##' @param ... Additional arguments to [future.apply::future_mapply()]
-##' @aliases sim sim.default as.sim
-##' @seealso [summary.sim()] [plot.sim()] [sim.lvm()]
-##' @details To parallelize the calculation use the [future::plan()] function
-##'   (e.g., `future::plan(multisession())` to distribute the calculations over
-##'   the `R` replications on all available cores). The output is controlled via
-##'   the progressr package (e.g., `progressr::handlers(global=TRUE)` to enable
-##'   progress information).
-##' @examples
-##' m <- lvm(y~x+e)
-##' distribution(m,~y) <- 0
-##' distribution(m,~x) <- uniform.lvm(a=-1.1,b=1.1)
-##' transform(m,e~x) <- function(x) (1*x^4)*rnorm(length(x),sd=1)
-##'
-##' onerun <- function(iter=NULL,...,n=2e3,b0=1,idx=2) {
-##'     d <- sim(m,n,p=c("y~x"=b0))
-##'     l <- lm(y~x,d)
-##'     res <- c(coef(summary(l))[idx,1:2],
-##'              confint(l)[idx,],
-##'              estimate(l,only.coef=TRUE)[idx,2:4])
-##'     names(res) <- c("Estimate","Model.se","Model.lo","Model.hi",
-##'                     "Sandwich.se","Sandwich.lo","Sandwich.hi")
-##'     res
-##' }
-##' val <- sim(onerun,R=10,b0=1)
-##' val
-##'
-##' val <- sim(val,R=40,b0=1) ## append results
-##' summary(val,estimate=c(1,1),confint=c(3,4,6,7),true=c(1,1))
-##'
-##' summary(val,estimate=c(1,1),se=c(2,5),names=c("Model","Sandwich"))
-##' summary(val,estimate=c(1,1),se=c(2,5),true=c(1,1),
-##'         names=c("Model","Sandwich"),confint=TRUE)
-##'
-##' if (interactive()) {
-##'     plot(val,estimate=1,c(2,5),true=1,
-##'          names=c("Model","Sandwich"),polygon=FALSE)
-##'     plot(val,estimate=c(1,1),se=c(2,5),main=NULL,
-##'          true=c(1,1),names=c("Model","Sandwich"),
-##'          line.lwd=1,col=c("gray20","gray60"),
-##'          rug=FALSE)
-##'     plot(val,estimate=c(1,1),se=c(2,5),true=c(1,1),
-##'          names=c("Model","Sandwich"))
-##' }
-##'
-##' f <- function(a=1, b=1) {
-##'   rep(a*b, 5)
-##' }
-##' R <- Expand(a=1:3, b=1:3)
-##' sim(f, R)
-##' sim(function(a,b) f(a,b), 3, args=c(a=5,b=5))
-##' sim(function(iter=1,a=5,b=5) iter*f(a,b), iter=TRUE, R=5)
+#' Monte Carlo simulation
+#'
+#' Applies a function repeatedly for a specified number of replications or over
+#' a list/data.frame with plot and summary methods for summarizing the Monte
+#' Carlo experiment. Can be parallelized via the future package (use the
+#' [future::plan()] function).
+#' @export
+#' @param x function or 'sim' object
+#' @param R Number of replications or data.frame with parameters
+#' @param f Optional function (i.e., if x is a matrix)
+#' @param colnames Optional column names
+#' @param seed (optional) Seed (needed with cl=TRUE)
+#' @param args (optional) list of named arguments passed to (mc)mapply
+#' @param iter If TRUE the iteration number is passed as first argument to
+#'   (mc)mapply
+#' @param mc.cores Optional number of cores. Will use parallel::mcmapply
+#'   instead of future
+#' @param progressr.message Optional message for the progressr progress-bar
+#' @param estimate.index If return object inherits from `estimate` then only
+#'   these column indices are extracted (estimate, se, lower, upper, p-val)
+#' @param ... Additional arguments to [future.apply::future_mapply()]
+#' @aliases sim sim.default as.sim
+#' @seealso [summary.sim()] [plot.sim()] [sim.lvm()]
+#' @details To parallelize the calculation use the [future::plan()] function
+#'   (e.g., `future::plan(multisession())` to distribute the calculations over
+#'   the `R` replications on all available cores). The output is controlled via
+#'   the progressr package (e.g., `progressr::handlers(global=TRUE)` to enable
+#'   progress information).
+#' @examples
+#' m <- lvm(y~x+e)
+#' distribution(m,~y) <- 0
+#' distribution(m,~x) <- uniform.lvm(a=-1.1,b=1.1)
+#' transform(m,e~x) <- function(x) (1*x^4)*rnorm(length(x),sd=1)
+#'
+#' onerun <- function(iter=NULL,...,n=2e3,b0=1,idx=2) {
+#'     d <- sim(m,n,p=c("y~x"=b0))
+#'     l <- lm(y~x,d)
+#'     res <- c(coef(summary(l))[idx,1:2],
+#'              confint(l)[idx,],
+#'              coef(estimate(l), mat=TRUE)[idx,2:4])
+#'     names(res) <- c("Estimate","Model.se","Model.lo","Model.hi",
+#'                     "Sandwich.se","Sandwich.lo","Sandwich.hi")
+#'     res
+#' }
+#' val <- sim(onerun,R=10,b0=1)
+#' val
+#'
+#' val <- sim(val,R=40,b0=1) ## append results
+#' summary(val,estimate=c(1,1),confint=c(3,4,6,7),true=c(1,1))
+#'
+#' summary(val,estimate=c(1,1),se=c(2,5),names=c("Model","Sandwich"))
+#' summary(val,estimate=c(1,1),se=c(2,5),true=c(1,1),
+#'         names=c("Model","Sandwich"),confint=TRUE)
+#'
+#' if (interactive()) {
+#'     plot(val,estimate=1,c(2,5),true=1,
+#'          names=c("Model","Sandwich"),polygon=FALSE)
+#'     plot(val,estimate=c(1,1),se=c(2,5),main=NULL,
+#'          true=c(1,1),names=c("Model","Sandwich"),
+#'          line.lwd=1,col=c("gray20","gray60"),
+#'          rug=FALSE)
+#'     plot(val,estimate=c(1,1),se=c(2,5),true=c(1,1),
+#'          names=c("Model","Sandwich"))
+#' }
+#'
+#' f <- function(a=1, b=1) {
+#'   rep(a*b, 5)
+#' }
+#' R <- Expand(a=1:3, b=1:3)
+#' sim(f, R)
+#' sim(function(a,b) f(a,b), 3, args=c(a=5,b=5))
+#' sim(function(iter=1,a=5,b=5) iter*f(a,b), iter=TRUE, R=5)
 sim.default <- function(x = NULL, R = 100, f = NULL,
                         colnames = NULL,
                         seed = NULL, args = list(),
@@ -117,6 +117,7 @@ sim.default <- function(x = NULL, R = 100, f = NULL,
   # `par.index`: list for storing position of estimate, se, confint when
   # the returned simulation object is an `estimate` object
   par.index <- list()
+  seed_sequence <- NULL
   res <- val <- NULL
   on.exit({
     if (is.null(colnames) && !is.null(val)) {
@@ -134,6 +135,7 @@ sim.default <- function(x = NULL, R = 100, f = NULL,
     class(res) <- c("sim", cls)
     attr(res, "time") <- proc.time() - stm + oldtm
     attr(res, "par.index") <- par.index
+    attr(res, "seeds") <- seed_sequence
     return(res)
   })
   if (inherits(R, c("matrix", "data.frame")) || length(R) > 1) {
@@ -156,6 +158,9 @@ sim.default <- function(x = NULL, R = 100, f = NULL,
   repl <- NROW(parval)
   pb <- progressr::progressor(steps = repl)
   robx <- function(iter__, ...) {
+    rng_seed <- if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+                  get(".Random.seed", envir = .GlobalEnv)
+                else NULL
     if (!is.null(progressr.message)) {
       pb(message = progressr.message(...))
     } else {
@@ -169,14 +174,14 @@ sim.default <- function(x = NULL, R = 100, f = NULL,
       res <- as.vector(cmat)
       cn <- colnames(cmat)
       nam <- c()
-      for (i in idx) {
+      for (i in seq_along(idx)) {
         newn <- rownames(cmat)
-        if (i > 1L) newn <- paste(cn[i], newn, sep=".")
+        if (idx[i] > 1L) newn <- paste(newn, cn[i], sep=".")
         nam <- c(nam, newn)
       }
       names(res) <- nam
     }
-    return(structure(res, "estimate" = is_estimate))
+    return(structure(res, "estimate" = is_estimate, ".rng_seed" = rng_seed))
   }
   if (iter || !is.data.frame(parval)) {
     formals(robx)[[1]] <- NULL
@@ -213,6 +218,11 @@ sim.default <- function(x = NULL, R = 100, f = NULL,
   } else {
     val <- do.call(future.apply::future_mapply, pp)
   }
+  seed_sequence <- lapply(val, attr, ".rng_seed")
+  val <- lapply(val, function(v) {
+    attr(v, ".rng_seed") <- NULL
+    v
+  })
   res <- do.call(rbind, val)
   if (is.null(res)) {
     res <- matrix(NA, ncol=length(val[[1]]), nrow=repl)
@@ -247,24 +257,24 @@ sim.default <- function(x = NULL, R = 100, f = NULL,
   res
 }
 
-##' @export
+#' @export
 cbind.sim <- function(x, ...) {
   res <- cbind(as.data.frame(x), ...)
   as.sim(res)
 }
 
-##' @export
+#' @export
 rbind.sim <- function(x, ...) {
   res <- rbind(as.data.frame(x), ...)
   as.sim(res)
 }
 
-##' @export
+#' @export
 as.vector.sim <- function(x, mode="any") {
   as.vector(x[,,drop=TRUE], mode=mode)
 }
 
-##' @export
+#' @export
 as.matrix.sim <- function(x, ...) {
   if (inherits(x, "data.frame")) {
     return(as.matrix(as.data.frame(x)))
@@ -276,23 +286,38 @@ as.matrix.sim <- function(x, ...) {
   x
 }
 
-##' @export
-"[.sim" <- function(x, i, j, drop = FALSE) {
+#' @export
+"[.sim" <- function(x, i, j, drop = FALSE, keep.index = FALSE) {
   atr <- attributes(x)
   if (!is.null(dim(x))) {
     class(x) <- class(x)[2]
   } else {
     class(x) <- class(x)[-1]
   }
+  cname <- colnames(x)
   x <- NextMethod("[", drop=drop)
   atr.keep <- c("call", "time")
-  if (missing(j)) atr.keep <- c(atr.keep, "f")
+  if (keep.index) atr.keep <- c(atr.keep, "par.index")
+  if (missing(j)) {
+    atr.keep <- c(atr.keep, "f")
+  } else {
+    if (keep.index) {
+      pidx <- atr[["par.index"]]
+      if (!is.null(pidx)) {
+        if (is.character(j)) {
+        j <- which(cname %in% j)
+        }
+        pidx <- lapply(pidx, function(x) which(j %in% x))
+        atr[["par.index"]] <- pidx
+      }
+    }
+  }
   attributes(x)[atr.keep] <- atr[atr.keep]
   if (!drop) class(x) <- c("sim", class(x))
   return(x)
 }
 
-##' @export
+#' @export
 "as.sim" <- function (object, name, ...) {
   if (is.vector(object)) {
     cl <- ifelse(inherits(class(object), "data.frame"), "data.frame", "matrix")
@@ -319,15 +344,15 @@ Time <- function(sec,print=FALSE,...) {
 }
 
 
-##' Generic print method
-##'
-##' Nicer print method for tabular data. Falls back to standard print method for
-##' all other data types.
-##' @export
-##' @param x object to print
-##' @param n number of rows to show from top and bottom of tabular data
-##' @param digits precision
-##' @param ... additional arguments to print method
+#' Generic print method
+#'
+#' Nicer print method for tabular data. Falls back to standard print method for
+#' all other data types.
+#' @export
+#' @param x object to print
+#' @param n number of rows to show from top and bottom of tabular data
+#' @param digits precision
+#' @param ... additional arguments to print method
 Print <- function(x, n=5,
                   digits=max(3, getOption("digits")-3), ...) {
     mat <- !is.null(dim(x))
@@ -339,7 +364,7 @@ Print <- function(x, n=5,
         print(x, ...)
         return(invisible(x))
       }
-    } 
+    }
     if (is.null(rownames(x))) {
         rownames(x) <- seq(nrow(x))
     }
@@ -360,7 +385,7 @@ Print <- function(x, n=5,
     invisible(x)
 }
 
-##' @export
+#' @export
 print.sim <- function(x, ...) {
     s <- summary(x, minimal=TRUE, ...)
     attr(x, "f") <- attr(x, "call") <- NULL
@@ -370,9 +395,10 @@ print.sim <- function(x, ...) {
     return(invisible(x))
 }
 
-##' @export
+#' @export
 print.summary.sim <- function(x,
-                              group=list(c("^mean$","^sd$","^se$","^se/sd$","^coverage"),
+                              group=list(c("^mean$","^sd$","^se$","^se/sd$",
+                                           "^coverage","^length"),
                                    c("^min$","^[0-9.]+%$","^max$"),
                                    c("^na$","^missing$"),
                                    c("^true$","^bias$","^rmse$")),
@@ -382,7 +408,7 @@ print.summary.sim <- function(x,
                       quote=FALSE,
                       time=TRUE,
                       extra=TRUE,
-                      ...) {c
+                      ...) {
     if (extra) {
         cat(attr(x,"n")," replications",sep="")
         if (time && !is.null(attr(x,"time"))) {
@@ -411,25 +437,25 @@ print.summary.sim <- function(x,
 }
 
 
-##' Summary method for 'sim' objects
-##'
-##' Summary method for 'sim' objects
-##' @export
-##' @export summary.sim
-##' @param object sim object
-##' @param estimate (optional) columns with estimates
-##' @param se (optional) columns with standard error estimates
-##' @param confint (optional) list of pairs of columns with confidence limits
-##' @param true (optional) vector of true parameter values
-##' @param fun (optional) summary function
-##' @param names (optional) names of estimates
-##' @param unique.names if TRUE, unique.names will be applied to column names
-##' @param minimal if TRUE, minimal summary will be returned
-##' @param level confidence level (0.95)
-##' @param quantiles quantiles (0,0.025,0.5,0.975,1)
-##' @param df degrees of freedom in t-distribution used for constructing CIs
-##'   (default Gaussian approximation)
-##' @param ... additional levels to lower-level functions
+#' Summary method for 'sim' objects
+#'
+#' Summary method for 'sim' objects
+#' @export
+#' @export summary.sim
+#' @param object sim object
+#' @param estimate (optional) columns with estimates
+#' @param se (optional) columns with standard error estimates
+#' @param confint (optional) list of pairs of columns with confidence limits
+#' @param true (optional) vector of true parameter values
+#' @param fun (optional) summary function
+#' @param names (optional) names of estimates
+#' @param unique.names if TRUE, unique.names will be applied to column names
+#' @param minimal if TRUE, minimal summary will be returned
+#' @param level confidence level (0.95)
+#' @param quantiles quantiles (0,0.025,0.5,0.975,1)
+#' @param df degrees of freedom in t-distribution used for constructing CIs
+#'   (default Gaussian approximation)
+#' @param ... additional levels to lower-level functions
 summary.sim <- function(object,estimate=NULL,se=NULL,
                 confint,
                 true=NULL,
@@ -446,7 +472,7 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
         ntrue <- is.null(true)
         elen <- unlist(lapply(est,length))
         est <- lapply(est, function(e) c(e, rep(NA,max(elen)-length(e))))
-        for (e in est) {            
+        for (e in est) {
             estimate <- c(estimate,e[1])
             if (length(e)>1 && nse) se <- c(se,e[2])
             if (length(e)>2 && ntrue) true <- c(true,e[3])
@@ -482,7 +508,7 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
             if (!missing(se) && !is.null(se)) {
                 res <- c(res, c(SE=mean(se,na.rm=TRUE)))
                 res <- c(res, c("SE/SD"=res[["SE"]]/res[["SD"]]))
-            }            
+            }
             return(res)
         }
     }
@@ -504,14 +530,14 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
         res
     }
     tm <- attr(object,"time")
-    N <- max(length(estimate),length(se),length(true))    
+    N <- max(length(estimate),length(se),length(true))
     if (!is.null(estimate)) estimate <- rep(estimate,length.out=N)
     if (!is.null(se)) se <- rep(se,length.out=N)
     if (!is.null(true)) {
         if (is.null(estimate)) N <- ncol(object)
         true <- rep(true,length.out=N)
     }
-    
+
     if (!is.null(estimate) && is.character(estimate)) {
         estimate <- match(estimate,colnames(object))
     }
@@ -595,11 +621,20 @@ summary.sim <- function(object,estimate=NULL,se=NULL,
         }
         if (length(confint)!=2*length(estimate)) stop("'confint' should be of length 2*length(estimate).")
         Coverage <- c()
+        Length <- c()
         for (i in seq_along(estimate)) {
-            Coverage <- c(Coverage,
-                          mean((object[,confint[2*(i-1)+1]]<true[i]) & (object[,confint[2*i]]>true[i]),na.rm=TRUE))
+            upper <- object[,confint[2*i]][[1]]
+            lower <- object[,confint[2*(i-1)+1]][[1]]
+            Coverage <- c(
+              Coverage,
+              mean((lower < true[i]) & (upper > true[i]), na.rm=TRUE)
+            )
+            Length <- c(
+              Length,
+              mean(abs(upper - lower), na.rm = TRUE)
+            )
         }
-        est <- rbind(est,Coverage=Coverage)
+        est <- rbind(est,Coverage=Coverage, Length=Length)
     }
 
     if (!is.null(names)) {

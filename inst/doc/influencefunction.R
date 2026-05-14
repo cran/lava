@@ -50,7 +50,7 @@ Print(dl)
 
 ## ----inp1---------------------------------------------------------------------
 inp <- as.matrix(dw[, c("y1", "y2")])
-e <- estimate(inp[, 1, drop = FALSE], type="mean") 
+e <- estimate(inp[, 1, drop = FALSE], type="mean")
 class(e)
 e
 
@@ -86,7 +86,8 @@ g <- glm(y1 ~ a + x1, data = dw, family = binomial)
 estimate(g)
 
 ## ----glm.std------------------------------------------------------------------
-estimate(g, robust = FALSE)
+estimate(g, vcov = vcov(g))
+# estimate(g, vcov = TRUE) alternative syntax to obtain model-based SEs
 
 ## ----ifglm--------------------------------------------------------------------
 IC(g) |> head()
@@ -142,7 +143,7 @@ estimate(e, cbind(0,1,0,-1), null=0)
 ## ----glmmargmis---------------------------------------------------------------
 g2 <- glm(y2 ~ 1, family = binomial, data = dw)
 summary(g2)
-dwc <- na.omit(dw) 
+dwc <- na.omit(dw)
 g3 <- glm(y3 ~ 1, family = binomial, data = dwc)
 summary(g3)
 
@@ -208,7 +209,7 @@ id <- foldr(nrow(y), N, list=FALSE)
 Print(cbind(table(id)))
 
 ## Aggregated IF
-e <- estimate(cbind(y), id = id) 
+e <- estimate(cbind(y), id = id)
 object.size(e)
 e
 
@@ -217,11 +218,11 @@ estimate(g1, sum)
 estimate(g1, function(p) list(a = sum(p))) # named list
 ## Multiple parameters
 estimate(g1, function(x) c(x, x[1] + exp(x[2]), inv = 1 / x[2]))
-estimate(g1, exp)         
+estimate(g1, exp)
 
 ## ----estimate_calculus_models-------------------------------------------------
-a <- estimate(coef=c("a"=0.5), IC=rnorm(10), id=1:10)
-b <- estimate(coef=c("b"=0.8), IC=rnorm(10), id=1:10)
+a <- estimate(coef=c("a"=0.5), IC=scale(rnorm(10)), id=1:10)
+b <- estimate(coef=c("b"=0.8), IC=scale(rnorm(10)), id=1:10)
 
 ## ----estimate_calc_ex---------------------------------------------------------
 a * b
@@ -271,7 +272,7 @@ est <- lm(cbind(x1, x2, x1 * x2) ~ 1, data = dw) |>
   estimate(labels = c("E1", "E2", "E12"))
 est
 
-est["E12"] - est["E2"]*est["E1"] 
+est["E12"] - est["E2"]*est["E1"]
 # transform(e1, function(x) c(x, cov=with(as.list(x), E12 - E2* E1))) # Same result
 
 ## ----rho----------------------------------------------------------------------
@@ -279,7 +280,7 @@ v12 <- with(dw, Cov(x1, x2, id = id))
 v1  <- with(dw, Cov(x1, x1, id = id))
 v2  <- with(dw, Cov(x2, x2, id = id))
 
-rho <- c(rho = v12 / sqrt(v1 * v2)) 
+rho <- c(rho = v12 / sqrt(v1 * v2))
 rho
 
 ## ----tanh---------------------------------------------------------------------

@@ -1,5 +1,3 @@
-###{{{ mixture
-
 #' Estimate mixture latent variable model.
 #'
 #' Estimate mixture latent variable model
@@ -238,7 +236,7 @@ mixture <- function(x, data, k=length(x),
         myp <- lapply(ParPos,function(x) p[x])
         K <- length(myp)
         prob <- p[seq(Npar+1,Npar+K-1)]; prob <- c(prob,1-sum(prob))
-        logff <- sapply(1:length(myp), function(j) (logLik(mg$lvm[[j]],p=myp[[j]],data=data,indiv=TRUE,model=MODEL)))
+        logff <- sapply(seq_along(myp), function(j) (logLik(mg$lvm[[j]],p=myp[[j]],data=data,indiv=TRUE,model=MODEL)))
         ## logff <- sapply(1:length(myp),
         ##              function(j) -normal_objective.lvm(mg$lvm[[j]],p=myp[[j]],data=data,indiv=TRUE))
         logplogff <- t(apply(logff,1, function(y) y+log(prob)))
@@ -276,7 +274,7 @@ mixture <- function(x, data, k=length(x),
         ## zmax <- apply(logff,1,max)
         ## ffz <- apply(logff,2,function(x) exp(x-zmax))
         ## sffz <- rowSums(ffz)
-        D <- lapply(1:length(myp), function(j) {
+        D <- lapply(seq_along(myp), function(j) {
             ## K <- ffz[,j]/sffz
             val <- score(mg$lvm[[j]],p=myp[[j]],data=data,indiv=TRUE,model=MODEL)
             apply(val,2,function(x) x*gamma[,j])
@@ -295,7 +293,7 @@ mixture <- function(x, data, k=length(x),
             p[constrained] <- exp(p[constrained])
         }
         myp <- lapply(ParPos,function(x) p[x])
-        D <- lapply(1:length(myp), function(j) {
+        D <- lapply(seq_along(myp), function(j) {
             ## K <- ffz[,j]/sffz
             val <- score(mg$lvm[[j]],p=myp[[j]],data=data,indiv=TRUE,model=MODEL)
             apply(val,2,function(x) x*gamma[,j])
@@ -382,11 +380,6 @@ mixture <- function(x, data, k=length(x),
     return(val)
 }
 
-###}}} mixture
-
-
-###{{{ logLik, score, information
-
 ##' @export
 score.lvm.mixture <- function(x,p=coef(x,full=TRUE),prob,indiv=FALSE,model="normal",...) {
     myp <- lapply(x$parpos,function(x) p[x])
@@ -456,18 +449,10 @@ logLik.lvm.mixture <- function(object,p=coef(object,full=TRUE),prob,model="norma
     return(loglik)
 }
 
-###}}} logLik, score, information
-
-###{{{ vcov
-
 ##' @export
 vcov.lvm.mixture <- function(object,...) {
     return(object$vcov)
 }
-
-###}}}
-
-###{{{ summary/print
 
 ##' @export
 summary.lvm.mixture <- function(object,type=0,labels=0,...) {
@@ -479,7 +464,7 @@ summary.lvm.mixture <- function(object,type=0,labels=0,...) {
     mm <- object$multigroup$lvm
     p <- coef(object,list=TRUE)
     p0 <- coef(object,prob=FALSE)
-    myp <- modelPar(object$multigroup,1:length(p0))$p
+    myp <- modelPar(object$multigroup,seq_along(p0))$p
     coefs <- list()
     ncluster <- c()
     Coefs <- matrix(NA,ncol=4,nrow=length(parname))
@@ -488,7 +473,7 @@ summary.lvm.mixture <- function(object,type=0,labels=0,...) {
     Variable  <- rep(NA,length(parname))
     From  <- rep(NA,length(parname))
     Latent <- c()
-    for (i in 1:length(mm)) {
+    for (i in seq_along(mm)) {
         cc.idx <- order(coef(mm[[i]],p=seq_along(p[[i]]),type=2)[,1])
 
         cc <- coef(mm[[i]],p=p[[i]],vcov=vcov(object)[myp[[i]],myp[[i]]],data=NULL,labels=labels,type=2)
@@ -526,7 +511,7 @@ print.summary.lvm.mixture <- function(x,...) {
         print(CoefMat(cc), quote=FALSE)
         return(invisible())
     }
-    for (i in 1:length(x$coef)) {
+    for (i in seq_along(x$coef)) {
         cat("Cluster ",i," (n=",x$ncluster[i],", Prior=", formatC(x$prob[i]),"):\n",sep="")
         cat(rep("-",50),"\n",sep="")
         print(x$coef[[i]], quote=FALSE)
@@ -549,18 +534,10 @@ print.lvm.mixture <- function(x,...) {
     print(summary(x,type=1,...))
 }
 
-###}}}
-
-###{{{ plot
-
 ##' @export
 plot.lvm.mixture <- function(x,type="l",...) {
     matplot(x$theta,type=type,...)
 }
-
-###}}} plot
-
-###{{{ coef
 
 ##' @export
 coef.lvm.mixture <- function(object,iter,list=FALSE,full=TRUE,prob=FALSE,class=FALSE,label=TRUE,...) {
@@ -596,8 +573,6 @@ coef.lvm.mixture <- function(object,iter,list=FALSE,full=TRUE,prob=FALSE,class=F
     else
         return(res[iter,])
 }
-
-###}}} coef
 
 ##' @export
 model.frame.lvm.mixture <- function(formula,...) {

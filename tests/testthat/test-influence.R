@@ -62,23 +62,33 @@ test_that("negative binomial regression (glm.nb)", {
   }
 })
 
+set.seed(1)
+n <- 500
+z <- rgamma(n, .5, .5)
+x <- rnorm(n)
+lam <- z * exp(x)
+y <- rpois(n, lam)
+d <- data.frame(y,x,z)
+
 test_that("quasipossion", {
-  set.seed(1)
-  n <- 500
-  z <- rgamma(n, .5, .5)
-  x <- rnorm(n)
-  lam <- z * exp(x)
-  y <- rpois(n, lam)
-  m1 <- glm(y ~ x, family=poisson)
-  m2 <- glm(y ~ x, family = quasipoisson)
+  m1 <- glm(y ~ x, family=poisson, data=d)
+  m2 <- glm(y ~ x, family = quasipoisson, data=d)
   i1 <- IC(m1)
   i2 <- IC(m2)
   testthat::expect_true(sum((i1 - i2)^2) < 1e-6)
+
+  # check that iid decomposition is correctly scaled
+  ii <- iid(m1)
+  expect_equivalent(crossprod(ii), var_ic(i1))
 })
 
 test_that("merge back.transform", {
-  tmp <- estimate(coef = 1, IC = c(1,2,3), id = 1:3, f = exp, back.transform = log)
-  tmp2 <- estimate(coef = 2, IC = c(3,2,1), id = 1:3, f = exp, back.transform = log)
+  suppressWarnings(
+    tmp <- estimate(coef = 1, IC = c(1,2,3), id = 1:3, f = exp, back.transform = log)
+  )
+  suppressWarnings(
+    tmp2 <- estimate(coef = 2, IC = c(3,2,1), id = 1:3, f = exp, back.transform = log)
+  )
 
   expect_warning(
     m <- merge(tmp, tmp2) # should throw a warning

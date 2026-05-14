@@ -63,7 +63,7 @@
 #
 ##'
 ##' @aliases covariance covariance<- covariance.lvm covariance<-.lvm
-##' variance variance<- variance.lvm variance<-.lvm
+##' @aliases variance variance<- variance.lvm variance<-.lvm
 ##' @param object \code{lvm}-object
 ##' @param var1 Vector of variables names (or formula)
 ##' @param var2 Vector of variables names (or formula) defining pairwise
@@ -84,7 +84,7 @@
 ##' @examples
 ##'
 ##' m <- lvm()
-##' ### Define covariance between residuals terms of y1 and y2
+##' ## Define covariance between residuals terms of y1 and y2
 ##' covariance(m) <- y1~y2
 ##' covariance(m) <- c(y1,y2)~f(v) ## Same marginal variance
 ##' covariance(m) ## Examine covariance structure

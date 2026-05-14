@@ -1,313 +1,332 @@
-
-##' @export
+#' @export
 estimate <- function(x, ...) UseMethod("estimate")
 
-##' @export
-estimate.list <- function(x, ...) {
-  if (inherits(x[[1]], "lvm")) return(estimate_lvmlist(x, ...))
-  lapply(x, function(x) estimate(x, ...))
-}
-
-##' @export
-estimate.data.frame <- function(x, ...) {
-  estimate(as.matrix(x), ...)
-}
-
-IC_quantile <- function(x, estimate, probs=0.5, ...) {
-  x <- na.omit(x)
-  f0 <- density(x, ...)
-  ## U <- function(est) (tau - (x <= est))
-  if (missing(estimate)) {
-    estimate <- quantile(x, probs=probs)
-  }
-  res <- c()
-  for (i in seq_len(length(estimate))) {
-    res <- cbind(res,
-    (probs[i] - (x <= estimate[i]))/with(f0, approx(x, y, estimate[i]))$y
-    )
-  }
-  res
-}
-
-##' Estimate parameters and influence function.
-##'
-##' Estimate parameters for the sample mean, variance, and quantiles
-##' @export
-##' @aliases estimate.array estimate.data.frame
-##' @param x numeric matrix
-##' @param type target parameter ("mean", "variance", "quantile")
-##' @param probs numeric vector of probabilities (for type="quantile")
-##' @param ... Additional arguments to lower level functions (i.e.,
-##'   stats::density.default when type="quantile")
-estimate.array <- function(x, type="mean", probs=0.5, ...) {
-  cl <- match.call()
-  if (missing(x) || is.null(x)) {
-    return(estimate(NULL, ...))
-  }
-  dots <- list(...)
-  density.args <- dots[]
-  cc <- apply(x, 2, function(y) mean(y, na.rm = TRUE))
-  ic <- apply(x, 2, function(y) y - mean(y, na.rm = TRUE))
-  if (tolower(type) %in% c("var", "variance")) {
-    cc <- apply(x, 2, function(y) mean((y - mean(y)^2), na.rm = TRUE))
-    ic <- ic^2
-    for (i in seq_len(NCOL(ic))) {
-      ic[, i] <- ic[, i] - cc[i]
-    }
-  }
-  if (tolower(type) %in% c("quantile")) {
-    density.args <- list()
-    dargs <- names(formals(density.default))
-    didx <- which(dargs %in% names(dots))
-    if (length(didx)>0) {
-      density.args <- dots[dargs[didx]]
-      dots[dargs[didx]] <- NULL
-    }
-    cc <- unlist(apply(x, 2, function(y)
-      quantile(y, probs=probs, na.rm = TRUE),
-      simplify=FALSE))
-    ic <- c()
-    for (i in seq_len(NCOL(x))) {
-      ic <- cbind(ic, do.call(IC_quantile,
-                        c(list(x[, i], probs=probs), density.args)))
-    }
-  }
-  if (any(c("vcov", "IC") %in% names(list(...)))) {
-    return(estimate(NULL, coef = cc, ...))
-  }
-  res <- do.call(estimate, c(list(NULL, coef = cc, IC = ic), dots))
-  res$call <- cl
-  return(res)
-}
-
-##' Estimation of functional of parameters
-##'
-##' Estimation of functional of parameters. Wald tests, robust standard errors,
-##' cluster robust standard errors
-##' @param x model object (\code{glm}, \code{lvmfit}, ...)
-##' @param f transformation of model parameters and (optionally) data, or
-##'   contrast matrix (or vector)
-##' @param ... additional arguments to lower level functions
-##' @param data \code{data.frame}
-##' @param id (optional) id-variable corresponding to ic decomposition of model
-##'   parameters.
-##' @param iddata (optional) id-variable for 'data'
-##' @param stack if TRUE (default) the i.i.d. decomposition is automatically
-##'   stacked according to 'id'
-##' @param average if TRUE averages are calculated
-##' @param subset (optional) subset of data.frame on which to condition (logical
-##'   expression or variable name)
-##' @param score.deriv (optional) derivative of mean score function
-##' @param level level of confidence limits
-##' @param IC if TRUE (default) the influence function decompositions are also
-##'   returned (extract with \code{IC} method)
-##' @param type type of small-sample correction
-##' @param keep (optional) index of parameters to keep from final result
-##' @param use (optional) index of parameters to use in calculations
-##' @param regex If TRUE use regular expression (perl compatible) for keep, use
-##'   arguments
-##' @param ignore.case Ignore case-sensitiveness in regular expression
-##' @param contrast (optional) Contrast matrix for final Wald test
-##' @param null (optional) null hypothesis to test
-##' @param vcov (optional) covariance matrix of parameter estimates (e.g.
-##'   Wald-test)
-##' @param coef (optional) parameter coefficient
-##' @param robust if TRUE robust standard errors are calculated. If FALSE
-##'   p-values for linear models are calculated from t-distribution
-##' @param df degrees of freedom (default obtained from 'df.residual')
-##' @param print (optional) print function
-##' @param labels (optional) names of coefficients
-##' @param label.width (optional) max width of labels
-##' @param only.coef if TRUE only the coefficient matrix is return
-##' @param back.transform (optional) transform of parameters and confidence
-##'   intervals
-##' @param folds (optional) aggregate influence functions (divide and conquer)
-##' @param cluster (obsolete) alias for 'id'.
-##' @param R Number of simulations (simulated p-values)
-##' @param null.sim Mean under the null for simulations
-##' @details
-##'
-##' influence function decomposition of estimator \eqn{\widehat{\theta}} based
-##' on data \eqn{Z_1,\ldots,Z_n}: \deqn{\sqrt{n}(\widehat{\theta}-\theta) =
-##' \frac{1}{\sqrt{n}}\sum_{i=1}^n IC(Z_i; P) + o_p(1)} can be extracted with
-##' the \code{IC} method.
-##'
-##' @export
-##' @export estimate.default
-##' @examples
-##'
-##' ## Simulation from logistic regression model
-##' m <- lvm(y~x+z);
-##' distribution(m,y~x) <- binomial.lvm("logit")
-##' d <- sim(m,1000)
-##' g <- glm(y~z+x,data=d,family=binomial())
-##' g0 <- glm(y~1,data=d,family=binomial())
-##'
-##' ## LRT
-##' estimate(g, g0)
-##'
-##' ## Plain estimates (robust standard errors)
-##' estimate(g)
-##'
-##' ## Testing contrasts
-##' estimate(g, null=0)
-##' estimate(g, rbind(c(1,1,0), c(1,0,2)))
-##' estimate(g, rbind(c(1,1,0), c(1,0,2)), null=c(1,2))
-##' estimate(g, 2:3) ## same as cbind(0,1,-1)
-##' estimate(g, as.list(2:3)) ## same as rbind(c(0,1,0),c(0,0,1))
-##' ## Alternative syntax
-##' estimate(g, "z", "z"-"x", 2*"z"-3*"x")
-##' estimate(g, "?")  ## Wildcards
-##' estimate(g, "*Int*", "z")
-##' estimate(g, "1", "2"-"3", null = c(0,1))
-##' estimate(g, 2, 3)
-##'
-##' ## Usual (non-robust) confidence intervals
-##' estimate(g, robust=FALSE)
-##'
-##' ## Transformations
-##' estimate(g, function(p) p[1]+p[2])
-##'
-##' ## Multiple parameters
-##' e <- estimate(g, function(p) c(p[1]+p[2], p[1]*p[2]))
-##' e
-##' vcov(e)
-##'
-##' ## Label new parameters
-##' estimate(g, function(p) list("a1"=p[1]+p[2], "b1"=p[1]*p[2]))
-##' ##'
-##' ## Multiple group
-##' m <- lvm(y~x)
-##' m <- baptize(m)
-##' d2 <- d1 <- sim(m,50,seed=1)
-##' e <- estimate(list(m,m),list(d1,d2))
-##' estimate(e) ## Wrong
-##' ee <- estimate(e, id=rep(seq(nrow(d1)), 2)) ## Clustered
-##' ee
-##' estimate(lm(y~x,d1))
-##'
-##' ## Marginalize
-##' f <- function(p,data)
-##'   list(p0=lava:::expit(p["(Intercept)"] + p["z"]*data[,"z"]),
-##'        p1=lava:::expit(p["(Intercept)"] + p["x"] + p["z"]*data[,"z"]))
-##' e <- estimate(g, f, average=TRUE)
-##' e
-##' estimate(e,diff)
-##' estimate(e,cbind(1,1))
-##'
-##' ## Clusters and subset (conditional marginal effects)
-##' d$id <- rep(seq(nrow(d)/4),each=4)
-##' estimate(g,function(p,data)
-##'          list(p0=lava:::expit(p[1] + p["z"]*data[,"z"])),
-##'          subset=d$z>0, id=d$id, average=TRUE)
-##'
-##' ## More examples with clusters:
-##' m <- lvm(c(y1,y2,y3)~u+x)
-##' d <- sim(m,10)
-##' l1 <- glm(y1~x,data=d)
-##' l2 <- glm(y2~x,data=d)
-##' l3 <- glm(y3~x,data=d)
-##'
-##' ## Some random id-numbers
-##' id1 <- c(1,1,4,1,3,1,2,3,4,5)
-##' id2 <- c(1,2,3,4,5,6,7,8,1,1)
-##' id3 <- seq(10)
-##'
-##' ## Un-stacked and stacked i.i.d. decomposition
-##' IC(estimate(l1,id=id1,stack=FALSE))
-##' IC(estimate(l1,id=id1))
-##'
-##' ## Combined i.i.d. decomposition
-##' e1 <- estimate(l1,id=id1)
-##' e2 <- estimate(l2,id=id2)
-##' e3 <- estimate(l3,id=id3)
-##' (a2 <- merge(e1,e2,e3))
-##'
-##' ## If all models were estimated on the same data we could use the
-##' ## syntax:
-##' ## Reduce(merge,estimate(list(l1,l2,l3)))
-##'
-##' ## Same:
-##' IC(a1 <- merge(l1,l2,l3,id=list(id1,id2,id3)))
-##'
-##' IC(merge(l1,l2,l3,id=TRUE)) # one-to-one (same clusters)
-##' IC(merge(l1,l2,l3,id=FALSE)) # independence
-##'
-##'
-##' ## Monte Carlo approach, simple trend test example
-##'
-##' m <- categorical(lvm(),~x,K=5)
-##' regression(m,additive=TRUE) <- y~x
-##' d <- simulate(m,100,seed=1,'y~x'=0.1)
-##' l <- lm(y~-1+factor(x),data=d)
-##'
-##' f <- function(x) coef(lm(x~seq_along(x)))[2]
-##' null <- rep(mean(coef(l)),length(coef(l)))
-##' ##  just need to make sure we simulate under H0: slope=0
-##' estimate(l,f,R=1e2,null.sim=null)
-##'
-##' estimate(l,f)
-##'
-##' # ------ influence function calculus -------
-##' a <- estimate(coef = c("a" = 0.5), IC = rnorm(10), id = 1:10)
-##' b <- estimate(coef = c("b" = 0.8), IC = rnorm(10), id = 1:10)
-##'
-##' e <- c(a, b) # merge
-##' merge(a, b)
-##' c(e1=a, b) # naming of par
-##' labels(e, c("p1", "p2")) # renaming parameters
-##' e["a"] # subset
-##' subset(e, "a")
-##'
-##' # pipes
-##' # c(a, b) |>
-##' #  transform(function(x) x^2) |>
-##' #  subset("a") |>
-##' #  labels("sq")
-##'
-##' # Parameter transformation with automatic calculation of derivatives
-##' a * b
-##' (3 * cos(a) / sqrt(b) + 1) / a
-##' expit(c(a,b))
-##' c(sum=sum(e), sum2=a+b,
-##'   prod=prod(e), prod2=a*b)
-##' e %*% e # inner prod.
-##' c(1, 2) %*% e
-##' c(pow = a^b)
-##' a^c(0.5, 2)
-##' c(b=e["a"] * e["b"] / a, also.b=e["b"])
-##'
-##' B <- rbind(c(1,-1), c(1,0), c(0,1))
-##' B %*% e
-##' e == 1 # wald-test, null-hypothesis H0: b=1
-##' e == c(1,2)
-##' B %*% e == 1
-##' @aliases estimate estimate.default estimate.estimate merge.estimate
-##'   estimate.mlm
-##' @seealso estimate.array
-##' @method estimate default
-##' @export
+#' Influence function based inference
+#'
+#' Primary tool for obtaining parameter estimates with robust (sandwich)
+#' standard errors, applying the delta method, and testing linear hypotheses.
+#' The function returns an object of class `estimate` which serves as a
+#' general container for parameter estimates and their influence functions
+#' (IFs). Three calling conventions are supported:
+#'
+#' - `estimate(x, ...)` -- extract estimates from a model object
+#' - `estimate(coef=, IC=, ...)` -- construct from coefficients and IF matrix
+#' - `estimate(coef=, vcov=, ...)` -- construct from coefficients and
+#'   covariance matrix
+#'
+#' @param x model object (`glm`, `lvmfit`, ...) or an existing `estimate`
+#'   object. When two model objects are supplied (e.g., `estimate(g, g0)`) a
+#'   likelihood-ratio test is performed.
+#' @param f transformation of model parameters. Accepts several input types:
+#'   - A **function** `f(p)` or `f(p, data)`: applies the delta method.
+#'     When `f` returns a named list the names are used as parameter labels.
+#'   - A **matrix**: used as a contrast (linear combination) matrix.
+#'   - A **numeric vector** of parameter indices: converted to a contrast
+#'     that selects and differences those parameters.
+#'   - A **list** of indices: each element selects one parameter.
+#'   - **Character** expressions: supports wildcards (`"?"`, `"*"`) and
+#'     arithmetic on parameter names (e.g., `"z" - "x"`, `2 * "z" - 3 * "x"`).
+#' @param ... additional arguments to lower level functions
+#' @param data `data.frame` used by `f` when the transformation depends on
+#'   covariates (see `average`). Defaults to `model.frame(x)`.
+#' @param id (optional) cluster identifier. Can be a vector of cluster IDs, a
+#'   one-sided formula (evaluated in `data`), a single character column name,
+#'   or a logical scalar (`TRUE` for one-to-one matching, `FALSE` for
+#'   independence). When supplied, the IF is aggregated within clusters to
+#'   produce cluster-robust standard errors.
+#' @param stack if `TRUE` (default) the influence function contributions are
+#'   summed within each cluster defined by `id`. Set to `FALSE` to keep the
+#'   un-stacked (per-observation) decomposition.
+#' @param average if `TRUE` the function computes the standardized
+#'   (marginalized) estimate \eqn{\hat\Psi = P_n f(X; \hat\theta)}, i.e.,
+#'   the empirical mean of `f(p, data)` over all rows of `data`. The
+#'   influence function accounts for both the empirical averaging and the
+#'   parameter estimation uncertainty (see Details).
+#' @param subset (optional) logical vector, expression evaluated in `data`, or
+#'   column name. When used together with `average = TRUE`, the average is
+#'   conditioned on the subpopulation where `subset` is `TRUE`, yielding a
+#'   conditional marginalized estimate.
+#' @param level level of confidence limits (default 0.95)
+#' @param IC if `TRUE` (default) the influence function matrix is estimated and
+#'   stored in the returned object (extract with the [IC] method). Can also be
+#'   a user-supplied IF matrix (one row per observation, one column per
+#'   parameter), which is used directly instead of estimating it from `x`.
+#' @param type type of small-sample correction for cluster-robust variance.
+#'   One of:
+#'   - `"robust"` (default): no correction.
+#'   - `"df"`: applies \eqn{n/(n-p)} correction (Mancl & DeRouen, 2001).
+#'   - `"mbn"`: Morel-Bokossa-Neerchal (2003) correction.
+#'   - `"hc3"`: leverage-adjusted HC3-type correction (blended with
+#'     `var.adj`).
+#'   - `"hc4"`: Cribari-Neto (2004) leverage-adjusted correction.
+#' @param var.adj blending parameter for the HC3 leverage adjustment
+#'   (default 0.25). Controls the weight between observation-level empirical
+#'   leverage and the average leverage \eqn{p/n}.
+#' @param keep (optional) index of parameters to keep from final result.
+#'   Accepts integer indices, character names, or (with `regex = TRUE`)
+#'   perl-compatible regular expressions.
+#' @param use (optional) index of parameters to use in calculations. The
+#'   selected parameters are first extracted (via `keep`) and then the
+#'   remaining arguments (`f`, `contrast`, etc.) are applied to this subset.
+#' @param regex if `TRUE` use perl-compatible regular expressions for `keep`
+#'   and `use` arguments
+#' @param ignore.case ignore case in regular expressions
+#' @param contrast (optional) contrast matrix for a final Wald test. When
+#'   supplied together with `null`, tests \eqn{H_0: B\theta = b_0}.
+#' @param null (optional) null hypothesis vector \eqn{b_0} to test against
+#'   (default 0)
+#' @param vcov (optional) covariance matrix of parameter estimates, or a
+#'   logical. If `TRUE`, [stats::vcov] is used to obtain the (model-based)
+#'   covariance matrix from `x`, yielding non-robust standard errors. If a
+#'   matrix is supplied it is used directly. When omitted or `FALSE`, robust
+#'   standard errors are computed from the influence function.
+#' @param coef (optional) named parameter vector. Used instead of
+#'   `coef(x)` when constructing an `estimate` object without a model.
+#' @param df degrees of freedom for t-based inference (default: `NULL` for
+#'   Gaussian approximation; when set, confidence intervals and p-values use
+#'   the t-distribution with `df` degrees of freedom)
+#' @param print (optional) custom print function for the resulting `estimate`
+#'   object
+#' @param labels (optional) character vector of coefficient names
+#' @param label.width (optional) max display width of labels
+#' @param only.coef (Deprecated) if `TRUE` only the coefficient matrix is
+#'   returned. Use `parameter(estimate(...))` instead.
+#' @param back.transform (optional) function applied to the point estimates
+#'   and confidence interval bounds *after* inference is performed on the
+#'   original scale. Useful for variance-stabilizing transformations, e.g.,
+#'   compute CIs on the `atanh` (Fisher z) scale and back-transform with
+#'   `tanh`.
+#'
+#' @details
+#'
+#' # Influence functions and robust standard errors
+#'
+#' An estimator \eqn{\widehat{\theta}} is *regular and asymptotically
+#' linear* (RAL) when it admits the iid decomposition
+#' \deqn{\sqrt{n}(\widehat{\theta}-\theta) =
+#' \frac{1}{\sqrt{n}}\sum_{i=1}^n \mathrm{IC}(Z_i; P) + o_p(1)}
+#' where \eqn{\mathrm{IC}} is the unique *influence function* satisfying
+#' \eqn{E\{\mathrm{IC}(Z; P)\} = 0}. By the central limit theorem
+#' \deqn{\sqrt{n}(\widehat{\theta}-\theta)
+#' \overset{d}{\longrightarrow}
+#' N(0,\; \mathrm{Var}\{\mathrm{IC}(Z; P)\})}
+#' and the asymptotic variance is consistently estimated by the empirical
+#' variance of the plugin IF estimate, yielding robust (sandwich) standard
+#' errors. The estimated IF can be extracted with the [IC] method.
+#'
+#' # Parameter transformations (delta method)
+#'
+#' When `f` is a function \eqn{\phi: R^p \to R^m}, the delta method is
+#' applied:
+#' \deqn{\sqrt{n}\{\phi(\widehat{\theta}) - \phi(\theta)\} =
+#' \frac{1}{\sqrt{n}}\sum_{i=1}^n
+#' \nabla\phi(\theta)\,\mathrm{IC}(Z_i; P) + o_p(1)}
+#' Derivatives are computed numerically via [numDeriv::jacobian] unless the
+#' function returns an attribute `"grad"` with the analytic Jacobian.
+#'
+#' Alternatively, `estimate` objects support direct arithmetic operations
+#' (e.g., `a * b`, `exp(a)`, `a^b`) which apply the delta method with
+#' *exact* (analytical) derivatives computed automatically. This influence
+#' function calculus allows building complex transformations from simple
+#' building blocks without numerical differentiation. See the last example
+#' section ("influence function calculus") and
+#' `vignette("influencefunction", package = "lava")` for details.
+#'
+#' # Averaging and marginalization
+#'
+#' When `average = TRUE` and `f(p, data)` depends on covariates, the
+#' target parameter is the standardized (marginalized) estimate
+#' \eqn{\Psi = E\{f(X;\theta)\}}. The IF for the averaged estimate
+#' accounts for both the empirical averaging and parameter estimation
+#' uncertainty:
+#' \deqn{\mathrm{IC}_\Psi(Z; P) = f(X;\theta) - \Psi +
+#' [E\nabla_\theta f(X;\theta)]\,\phi(Z; P)}
+#' When `subset` is also specified, the average is conditioned on the
+#' subpopulation, yielding a conditional marginalized estimate.
+#'
+#' # Cluster-robust standard errors
+#'
+#' When `id` is supplied, the per-observation IF contributions are summed
+#' within clusters (when `stack = TRUE`), producing the cluster-level IF
+#' \eqn{\widetilde{\mathrm{IC}}(Z_i; P) = \sum_{k=1}^{N_i}
+#' \frac{n}{N}\mathrm{IC}(Z_{ik}; P)}.
+#' The resulting variance estimate is equivalent to the GEE working
+#' independence sandwich estimator.
+#'
+#' For full theoretical background and worked examples see
+#' `vignette("influencefunction", package = "lava")`.
+#'
+#' @export
+#' @export estimate.default
+#' @examples
+#'
+#' ## Simulation from logistic regression model
+#' m <- lvm(y~x+z);
+#' distribution(m,y~x) <- binomial.lvm("logit")
+#' d <- sim(m,1000)
+#' g <- glm(y~z+x,data=d,family=binomial())
+#' g0 <- glm(y~1,data=d,family=binomial())
+#'
+#' ## LRT
+#' estimate(g, g0)
+#'
+#' ## Plain estimates (robust standard errors)
+#' estimate(g)
+#'
+#' ## Testing contrasts
+#' estimate(g, null=0)
+#' estimate(g, rbind(c(1,1,0), c(1,0,2)))
+#' estimate(g, rbind(c(1,1,0), c(1,0,2)), null=c(1,2))
+#' estimate(g, 2:3) ## same as cbind(0,1,-1)
+#' estimate(g, as.list(2:3)) ## same as rbind(c(0,1,0),c(0,0,1))
+#' ## Alternative syntax
+#' estimate(g, "z", "z"-"x", 2*"z"-3*"x")
+#' estimate(g, "?")  ## Wildcards
+#' estimate(g, "*Int*", "z")
+#' estimate(g, "1", "2"-"3", null = c(0,1))
+#' estimate(g, 2, 3)
+#'
+#' ## Usual (non-robust) confidence intervals
+#' estimate(g, vcov=TRUE)
+#' estimate(g, vcov=vcov(g))
+#'
+#' ## Transformations
+#' estimate(g, function(p) p[1]+p[2])
+#'
+#' ## Multiple parameters
+#' e <- estimate(g, function(p) c(p[1]+p[2], p[1]*p[2]))
+#' e
+#' vcov(e)
+#'
+#' ## Label new parameters
+#' estimate(g, function(p) list("a1"=p[1]+p[2], "b1"=p[1]*p[2]))
+#' #'
+#' ## Multiple group
+#' m <- lvm(y~x)
+#' m <- baptize(m)
+#' d2 <- d1 <- sim(m,50,seed=1)
+#' e <- estimate(list(m,m),list(d1,d2))
+#' estimate(e) ## Wrong
+#' ee <- estimate(e, id=rep(seq(nrow(d1)), 2)) ## Clustered
+#' ee
+#' estimate(lm(y~x,d1))
+#'
+#' ## Marginalize
+#' f <- function(p,data)
+#'   list(p0=expit(p["(Intercept)"] + p["z"]*data[,"z"]),
+#'        p1=expit(p["(Intercept)"] + p["x"] + p["z"]*data[,"z"]))
+#' e <- estimate(g, f, average=TRUE)
+#' e
+#' estimate(e,diff)
+#' estimate(e,cbind(1,1))
+#'
+#' ## Clusters and subset (conditional marginal effects)
+#' d$id <- rep(seq(nrow(d)/4),each=4)
+#' estimate(g,function(p,data)
+#'          list(p0=expit(p[1] + p["z"]*data[,"z"])),
+#'          subset=d$z>0, id=d$id, average=TRUE)
+#'
+#' ## More examples with clusters:
+#' m <- lvm(c(y1,y2,y3)~u+x)
+#' d <- sim(m,10)
+#' l1 <- glm(y1~x,data=d)
+#' l2 <- glm(y2~x,data=d)
+#' l3 <- glm(y3~x,data=d)
+#'
+#' ## Some random id-numbers
+#' id1 <- c(1,1,4,1,3,1,2,3,4,5)
+#' id2 <- c(1,2,3,4,5,6,7,8,1,1)
+#' id3 <- seq(10)
+#'
+#' ## Un-stacked and stacked i.i.d. decomposition
+#' IC(estimate(l1,id=id1,stack=FALSE))
+#' IC(estimate(l1,id=id1))
+#'
+#' ## Combined i.i.d. decomposition
+#' e1 <- estimate(l1,id=id1)
+#' e2 <- estimate(l2,id=id2)
+#' e3 <- estimate(l3,id=id3)
+#' (a2 <- merge(e1,e2,e3))
+#'
+#' ## If all models were estimated on the same data we could use the
+#' ## syntax:
+#' ## Reduce(merge,estimate(list(l1,l2,l3)))
+#'
+#' ## Same:
+#' IC(a1 <- merge(l1,l2,l3,id=list(id1,id2,id3)))
+#'
+#' IC(merge(l1,l2,l3,id=TRUE)) # one-to-one (same clusters)
+#' IC(merge(l1,l2,l3,id=FALSE)) # independence
+#'
+#'
+#' # ------ influence function calculus -------
+#' a <- estimate(coef = c("a" = 0.5), IC = scale(rnorm(10), scale=FALSE), id = 1:10)
+#' b <- estimate(coef = c("b" = 0.8), IC = scale(rnorm(10), scale=FALSE), id = 1:10)
+#'
+#' e <- c(a, b) # merge
+#' merge(a, b)
+#' c(e1=a, b) # naming of par
+#' labels(e, c("p1", "p2")) # renaming parameters
+#' e["a"] # subset
+#' subset(e, "a")
+#'
+#' # pipes
+#' # c(a, b) |>
+#' #  transform(function(x) x^2) |>
+#' #  subset("a") |>
+#' #  labels("sq")
+#'
+#' # Parameter transformation with automatic calculation of derivatives
+#' a * b
+#' (3 * cos(a) / sqrt(b) + 1) / a
+#' expit(c(a,b))
+#' c(sum=sum(e), sum2=a+b,
+#'   prod=prod(e), prod2=a*b)
+#' e %*% e # inner prod.
+#' c(1, 2) %*% e
+#' c(pow = a^b)
+#' a^c(0.5, 2)
+#' c(b=e["a"] * e["b"] / a, also.b=e["b"])
+#'
+#' B <- rbind(c(1,-1), c(1,0), c(0,1))
+#' B %*% e
+#' e == 1 # wald-test, null-hypothesis H0: b=1
+#' e == c(1,2)
+#' B %*% e == 1
+#' @aliases estimate estimate.default merge.estimate
+#' @aliases estimate.mlm
+#' @seealso [estimate.array], [merge.estimate], [contr], [parsedesign],
+#'   [pairwise.diff], `summary.estimate`, `coef.estimate`, `vcov.estimate`,
+#'   `transform.estimate`, `labels.estimate`, `IC.estimate`
+#' @method estimate default
+#' @export
 estimate.default <- function(x=NULL, f=NULL, ..., data, id,
-                             iddata, stack=TRUE,
+                             stack=TRUE,
                              average=FALSE, subset,
-                             score.deriv,
                              level=0.95,
-                             IC=robust,
+                             IC=TRUE,
                              type=c("robust", "df", "mbn"),
+                             var.adj,
                              keep, use,
                              regex=FALSE, ignore.case=FALSE,
                              contrast, null, vcov, coef,
-                             robust=TRUE, df=NULL,
+                             df=NULL,
                              print=NULL, labels, label.width,
-                             only.coef=FALSE, back.transform=NULL,
-                             folds=0,
-                             cluster,
-                             R=0,
-                             null.sim) {
+                             only.coef=FALSE, back.transform=NULL) {
   cl <- match.call(expand.dots = TRUE)
   cal <- match.call()
   if ("iid" %in% names(cl)) {
     stop("The 'iid' argument is obsolete. Please use the 'IC' argument")
+  }
+  if ("R" %in% names(cl) || "null.sim" %in% names(cl)) {
+    stop("The 'R' and 'null.sim' arguments have been removed. ")
+  }
+  if ("robust" %in% names(cl)) {
+    warning(
+      "The 'robust' argument is deprecated and ignored. ",
+      "Robust standard errors are now always computed. ",
+      "Use the 'vcov' argument to compute model-based SEs."
+    )
   }
   if (!missing(use)) {
     p0 <- c(
@@ -330,7 +349,6 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
       pp <- c(pp, scale=x$scale)
     }
   }
-  if (!missing(cluster)) id <- cluster
   if (expr || is.character(f) || (is.numeric(f)
     && !is.matrix(f))) { ## || is.call(f)) {
     dots <- lapply(substitute(placeholder(...))[-1], function(x) x)
@@ -341,10 +359,15 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     ), dots)
     f <- do.call(parsedesign, args)
   }
+  contrast.transform <- TRUE  # parameter estimates should be transformed
+                              # according to contrast matrix
   if (!is.null(f) && !is.function(f)) {
     if (!(is.matrix(f) || is.vector(f)))
-      return(compare(x, f, ...))
-    contrast <- f
+      return(compare(x, f, ...)) ## LRT
+    if (missing(contrast)) contrast <- f
+    if (length(f)==1L && (is.logical(f)||is.numeric(f)) && !f) { # f = 0 or FALSE
+      contrast.transform <- FALSE # Wald-test and do not alter the parameter estimates
+    }
     f <- NULL
   }
 
@@ -356,22 +379,21 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
   alpha <- 1 - level
   alpha.str <- paste(c(alpha/2, 1 -alpha/2)*100, "", sep="%")
   nn <- NULL
-  if ((((is.logical(IC) && IC) || length(IC)>0) && robust) &&
+  if (((is.logical(IC) && IC) || length(IC)>0) &&
       (missing(vcov) || is.null(vcov) ||
        (is.logical(vcov) && vcov[1]==FALSE && !is.na(vcov[1])))) {
     ## If user supplied vcov, then don't estimate IC
-    if (missing(score.deriv)) {
-      if (!is.logical(IC)) {
-        ic_theta <- cbind(IC)
-        if (NCOL(ic_theta) != length(pp)) {
-          warning("Wrong dimension of influence function IC")
-        }
-        IC <- TRUE
-      } else {
-        suppressWarnings(ic_theta <- IC(x, folds=folds))
+    if (!is.logical(IC)) {
+      ic_theta <- cbind(IC)
+      if (NCOL(ic_theta) != length(pp)) {
+        warning("Wrong dimension of influence function IC")
       }
+      if (lava.options()$check.ic) {
+        check_ic_mean_zero(ic_theta)
+      }
+      IC <- TRUE
     } else {
-      suppressWarnings(ic_theta <- IC(x, score.deriv=score.deriv, folds=folds))
+      suppressWarnings(ic_theta <- IC(x))
     }
   } else {
     if (!is.null(x) && (missing(vcov) ||
@@ -461,14 +483,11 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
   if (!is.null(ic_theta) && (length(idstack)==nrow(ic_theta))) {
     rownames(ic_theta) <- idstack
   }
-  if (!robust) {
-    if (inherits(x, "lm") && family(x)$family=="gaussian"
-        && is.null(df))
-      df <- x$df.residual
-    if (missing(vcov) && !is.null(x))
-      suppressWarnings(vcov <- stats::vcov(x))
+  if (inherits(x, "lm") && family(x)$family == "gaussian"
+      && is.null(df) && !missing(vcov)) {
+    df <- x$df.residual
   }
-  if (!is.null(ic_theta) && robust && (missing(vcov) || is.null(vcov))) {
+  if (!is.null(ic_theta) && (missing(vcov) || is.null(vcov))) {
     V <- var_ic(ic_theta)
     ## Small-sample corrections for clustered data
     K <- NROW(ic_theta)
@@ -495,6 +514,27 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     if (tolower(type[1])=="df2") {
       V <- adj2*V
     }
+    if (tolower(type[1])%in%c("hc3", "hc4")) {
+      ic <- cbind(ic_theta)
+      S <- Inverse(crossprod(ic), tol=sqrt(.Machine$double.eps))
+      h_emp <- rowSums((ic %*% S) * ic) # empirical h, lev.
+      n <- nrow(ic)
+      ## h_emp <- pmin(h_emp, 0.99) * (n-1)/n  # Truncate leverage to prevent division by zero
+      if (tolower(type[1])=="hc3") {
+        ## phi_norm <- sqrt(rowSums(ic^2))
+        ## ex_kurt <- (mean((phi_norm - mean(phi_norm))^4) / var(phi_norm)^2) - 3
+        ## alpha <- exp(-max(0, ex_kurt) / 25)
+        v.alpha <- ifelse(missing(var.adj), 0.25, var.adj)
+        h <- v.alpha * h_emp + (1 - v.alpha) * (ncol(ic) / n)
+        adj <- 1 / (1 - h)
+      } else {
+        ## Cribari-Neto (2004)
+        delta <- pmin(1.5, n/ncol(ic) * h_emp)
+        adj <- 1 / (1 - h_emp)**delta
+      }
+      for (i in seq_len(NCOL(ic))) ic[, i] <- ic[, i] * adj
+      V <- var_ic(ic)
+    }
   } else {
     if (!missing(vcov)) {
       if (length(vcov) == 1 && is.na(vcov)) {
@@ -504,27 +544,6 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     } else {
       suppressWarnings(V <- stats::vcov(x))
     }
-  }
-
-  ## Simulate p-value
-  if (R>0) {
-    if (is.null(f)) stop("Supply function 'f'")
-    if (missing(null.sim)) null.sim <- rep(0, length(pp))
-    est <- f(pp)
-    if (is.list(est)) {
-      nn <- names(est)
-      est <- unlist(est)
-      names(est) <- nn
-    }
-    if (missing(labels)) {
-      labels <- colnames(rbind(est))
-    }
-    res <- simnull(R, f, mu = null.sim, sigma = V, labels = labels)
-    return(structure(res, class=c("estimate.sim", "sim"),
-                     coef=pp,
-                     vcov=V,
-                     f=f,
-                     estimate=est))
   }
 
   derivative <- NULL
@@ -703,26 +722,28 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
                   vcov=V, level=level, df=df)
     class(res) <- "list"
     res <- structure(c(res, list(compare=cc)), class="estimate")
-    if (!is.null(df)) {
-      pval <- with(cc, pt(abs(estimate[, 1]-null)/estimate[, 2],
-                          df=df, lower.tail=FALSE)*2)
-    } else {
-      pval <- with(cc, pnorm(abs(estimate[, 1]-null)/estimate[, 2],
-                             lower.tail=FALSE)*2)
-    }
-    res$coefmat <- with(cc, cbind(estimate, pval))
-    colnames(res$coefmat)[5] <- "P-value"
-    rownames(res$coefmat) <- cc$cnames
-    if (!is.null(res$IC)) {
-      res$IC <- res$IC%*%t(contrast)
-      colnames(res$IC) <- cc$cnames
-    }
-    res$compare$estimate <- NULL
-    res$coef <- res$compare$coef
-    res$vcov <- res$compare$vcov
+    if (contrast.transform) {
+      if (!is.null(df)) {
+        pval <- with(cc, pt(abs(estimate[, 1]-null)/estimate[, 2],
+                            df=df, lower.tail=FALSE)*2)
+      } else {
+        pval <- with(cc, pnorm(abs(estimate[, 1]-null)/estimate[, 2],
+                               lower.tail=FALSE)*2)
+      }
+      res$coefmat <- with(cc, cbind(estimate, pval))
+      colnames(res$coefmat)[5] <- "P-value"
+      rownames(res$coefmat) <- cc$cnames
+      if (!is.null(res$IC)) {
+        res$IC <- res$IC%*%t(contrast)
+        colnames(res$IC) <- cc$cnames
+      }
+      res$compare$estimate <- NULL
+      res$coef <- res$compare$coef
+      res$vcov <- res$compare$vcov
 
-    names(res$coef) <- strip_bracket(rownames(res$coefmat))
-    rownames(res$coefmat) <- names(res$coef)
+      names(res$coef) <- strip_bracket(rownames(res$coefmat))
+      rownames(res$coefmat) <- names(res$coef)
+    }
   }
 
   if (!is.null(back.transform)) {
@@ -755,142 +776,21 @@ estimate.default <- function(x=NULL, f=NULL, ..., data, id,
     object = res, str = labels, label.width = label.width
   )
 
-  if (only.coef) return(res$coefmat)
+  if (only.coef) {
+    .Deprecated(
+      msg = paste0(
+        "The 'only.coef' argument is deprecated. ",
+        "Use `parameter(estimate(...))` instead."
+      )
+    )
+    return(res$coefmat)
+  }
   res$call <- cal
   res$back.transform <- back.transform
   res$n <- nrow(data)
-  res$ncluster <- nrow(res$IC)
+  res$ncluster <- if (!is.null(ic_theta)) nrow(ic_theta) else nrow(data)
   res$derivative <- derivative
   return(structure(res, class="estimate"))
-}
-
-simnull <- function(R, f, mu, sigma, labels=NULL) {
-  X <- rmvn0(R, mu=mu, sigma=sigma)
-  est <- f(mu)
-  res <- apply(X, 1, f)
-  if (is.list(est)) {
-    nn <- names(est)
-    est <- unlist(est)
-    names(est) <- nn
-    res <- matrix(unlist(res), byrow=TRUE, ncol=length(est))
-  } else {
-    res <- t(rbind(res))
-  }
-  if (is.null(labels)) {
-    labels <- colnames(rbind(est))
-    if (is.null(labels))
-      labels <- paste0("p", seq_along(est))
-  }
-  colnames(res) <- labels
-  return(res)
-}
-
-##' @export
-estimate.estimate.sim <- function(x, f, R=0, labels, ...) {
-  atr <- attributes(x)
-  if (R>0) {
-    if (missing(f)) {
-      val <- simnull(R, f=atr[["f"]], mu=atr[["coef"]], sigma=atr[["vcov"]])
-      res <- rbind(x, val)
-      for (a in setdiff(names(atr), c("dim", "dimnames")))
-        attr(res, a) <- atr[[a]]
-    } else {
-      res <- simnull(R, f=f, mu=atr[["coef"]], sigma=atr[["vcov"]])
-      for (a in setdiff(names(atr), c("dim", "dimnames", "f")))
-        attr(res, a) <- atr[[a]]
-      attr(f, "f") <- f
-      est <- unlist(f(atr[["coef"]]))
-      if (missing(labels)) labels <- colnames(rbind(est))
-      attr(res, "estimate") <- est
-    }
-    if (!missing(labels)) colnames(res) <- labels
-    return(res)
-  }
-  if (missing(f)) {
-    if (!missing(labels)) colnames(res) <- labels
-    return(x)
-  }
-
-  est <- f(atr[["coef"]])
-  res <- apply(x, 1, f)
-  if (is.list(est)) {
-    res <- matrix(unlist(res), byrow=TRUE, ncol=length(est))
-  } else {
-    res <- t(rbind(res))
-  }
-  if (missing(labels)) {
-    labels <- colnames(rbind(est))
-    if (is.null(labels)) labels <- paste0("p", seq_along(est))
-  }
-  colnames(res) <- labels
-  for (a in setdiff(names(atr), c("dim", "dimnames", "f", "estimate")))
-    attr(res, a) <- atr[[a]]
-  attr(f, "f") <- f
-  attr(res, "estimate") <- unlist(est)
-  return(res)
-}
-
-##' @export
-print.estimate.sim <- function(x, level=.95, ...) {
-  quantiles <- c((1-level)/2, 1-(1-level)/2)
-  est <- attr(x, "estimate")
-  mysummary <- function(x, INDEX, ...) {
-    x <- as.vector(x)
-    res <- c(mean(x, na.rm=TRUE),
-             sd(x, na.rm=TRUE),
-             quantile(x, quantiles, na.rm=TRUE),
-             est[INDEX],
-             mean(abs(x)>abs(est[INDEX]), na.rm=TRUE))
-
-    names(res) <- c("Mean", "SD", paste0(quantiles*100, "%"),
-                    "Estimate", "P-value")
-    res
-  }
-  env <- new.env()
-  assign("est", attr(x, "estimate"), env)
-  environment(mysummary) <- env
-  print(summary(x, fun=mysummary, ...))
-}
-
-##' @export
-estimate.glm <- function(x, ...) {
-  estimate.default(x, ...)
-}
-
-##' @export
-IC.mlm <- function(x, ...) {
-  cc <- coef(x)
-  r <- residuals(x)
-  X <- model.matrix(x)
-  w <- weights(x)
-  if (!is.null(w)) {
-    r <- apply(r, 2, function(x) x * w)
-  }
-  q <- NCOL(cc)
-  ics <- lapply(1:q, function(i) {
-    apply(X, 2, function(x) x * r[, i])
-  })
-  res <- Reduce("cbind", ics)
-  colnames(res) <- names(pars(x))
-  return(res)
-}
-
-##' @export
-pars.mlm <- function(x, ...) {
-  cc <- coef(x)
-  q <- NCOL(cc)
-  nn <- unlist(lapply(
-    1:q, function(i)
-      paste0(colnames(cc)[i], ":", rownames(cc))
-  ))
-  coefs <- unlist(lapply(1:q, function(x) cc[, x, drop=TRUE]))
-  names(coefs) <- nn
-  coefs
-}
-
-##' @export
-estimate.mlm <- function(x, ...) {
-  estimate.default(x, coef=pars(x), ...)
 }
 
 ##' @export
@@ -931,7 +831,7 @@ print.estimate <- function(x, type=0L, digits=4L, width=25L,
                     function(x) toString(x, width=width)))
     )
   if (!std.error) cc <- cc[, -2, drop=FALSE]
-  if (!p.value) cc[, -ncol(cc), drop=FALSE]
+  if (!p.value) cc <- cc[, -ncol(cc), drop=FALSE]
 
   sep.pos <- c()
   if (missing(sep.which) && !is.null(x$model.index)) {
@@ -977,7 +877,7 @@ print.estimate <- function(x, type=0L, digits=4L, width=25L,
     print(cli::rule(width=min(cli::console_width(),60)))
     cat(x$compare$method[3], "\n")
     cat(paste(" ", x$compare$method[-(1:3)], collapse="\n"), "\n")
-    if (length(x$compare$method)>4) {
+    if (length(x$compare$method)>=4) {
       out <- character()
       out <- with(x$compare, c(out, paste(names(statistic),
                                           "=", format(round(statistic, 4)))))
@@ -991,7 +891,7 @@ print.estimate <- function(x, type=0L, digits=4L, width=25L,
   }
 }
 
-##' @export
+#' @export
 vcov.estimate <- function(object, list=FALSE, ...) {
   res <- object$vcov
   nn <- names(coef(object, ...))
@@ -1002,15 +902,14 @@ vcov.estimate <- function(object, list=FALSE, ...) {
   res
 }
 
-##' @export
+#' @export
 coef.estimate <- function(object,
                           mat=FALSE,
                           list=FALSE,
-                          messages=lava.options()$messages,
                           ...) {
   if (mat) return(object$coefmat)
-  if (messages > 0 && !is.null(object$back.transform)) {
-    message("Note: estimates on original scale (before 'back.transform')")
+  if (!is.null(object$back.transform)) {
+    warning("Return estimates on original scale (before 'back.transform')")
   }
   if (list && !is.null(object$model.index)) {
     return(lapply(object$model.index, function(x) object$coef[x]))
@@ -1018,30 +917,51 @@ coef.estimate <- function(object,
   object$coef
 }
 
-##' @export
-summary.estimate <- function(object, ...) {
-  p <- coef(object, messages=0)
-  test <- estimate(coef=p, vcov=vcov(object, messages=0),
-                   contrast=as.list(seq_along(p)), ...)
-  class(test) <- "NULL"
-  test$compare <- test$compare
-  object <- test[c("coef", "coefmat", "vcov", "call",
-                   "ncluster", "model.index", "compare")]
-  class(object) <- "summary.estimate"
-  object
+with_unique_warnings <- function(expr) {
+  # utility function that prevents the same warning being cast more than once
+  seen <- character(0)
+  withCallingHandlers(expr, warning = function(w) {
+    msg <- conditionMessage(w)
+    if (msg %in% seen) {
+      invokeRestart("muffleWarning")
+    } else {
+      seen <<- c(seen, msg)
+    }
+  })
 }
 
-##' @export
+#' @export
+summary.estimate <- function(object,
+                             contrast,
+                             ...) {
+  with_unique_warnings({
+    p <- coef(object)
+    if (missing(contrast)) contrast <- diag(1,nrow=length(p))#as.list(seq_along(p))
+    test <- estimate(coef=p,
+                     vcov=vcov(object),
+                     f = FALSE,
+                     contrast = contrast,
+                     ...)
+    class(test) <- "NULL"
+    test$compare <- test$compare
+    object <- test[c("coef", "coefmat", "vcov", "call",
+                     "ncluster", "model.index", "compare")]
+    class(object) <- "summary.estimate"
+    object
+  })
+}
+
+#' @export
 coef.summary.estimate <- function(object, ...) {
   object$coefmat
 }
 
-##' @export
+#' @export
 transform.estimate <- function(`_data`, ...) {
   estimate(`_data`, ...)
 }
 
-##' @export
+#' @export
 labels.estimate <- function(object, str, label.width, ...) {
   if (!missing(str)) {
     names(object$coef) <- str
@@ -1060,17 +980,17 @@ labels.estimate <- function(object, str, label.width, ...) {
   return(object)
 }
 
-##' @export
+#' @export
 parameter.estimate <- function(x, ...) {
   return(x$coefmat)
 }
 
-##' @export
+#' @export
 print.summary.estimate <- function(x, ...) {
   print.estimate(x, type=2L, ...)
 }
 
-##' @export
+#' @export
 IC.estimate <- function(x, ...) {
   if (is.null(x$IC)) return(NULL)
   dimn <- dimnames(x$IC)
@@ -1082,7 +1002,7 @@ IC.estimate <- function(x, ...) {
   structure(x$IC, dimnames=dimn)
 }
 
-##' @export
+#' @export
 model.frame.estimate <- function(formula, ...) {
   NULL
 }
