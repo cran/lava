@@ -52,7 +52,7 @@ e2
 
 ## ----spline_ci----------------------------------------------------------------
 p <- cbind(u1=newd$u1,
-	  estimate(e2,f=function(p) predict(e2,p=p,newdata=newd))$coefmat)
+  estimate(e2,f=function(p)                    predict(e2,p=p,newdata=newd))$coefmat)
 head(p)
 
 ## ----figpred2-----------------------------------------------------------------

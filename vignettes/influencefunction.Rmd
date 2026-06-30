@@ -254,7 +254,7 @@ coef(e)
 ## ## Asymptotic (robust) variance estimate
 vcov(e)
 ## Matrix with estimates and confidence limits
-estimate(e, null=0, level = 0.99) |> parameter()
+summary(e, level = 0.99) |> parameter()
 ## Influence curve
 IC(e) |> head()
 ## Join estimates
@@ -445,7 +445,7 @@ As we have access to the joint asymptotic distribution we can for example test
 for whether the odds-ratio is the same for the two responses:
 
 ```{r hypo1}
-estimate(e, cbind(0,1,0,-1), null=0)
+summary(estimate(e), contrast=cbind(0,1,0,-1), null=0)
 ```
 More details an be found in the Section on [hypothesis testing](#linear-contrasts-and-hypothesis-testing).
 
@@ -815,10 +815,11 @@ $z = \arctanh(\widehat{\rho}) =
 \frac{1}{2}\log\left(\frac{1+\widehat{\rho}}{1-\widehat{\rho}}\right)$,
 confidence limits with general better coverage can be obtained
 ```{r tanh}
-estimate(atanh(rho), back.transform = tanh)
+estimate(atanh(rho)) |>
+  summary(transform = tanh)
 ```
 The confidence limits are calculated on the $\arctanh$-scale and transformed
-back to the original correlation scale via the `back.transform` argument.
+back to the original correlation scale via the `transform` argument of the `summary` method.
 In this case, where the estimates are far away from the boundary of the parameter space, the variance
 stabilizing transform does almost not have any impact, and the confidence limits
 agrees with the original symmetric confidence limits.
@@ -855,7 +856,7 @@ estimate(gg, B)
 
 The $\bm{b}_0$ vector (default assumed to be zero) can be specified via the `null` argument
 ```{r estcontrast1}
-estimate(gg, B, null=1)
+summary(estimate(gg, B), null=1)
 ```
 
 For testing multiple hypotheses we use that
@@ -873,7 +874,7 @@ estimate(gg, B)
 
 Such linear statistics can also be specified directly as expressions of the parameter names
 ```{r}
-estimate(gg, a + a.1, 2*a - a.2, a, null=c(2,1,1))
+estimate(gg, a + a.1, 2*a - a.2, a) |> summary(null=c(2,1,1))
 ```
 
 We refer to the function `lava::contr`  and `lava::parsedesigns` for defining contrast matrices.
@@ -885,7 +886,7 @@ comparisons of different exposure estimates:
 
 ```{r pairwise.diff}
 pairwise.diff(3)
-estimate(gg, pairwise.diff(3), null=c(1,1,1), use=c(2,4,6))
+summary(estimate(gg, pairwise.diff(3), use=c(2,4,6)), null=c(1,1,1))
 ```
 
 When conducting multiple tests each at a nominal-level of $\alpha$ the overall
@@ -913,8 +914,8 @@ in [@RitzPipper_multcomp] the joint distribution of $Z_{1},\ldots,Z_{p}$
 can be estimated from the IFs. This is implemented in the `alpha_zmax` method
 
 ```{r pcorrect, eval=has_mets }
-gg0 <- estimate(gg, use="^a", regex=TRUE, null=rep(.8, 3))
-alpha_zmax(gg0)
+gg0 <- estimate(gg, use="^a", regex=TRUE)
+alpha_zmax(gg0, null=rep(.8, 3))
 ```
 
 While this always yields a more powerful test compared to Bonferroni
@@ -931,7 +932,7 @@ the composite hypothesis tests. Unfortunately, this only works for relatively
 few comparisons as the number of tests grows exponentially.
 
 ```{r closedtesting, eval=has_mets}
-closed_testing(gg0, test = test_wald)
+summary(closed_testing(gg0, test = test_wald))
 ```
 
 
@@ -1074,10 +1075,11 @@ scale:
 ```{r est-ate-or}
 est <- with(potential_outcomes, logit(`y(1)`)-logit(`y(0)`))
 est
-transform(est, labels="OR", back.transform=exp)
+transform(est, labels="OR") |>
+  summary(transform = exp)
 #logor <- function(p) logit(p[2]) - logit(p[1])
 #transform(potential_outcomes, logor, labels="logOR")
-#transform(potential_outcomes, logor, labels="OR", back.transform=exp)
+#transform(potential_outcomes, logor, labels="OR") |> summary(transform = exp)
 ```
 
 We refer to the `targeted` package [@r-targeted] for a general implementation

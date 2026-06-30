@@ -1,7 +1,7 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.9.1
+Version: 1.9.2
 Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
        person("Benedikt", "Sommer", role = "ctb"),
 		   person("Brice", "Ozenne", role = "ctb"),
@@ -38,6 +38,6 @@ ByteCompile: yes
 Encoding: UTF-8
 Config/roxygen2/version: 8.0.0
 NeedsCompilation: no
-Packaged: 2026-05-14 16:46:12 UTC; kkzh
+Packaged: 2026-06-30 13:49:33 UTC; kkzh
 Repository: CRAN
-Date/Publication: 2026-05-14 21:40:14 UTC
+Date/Publication: 2026-06-30 16:40:11 UTC

@@ -12,16 +12,13 @@ pzmax <- function(alpha, S) {
 }
 
 ##' @export
-alpha_zmax <- function(object, method, alpha = 0.05, ...) {
-  if (!inherits(object, "estimate")) {
-    stop("Expected an 'estimate' object")
+alpha_zmax <- function(object, alpha = 0.05, ...) {
+  if (!inherits(object, c("estimate", "summary.estimate"))) {
+    stop("Expected an 'estimate' or 'summary.estimate' object")
   }
-  dots <- list(...)
-  null <- object$compare$null
-  if (!("null" %in% names(dots)) && !is.null(null)) {
-    dots$null <- null
+  if (!inherits(object, "summary.estimate")) {
+    object <- summary(object, ...)
   }
-  object <- do.call(estimate, c(list(object), dots))
   est <- parameter(object)[, c(1, 5), drop = FALSE]
   padj <- pzmax(est[, 2], vcov(object))
   res <- cbind(est, padj)
@@ -83,7 +80,9 @@ alpha_zmax <- function(object, method, alpha = 0.05, ...) {
 ##' adj$p.value
 ##' summary(adj)
 closed_testing <- function(object, test = test_wald, ...) {
-  if (!inherits(object, "estimate")) stop("`estimate` object needed")
+  if (!inherits(object, c("estimate", "summary.estimate"))) {
+    stop("`estimate` or `summary.estimate` object needed")
+  }
   idx <- seq_along(coef(object))
   if (length(idx) > 15)
     stop("Too many tests. Consider some other adjustment method")
@@ -124,7 +123,6 @@ closed_testing <- function(object, test = test_wald, ...) {
     class = "test_adj"
   )
 }
-
 
 #' @export
 print.test_adj <- function(x, ...) {
@@ -167,13 +165,15 @@ test_wald <- function(par,
                       vcov,
                       null = NULL,
                       index = NULL) {
-  if (!inherits(par, "estimate")) {
+  if (!inherits(par, c("estimate", "summary.estimate"))) {
     par <- lava::estimate(par=par, vcov=vcov)
   }
+  np <- length(coef(par))
   if (is.null(null)) {
-    null <- rep(0, length(coef(par)))
+    null <- 0
   }
-  B <- diag(length(coef(par)))
+  null <- rep(null, length.out = np)
+  B <- diag(1, nrow = np)
   if (!is.null(index)) {
     if (length(coef(par)) < length(index)) stop("wrong `index`")
     null <- null[index]

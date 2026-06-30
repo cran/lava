@@ -1,6 +1,22 @@
 # ---- Merge, subset ------------------------------------------------------
 
-##' @export
+#' Merge estimate objects
+#'
+#' @param x Object of class `estimate`
+#' @param y Object of class `estimate`
+#' @param ... Additional `estimate` objects or arguments
+#' @param id Optional cluster variable
+#' @param paired If TRUE a paired (matched) analysis is performed
+#' @param labels Optional character vector of labels for the merged estimates
+#' @param keep Optional character vector of parameter names to keep
+#' @param subset Optional character vector of parameter names to subset
+#' @param regex If TRUE, `keep` and `subset` are treated as regular expressions
+#' @param sep Separator used for labeling
+#' @param drop.ic If TRUE, drop the influence function from the result
+#' @param ignore.case If TRUE, case is ignored in `keep`/`subset` matching
+#' @seealso [c.estimate()]
+#' @return Object of class `estimate` (see [estimate.default]).
+#' @export
 merge.estimate <- function(x,y,...,
                            id,
                            paired=FALSE,
@@ -22,10 +38,6 @@ merge.estimate <- function(x,y,...,
         objects[[i]]$IC <- NULL
       }
     }
-    trans <- unlist(lapply(
-      objects, function(x) !is.null(x[["back.transform"]])
-    ))
-    if (any(trans)) warning("back-transformation ignored (`back.transform`)")
     if (length(nai <- names(objects)=="NA")>0)
     names(objects)[which(nai)] <- ""
     if (!missing(subset)) {
@@ -180,42 +192,70 @@ merge.estimate <- function(x,y,...,
     return(res)
 }
 
-##' @export
+#' @export
 "%++%.estimate" <- function(x, ...) {
   merge(x, ...)
 }
 
-##' @export
-"c.estimate" <- function(...) {
+#' Concatenate estimate objects
+#'
+#' When all arguments are `estimate` objects, they are merged into a single
+#' `estimate` object. When some arguments are not `estimate` objects but are
+#' named numeric scalars/vectors, the merged `estimate` object is returned
+#' with an `"extra"` attribute containing the provided values. This is useful
+#' for bundling auxiliary per-iteration information (e.g., convergence status)
+#' alongside an estimate for use with [sim.default()].
+#'
+#' @param ... `estimate` objects and/or named numeric values
+#' @param as.list if TRUE the returned object will be of class `list` and not
+#'   an `estimate` object.
+#' @return An `estimate` object. If extra named numeric values were provided,
+#'   the result carries an `"extra"` attribute (a named numeric vector).
+#' @seealso [sim.default()] [merge.estimate()]
+#' @details arguments `drop.ic`, `paired`, `sep` are passed to [merge.estimate]
+#' @examples
+#' e <- estimate(coef = c(a = 1, b = 2), vcov = diag(2) * 0.1)
+#' # Bundle estimate with extra information
+#' res <- c(e, converged = 1, niter = 10)
+#' attr(res, "extra")
+#' @export
+c.estimate <- function(..., as.list = FALSE) {
   args <- list(...)
-  n_args <- length(args)
-  # Handle names robustly
-  arg_names <- names(args)
-  # If names are NULL, create a vector of empty strings
-  if (is.null(arg_names)) {
-    arg_names <- character(n_args)
-  }
-  is_estimate <- unlist(lapply(args, function(x)
-    inherits(x, c("estimate"))
-    ))
-  merge_args <- c("drop.ic", "paired", "sep")
-  not_merge_arg <- which(arg_names %ni% merge_args)
-  if (!all(is_estimate[not_merge_arg])) { # fallback to default concatenation
-    cl <- class(args[[1]])
+  if (as.list) { # fallback to default concatenation
     class(args[[1]]) <- "list"
     return(do.call(c, args))
   }
-  lab <- arg_names[not_merge_arg]
+  # Handle names robustly
+  arg_names <- names(args) %||% character(length(args))
+  is_estimate <- vapply(args, inherits, logical(1L), "estimate")
+  merge_args <- c("drop.ic", "paired", "sep")
+
+  not_merge_arg <- which(arg_names %ni% merge_args)
+  est_idx <- which(is_estimate)
+  extra_idx <- setdiff(not_merge_arg, est_idx)
+  lab <- arg_names[est_idx]
+  # Collect extras from existing estimate objects (propagate "extra" attribute)
+  extras_existing <- unlist(
+    lapply(args[est_idx], function(x) attr(x, "extra"))
+  )
+  # Extract extra (non-estimate, non-merge) arguments
+  extra <- c(extras_existing, if (length(extra_idx) > 0L) unlist(args[extra_idx]))
+  # Blank non-merge names (estimate labels handled later, extras removed)
   arg_names[not_merge_arg] <- ""
   names(args) <- arg_names
+  args[extra_idx] <- NULL
+  # Merge estimate objects and apply potential merge_args
   res <- do.call(merge, args)
+  # Add new labels
   newlabels <- names(coef(res))
   if (!is.null(lab)) {
     idx <- which(lab != "")
     newlabels[idx] <- lab[idx]
-    return(labels(res, newlabels))
+    res <- labels(res, newlabels)
   }
-  return(res)
+  # Attach extra as attribute (same pattern as c.summary.estimate)
+  if (length(extra) > 0L) attr(res, "extra") <- extra
+  res
 }
 
 #' @export
@@ -258,6 +298,18 @@ with.estimate <- function(data, expr, ...) {
   eval_env$data <- data
   # Evaluate in calling environment so non-estimate symbols still resolve
   eval(expr_new, envir = eval_env)
+}
+
+# ---- id / cluster  ------------------------------------------------------
+
+#' @export
+index.estimate <- function(x, ...) {
+  return(x[["id"]])
+}
+
+#' @export
+`index<-.estimate` <- function(x, ..., value) {
+  estimate(x, id=value, ...)
 }
 
 # ---- Trigonometric Functions --------------------------------------------
@@ -577,12 +629,12 @@ operator_grad <- function(x, y, x_const, y_const, dx, dy) {
     }, ...)
 }
 
-# ---- == ---- ------------------------------------------------------------
+# ---- == / hypothesis ----------------------------------------------------
 
 #' @export
 "==.estimate" <- function(e1, e2) {
-  if (!(is.numeric(e1) || is.numeric(e2))) stop("numeric comperator needed")
+  if (!(is.numeric(e1) || is.numeric(e2))) stop("numeric comparator needed")
   null <- if (is.numeric(e1)) e1 else e2
   e <- if (is.numeric(e1)) e2 else e1
-  estimate(e, null=null)
+  summary(e, null = null)
 }

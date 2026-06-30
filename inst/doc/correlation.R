@@ -59,7 +59,8 @@ estimate(e, function(p) p['y1~~y2']/(p['y1~~y1']*p['y2~~y2'])^.5)
 correlation(e)
 
 ## -----------------------------------------------------------------------------
-estimate(e, function(p) atanh(p['y1~~y2']/(p['y1~~y1']*p['y2~~y2'])^.5), back.transform=tanh)
+estimate(e, function(p) atanh(p['y1~~y2']/(p['y1~~y1']*p['y2~~y2'])^.5)) |>
+  summary(transform=tanh)
 
 ## ----constraints--------------------------------------------------------------
 m2 <- m |>
@@ -75,7 +76,7 @@ e2 <- estimate(m2, d)
 e2
 
 ## ----deltaconstraints---------------------------------------------------------
-estimate(e2, 'z', back.transform=tanh)
+estimate(e2, "z") |> labels("rho") |> summary(transform=tanh)
 
 ## ----constraints2-------------------------------------------------------------
 m2 <- lvm() |>
@@ -86,7 +87,7 @@ e2 <- estimate(m2, data=d)
 e2
 
 ## ----e2backtransform----------------------------------------------------------
-estimate(e2, 'z', back.transform=tanh)
+estimate(e2, 'z') |> summary(transform=tanh)
 
 ## ----profileci, cache=TRUE----------------------------------------------------
 tanh(confint(e2, 'z', profile=TRUE))
@@ -110,7 +111,7 @@ e3 <- estimate(m3, d)
 e3
 
 ## ----cache=TRUE, eval=mets----------------------------------------------------
-estimate(e3, 'z', back.transform=tanh)
+summary(estimate(e3, 'z'), transform=tanh)
 
 ## ----cache=TRUE, eval=mets----------------------------------------------------
 m3b <- lvm() |>
@@ -124,7 +125,7 @@ e3b
 e3b
 
 ## ----cache=TRUE, eval=mets----------------------------------------------------
-estimate(e3b, 'z', back.transform=tanh)
+summary(estimate(e3b, 'z'), transform=tanh)
 
 ## ----profilecens, cache=TRUE, eval=mets---------------------------------------
 tanh(confint(e3b, 'z', profile=TRUE))

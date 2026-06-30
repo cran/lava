@@ -72,7 +72,7 @@ coef(e)
 ## ## Asymptotic (robust) variance estimate
 vcov(e)
 ## Matrix with estimates and confidence limits
-estimate(e, null=0, level = 0.99) |> parameter()
+summary(e, level = 0.99) |> parameter()
 ## Influence curve
 IC(e) |> head()
 ## Join estimates
@@ -138,7 +138,7 @@ e <- merge(g1, g2)
 summary(e)
 
 ## ----hypo1--------------------------------------------------------------------
-estimate(e, cbind(0,1,0,-1), null=0)
+summary(estimate(e), contrast=cbind(0,1,0,-1), null=0)
 
 ## ----glmmargmis---------------------------------------------------------------
 g2 <- glm(y2 ~ 1, family = binomial, data = dw)
@@ -284,7 +284,8 @@ rho <- c(rho = v12 / sqrt(v1 * v2))
 rho
 
 ## ----tanh---------------------------------------------------------------------
-estimate(atanh(rho), back.transform = tanh)
+estimate(atanh(rho)) |>
+  summary(transform = tanh)
 
 ## ----estglmmerge--------------------------------------------------------------
 g <- lapply(
@@ -299,7 +300,7 @@ B <- cbind(0,1, 0,-1, 0,0)
 estimate(gg, B)
 
 ## ----estcontrast1-------------------------------------------------------------
-estimate(gg, B, null=1)
+summary(estimate(gg, B), null=1)
 
 ## ----estcontrast2-------------------------------------------------------------
 B <- rbind(cbind(0,1, 0,-1, 0,0),
@@ -307,21 +308,21 @@ B <- rbind(cbind(0,1, 0,-1, 0,0),
 estimate(gg, B)
 
 ## -----------------------------------------------------------------------------
-estimate(gg, a + a.1, 2*a - a.2, a, null=c(2,1,1))
+estimate(gg, a + a.1, 2*a - a.2, a) |> summary(null=c(2,1,1))
 
 ## ----contr--------------------------------------------------------------------
 contr(list(1, c(1, 2), c(1, 4)), n = 5)
 
 ## ----pairwise.diff------------------------------------------------------------
 pairwise.diff(3)
-estimate(gg, pairwise.diff(3), null=c(1,1,1), use=c(2,4,6))
+summary(estimate(gg, pairwise.diff(3), use=c(2,4,6)), null=c(1,1,1))
 
 ## ----pcorrect, eval=has_mets--------------------------------------------------
-gg0 <- estimate(gg, use="^a", regex=TRUE, null=rep(.8, 3))
-alpha_zmax(gg0)
+gg0 <- estimate(gg, use="^a", regex=TRUE)
+alpha_zmax(gg0, null=rep(.8, 3))
 
 ## ----closedtesting, eval=has_mets---------------------------------------------
-closed_testing(gg0, test = test_wald)
+summary(closed_testing(gg0, test = test_wald))
 
 ## ----estpred------------------------------------------------------------------
 g <- glm(y1 ~ a + x1 + w, data=dw, family=binomial)
@@ -360,10 +361,11 @@ estimate(potential_outcomes, cbind(-1, 1), labels="ate")
 ## ----est-ate-or---------------------------------------------------------------
 est <- with(potential_outcomes, logit(`y(1)`)-logit(`y(0)`))
 est
-transform(est, labels="OR", back.transform=exp)
+transform(est, labels="OR") |>
+  summary(transform = exp)
 #logor <- function(p) logit(p[2]) - logit(p[1])
 #transform(potential_outcomes, logor, labels="logOR")
-#transform(potential_outcomes, logor, labels="OR", back.transform=exp)
+#transform(potential_outcomes, logor, labels="OR") |> summary(transform = exp)
 
 ## ----est-cate-----------------------------------------------------------------
 # amod <- targeted::learner_glm(a ~ w, family=binomial)
