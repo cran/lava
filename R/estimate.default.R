@@ -160,7 +160,7 @@ estimate <- function(x, ...) UseMethod("estimate")
 #'
 #' ## Simulation from logistic regression model
 #' m <- lvm(y~x+z);
-#' distribution(m,y~x) <- binomial.lvm("logit")
+#' distribution(m,y~x) <- dist_bernoulli("logit")
 #' d <- sim(m,1000)
 #' g <- glm(y~z+x,data=d,family=binomial())
 #' g0 <- glm(y~1,data=d,family=binomial())
@@ -295,7 +295,7 @@ estimate <- function(x, ...) UseMethod("estimate")
 #' @aliases estimate estimate.default
 #' @aliases estimate.mlm
 #' @seealso [estimate.array], [merge.estimate], [contr], [parsedesign],
-#'   [pairwise.diff], [c.estimate], [summary.estimate],
+#'   [pairwise_diff], [c.estimate], [summary.estimate],
 #'   `coef.estimate`,
 #'   `vcov.estimate`, `transform.estimate`, `labels.estimate`,
 #' @return Object of class `estimate` with the following elements:
@@ -398,9 +398,13 @@ estimate.default <- function(x=NULL, f=NULL, ...,
   if (missing(data))
     data <- tryCatch(model.frame(x), error=function(...) NULL)
   nn <- NULL
-  if (((is.logical(IC) && IC) || length(IC)>0) &&
-      (missing(vcov) || is.null(vcov) ||
-       (is.logical(vcov) && vcov[1]==FALSE && !is.na(vcov[1])))) {
+  if (
+    (
+      (is.logical(IC) && IC) || (length(IC)>0 && !is.logical(IC))) &&
+    (missing(vcov) ||
+      is.null(vcov) ||
+      (is.logical(vcov) && vcov[1]==FALSE && !is.na(vcov[1])))
+    ) {
     ## If user supplied vcov, then don't estimate IC
     if (!is.logical(IC)) {
       ic_theta <- cbind(IC)
@@ -500,6 +504,10 @@ estimate.default <- function(x=NULL, f=NULL, ...,
       if (is.null(attributes(ic_theta)$N)) {
         attributes(ic_theta)$N <- N
       }
+      ## Reorder to original order: unique(id)
+      ord <- match(unique(id), idstack)
+      ic_theta <- ic_theta[ord, , drop=FALSE]
+      idstack <- idstack[ord]
     } else idstack <- id
   } else {
     if (!is.null(data)) idstack <- rownames(data)

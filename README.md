@@ -1,10 +1,6 @@
 
-- [Latent Variable Models (`lava`)](#latent-variable-models-lava)
-  - [Installation](#installation)
-  - [Citation](#citation)
-  - [Examples](#examples)
-
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/kkholst/lava/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/kkholst/lava/actions/workflows/R-CMD-check.yaml)
@@ -26,6 +22,12 @@ and non-linear latent variable models (Holst and Budtz-Joergensen (2020)
 for graph exploration (d-separation, back-door criterion), simulation of
 general non-linear latent variable models, and estimation of influence
 functions for a broad range of statistical models.
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Citation](#citation)
+- [Examples](#examples)
 
 ## Installation
 
@@ -122,8 +124,8 @@ vcov(e) # joint distribution
 #> a 0.09000000 0.01469326
 #> b 0.01469326 0.09000000
 summary(e, null=c(0, 0))
-#> Call: estimate.default(f = FALSE, contrast = contrast, null = ..1, 
-#>     vcov = vcov(object), coef = p)
+#> Call: estimate.default(data = NULL, id = id, coef = coefs, IC = ic0, 
+#>     stack = FALSE, keep = keep)
 #> ────────────────────────────────────────────────────────────
 #>   Estimate Std.Err     2.5% 97.5%  P-value
 #> a      0.5     0.3 -0.08799 1.088 0.095581
@@ -191,17 +193,10 @@ B %*% e
 #> [a] - [b]     -0.3  0.3881 -1.06064 0.4606 0.439512
 #> a              0.5  0.3000 -0.08799 1.0880 0.095581
 #> b              0.8  0.3000  0.21201 1.3880 0.007661
-#> ────────────────────────────────────────────────────────────
-#> Null Hypothesis: 
-#>   [a] - [b] = 0
-#>   [a] = 0
-#>   [b] = 0 
-#>  
-#> chisq = 8.6688, df = 2, p-value = 0.01311
 plot(B %*% e)
 ```
 
-![](man/figures/estimate-contrast-1.svg)<!-- -->
+<img src="man/figures/estimate-contrast-1.svg" alt="forest plot" style="display: block; margin: auto;" />
 
 ### Structural Equation Model
 
@@ -354,7 +349,7 @@ onerun <- function(...) {
 }
 val <- sim(onerun, 100)
 summary(val, estimate=1:4, se=5:8, short=TRUE)
-#> 100 replications                 Time: 7.381s
+#> 100 replications                 Time: 2.154s
 #> 
 #>         Total.Estimate Direct.Estimate Indirect.Estimate S~x~z.Estimate
 #> Mean           1.99533         1.00468           0.99066        0.99066

@@ -1,7 +1,7 @@
 Package: lava
 Type: Package
 Title: Latent Variable Models
-Version: 1.9.2
+Version: 1.9.3
 Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
        person("Benedikt", "Sommer", role = "ctb"),
 		   person("Brice", "Ozenne", role = "ctb"),
@@ -31,13 +31,15 @@ Imports: cli, future.apply, graphics, grDevices, methods, numDeriv,
 Suggests: KernSmooth, Rgraphviz, data.table, ellipse, fields, future,
         geepack, graph, knitr, rmarkdown, igraph (>= 0.6), lavaSearch2,
         lme4 (>= 1.1.35.1), MASS, Matrix (>= 1.6.3), mets (>= 1.1),
-        nlme, optimx, polycor, quantreg, rgl, svglite, targeted (>=
-        0.4), testthat (>= 0.11), vdiffr, visNetwork
-VignetteBuilder: knitr,rmarkdown
+        nlme, optimx, polycor, quantreg, quarto, rgl, svglite, targeted
+        (>= 0.4), testthat (>= 0.11), vdiffr, visNetwork
+VignetteBuilder: quarto
+SystemRequirements: Quarto command line tools
+        (https://github.com/quarto-dev/quarto-cli).
 ByteCompile: yes
 Encoding: UTF-8
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0
 NeedsCompilation: no
-Packaged: 2026-06-30 13:49:33 UTC; kkzh
+Packaged: 2026-08-19 20:15:19 UTC; kkzh
 Repository: CRAN
-Date/Publication: 2026-06-30 16:40:11 UTC
+Date/Publication: 2026-08-20 09:20:18 UTC
