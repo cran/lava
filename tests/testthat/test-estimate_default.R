@@ -1,4 +1,4 @@
-context("estimate.default")
+# estimate.default
 
 test_that("estimate.default misc", {
     m <- lvm(c(y1,y2)~x+z,y1~~y2)
@@ -8,7 +8,7 @@ test_that("estimate.default misc", {
     l1 <- lm(y1~x+z,d)
     l2 <- lm(y2~x+z,d)
     ll <- merge(l1,l2)
-    testthat::expect_equivalent(ll$coefmat[,1],c(coef(l1),coef(l2)))
+    testthat::expect_equal(ll$coefmat[,1],c(coef(l1),coef(l2)), ignore_attr = TRUE)
 
     e1 <- estimate(l1)
     f1 <- estimate(l1,function(x) x^2, use=2)
@@ -16,11 +16,11 @@ test_that("estimate.default misc", {
 
     e1b <- estimate(NULL,coef=coef(l1),vcov=vcov(estimate(l1)))
     e1c <- estimate(NULL,coef=coef(l1), IC=IC(l1))
-    testthat::expect_equivalent(vcov(e1b),vcov(e1c))
-    testthat::expect_equivalent(var_ic(IC(e1)), vcov(e1b))
+    testthat::expect_equal(vcov(e1b),vcov(e1c), ignore_attr = TRUE)
+    testthat::expect_equal(var_ic(IC(e1)), vcov(e1b), ignore_attr = TRUE)
 
     f1b <- estimate(e1b,function(x) x^2)
-    testthat::expect_equivalent(f1b$coefmat[2,,drop=FALSE],f1$coefmat)
+    testthat::expect_equal(f1b$coefmat[2,,drop=FALSE],f1$coefmat, ignore_attr = TRUE)
 
     h1 <- estimate(l1,cbind(0,1,0))
     testthat::expect_true(h1$coefmat[,5]==e1$coefmat["x",5])
@@ -33,25 +33,26 @@ test_that("estimate.default misc", {
         l <- lm(y~x+z,dd)
         g1 <- estimate(l,id=dd$id)
         g2 <- geepack::geeglm(y~x+z,id=dd$id,data=dd)
-        testthat::expect_equivalent(g1$coefmat[,c(1,2,5)],
-                          as.matrix(summary(g2)$coef[,c(1,2,4)]))
+        testthat::expect_equal(g1$coefmat[,c(1,2,5)],
+                          as.matrix(summary(g2)$coef[,c(1,2,4)]), ignore_attr = TRUE)
     }
 
     ## Several parameters
     e1d <- estimate(l1, function(x) list("X"=x[2],"Z"=x[3]))
-    testthat::expect_equivalent(e1d$coefmat,e1$coefmat[-1,])
+    testthat::expect_equal(e1d$coefmat,e1$coefmat[-1,], ignore_attr = TRUE)
 
     testthat::expect_true(rownames(estimate(l1, function(x) list("X"=x[2],"Z"=x[3]),keep="X")$coefmat)=="X")
     testthat::expect_true(rownames(estimate(l1, labels=c("a"), function(x) list("X"=x[2],"Z"=x[3]),keep="X")$coefmat)=="a")
 
 
-    a0 <- estimate(l1,function(p,data) p[1]+p[2]*data[,"x"], average=TRUE)
-    a1 <- estimate(l1,function(p,data) p[1]+p[2]*data[,"x"]+p[3], average=TRUE)
+    a0 <- expectation(object=l1,function(p,data) p[1]+p[2]*data[,"x"])
+    a1 <- expectation(object=l1,function(p,data) p[1]+p[2]*data[,"x"]+p[3])
     a <- merge(a0,a1,labels=c("a0","a1"))
     estimate(a,diff)
-    testthat::expect_equivalent(estimate(a,diff)$coefmat,e1$coefmat[3,,drop=FALSE])
+    testthat::expect_equal(estimate(a,diff)$coefmat,e1$coefmat[3,,drop=FALSE], ignore_attr = TRUE)
 
 })
+
 
 # Helper function to manually compute Wald statistic
 compute_wald <- function(B, p, S, null) {
@@ -63,18 +64,17 @@ compute_wald <- function(B, p, S, null) {
 
 set.seed(1)
 # Generate mean-zero random IC matrix (for internal testing)
-center_ic <- function(n, p = 1) {
+gen_center_ic <- function(n, p = 1) {
   x <- matrix(rnorm(n * p), n, p)
   scale(x, center = TRUE, scale = FALSE)
 }
-a1 <- estimate(coef = 1,   IC = center_ic(10), id = 1:10, labels = "a1")
-a2 <- estimate(coef = 2,   IC = center_ic(10), id = 1:10, labels = "a2")
-a3 <- estimate(coef = 3,   IC = center_ic(10), id = 1:10, labels = "a3")
-a4 <- estimate(coef = 4,   IC = center_ic(10), id = 1:10, labels = "a4")
+a1 <- estimate(coef = 1,   IC = gen_center_ic(10), id = 1:10, labels = "a1")
+a2 <- estimate(coef = 2,   IC = gen_center_ic(10), id = 1:10, labels = "a2")
+a3 <- estimate(coef = 3,   IC = gen_center_ic(10), id = 1:10, labels = "a3")
+a4 <- estimate(coef = 4,   IC = gen_center_ic(10), id = 1:10, labels = "a4")
 a  <- merge(a1, a2)           # 2-dimensional
 a3d <- merge(a1, a2, a3)      # 3-dimensional
 a4d <- merge(a1, a2, a3, a4)  # 4-dimensional
-
 
 test_that("summary.estimate compared with estimate", {
   B <- rbind(c(1,-1, 0), c(0, 1,-1), c(1,0,-1))
@@ -135,7 +135,7 @@ test_that("1D: Identity contrast, null = 0", {
   p <- coef(a1)
   S <- vcov(a1)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("1D: Identity contrast, null = 1", {
@@ -145,7 +145,7 @@ test_that("1D: Identity contrast, null = 1", {
   p <- coef(a1)
   S <- vcov(a1)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("1D: Scalar contrast (scaling), null = 0", {
@@ -155,7 +155,7 @@ test_that("1D: Scalar contrast (scaling), null = 0", {
   p <- coef(a1)
   S <- vcov(a1)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("2D: Identity contrast, null = c(0, 0)", {
@@ -165,7 +165,7 @@ test_that("2D: Identity contrast, null = c(0, 0)", {
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("2D: Identity contrast, null equals true coefs", {
@@ -175,7 +175,7 @@ test_that("2D: Identity contrast, null equals true coefs", {
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
   # Wald statistic should be very small (close to 0)
   # since null = true coefs
   expect_lt(e$compare$statistic, 1e-10)
@@ -188,7 +188,7 @@ test_that("2D: Identity contrast, null = c(3, 4)", {
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("2D: Difference contrast c(1,-1), null = 0", {
@@ -198,7 +198,7 @@ test_that("2D: Difference contrast c(1,-1), null = 0", {
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("2D: Difference contrast c(1,-1), null = -1", {
@@ -208,7 +208,7 @@ test_that("2D: Difference contrast c(1,-1), null = -1", {
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
   # Wald stat ~ 0 since null equals true difference
   expect_lt(e$compare$statistic, 1e-10)
 })
@@ -220,7 +220,7 @@ test_that("2D: Sum contrast c(1,1), null = 3", {
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
   # Wald stat ~ 0
   expect_lt(e$compare$statistic, 1e-10)
 })
@@ -232,7 +232,7 @@ test_that("2D: Scaling contrast, null = c(2, 6)", {
   p <- coef(a)
   S <- vcov(a)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("3D: Identity contrast, null = true coefs", {
@@ -242,7 +242,7 @@ test_that("3D: Identity contrast, null = true coefs", {
   p <- coef(a3d)
   S <- vcov(a3d)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
   expect_lt(e$compare$statistic, 1e-10)
 })
 
@@ -253,7 +253,7 @@ test_that("3D: Identity contrast, null = c(0, 0, 0)", {
   p <- coef(a3d)
   S <- vcov(a3d)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("3D: Pairwise differences, null = c(-1, -2)", {
@@ -267,7 +267,7 @@ test_that("3D: Pairwise differences, null = c(-1, -2)", {
   p <- coef(a3d)
   S <- vcov(a3d)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
   expect_lt(e$compare$statistic, 1e-10)
 })
 
@@ -279,7 +279,7 @@ test_that("3D: Single-row contrast, null = 6", {
   p <- coef(a3d)
   S <- vcov(a3d)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
   expect_lt(e$compare$statistic, 1e-10)
 })
 
@@ -290,7 +290,7 @@ test_that("4D: Identity contrast, null equals true coefs", {
   p <- coef(a4d)
   S <- vcov(a4d)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
   expect_lt(e$compare$statistic, 1e-10)
 })
 
@@ -305,7 +305,7 @@ test_that("4D: Non-square contrast (2x4), null = c(0, 0)", {
   p <- coef(a4d)
   S <- vcov(a4d)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
 })
 
 test_that("4D: Non-square contrast, null equals true values", {
@@ -319,7 +319,7 @@ test_that("4D: Non-square contrast, null equals true values", {
   p <- coef(a4d)
   S <- vcov(a4d)
   expected <- compute_wald(B, p, S, null)
-  expect_equivalent(e$compare$statistic, expected)
+  expect_equal(e$compare$statistic, expected, ignore_attr = TRUE)
   expect_lt(e$compare$statistic, 1e-10)
 })
 
@@ -339,21 +339,13 @@ test_that("estimate warns when user-supplied IC has non-zero mean", {
   ic_bad <- rnorm(50, mean = 10)
   expect_warning(
     estimate(coef = c(a = 1), IC = ic_bad, id = 1:50),
-    "mean zero"
+    "large empirical mean"
   )
   ## IC with empirical mean zero — no warning
-  ic_good <- center_ic(50)
+  ic_good <- gen_center_ic(50)
   expect_no_warning(
     estimate(coef = c(a = 1), IC = ic_good, id = 1:50)
   )
-})
-
-test_that("merge.estimate warns when input IC has non-zero mean", {
-  set.seed(43)
-  ic_bad <- rnorm(50, mean = 5)
-  a <- suppressWarnings(estimate(coef = c(a = 1), IC = ic_bad, id = 1:50))
-  b <- estimate(coef = c(b = 2), IC = center_ic(50), id = 1:50)
-  expect_warning(merge(a, b), "mean zero")
 })
 
 test_that("IC mean-zero warning can be suppressed via lava.options", {
@@ -362,8 +354,15 @@ test_that("IC mean-zero warning can be suppressed via lava.options", {
   old <- lava.options(check.ic = FALSE)
   on.exit(lava.options(old))
   expect_no_warning(
-    estimate(coef = c(a = 1), IC = ic_bad, id = 1:50)
+    e <- estimate(coef = c(a = 1), IC = ic_bad)
   )
+  expect_true(mean(IC(e))>1)
+
+  lava.options(check.ic = "center")
+  expect_no_warning(
+    e <- estimate(coef = c(a = 1), IC = ic_bad)
+  )
+  expect_true(mean(IC(e))<.Machine$double.eps)
 })
 
 test_that("estimate.default parsedesign dispatch", {
@@ -418,37 +417,13 @@ test_that("estimate.default keep with regex=TRUE", {
   expect_true(nrow(e1$coefmat) == 1)
 })
 
-test_that("robust argument backwards compatibility", {
-  d <- data.frame(y = rnorm(50), x = rnorm(50))
-  g <- lm(y ~ x, data = d)
-
-  # Both robust=TRUE and robust=FALSE emit a deprecation warning
-  e0 <- expect_warning(estimate(g, robust = FALSE), "deprecated and ignored")
-  e1 <- expect_warning(estimate(g, robust = TRUE), "deprecated and ignored")
-  expect_equal(e0$coefmat, e1$coefmat)
-
-  e <- estimate(g)
-  # The robust argument is ignored: results are identical to the default
-  # (sandwich SEs)
-  expect_equal(e$coefmat, e0$coefmat)
-
-  expect_equal(e$coefmat, e0$coefmat)
-
-  # model-based SE can be obtained either via logical variable or supplying
-  # covariance matrix
-  e0m <- estimate(g, vcov = TRUE)
-  expect_false(all(e$coefmat == e0m$coefmat))
-  e1m <- estimate(g, vcov = vcov(g))
-  expect_equal(e0m$coefmat, e1m$coefmat)
-})
-
 test_that("initialization of object without names", {
   p <- c(a=1, b=2, c=3, d=4)
   e0 <- estimate(coef=p, vcov=diag(4))
   e1 <- estimate(coef=1:4, vcov=diag(4))
-  expect_equal(coef(e0), coef(e1), check.attributes=FALSE)
-  expect_equal(vcov(e0), vcov(e1), check.attributes=FALSE)
+  expect_equal(coef(e0), coef(e1), ignore_attr=TRUE)
+  expect_equal(vcov(e0), vcov(e1), ignore_attr=TRUE)
 
   e <- estimate(coef=1:4, vcov=diag(4), f=list(1,2,3))
-  expect_equal(coef(e), coef(e0)[c(1:3)], check.attributes=FALSE)
+  expect_equal(coef(e), coef(e0)[c(1:3)], ignore_attr=TRUE)
 })

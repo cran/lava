@@ -1,4 +1,4 @@
-## ----include=FALSE------------------------------------------------------------
+## ----echo=FALSE---------------------------------------------------------------
 mets <- lava:::versioncheck('mets', 1)
 
 
@@ -113,18 +113,48 @@ b
 quantile(tanh(b$coef[,'z']), c(.025,.975))
 
 
+## ----cache=TRUE---------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+m3 <- lvm() |>
+  regression(y1 + s2 ~ x) |>
+  covariance(y1 ~ s2, constrain=TRUE, rname='z')
+
+e3 <- estimate(m3, d)
 
 
+## -----------------------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+e3
 
 
+## ----cache=TRUE---------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+summary(estimate(e3, 'z'), transform=tanh)
 
 
+## ----cache=TRUE---------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+m3b <- lvm() |>
+  regression(s1 + s2 ~ x) |>
+  covariance(s1 ~ s2, constrain=TRUE, rname='z')
+
+e3b <- estimate(m3b, d)
+e3b
 
 
+## -----------------------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+e3b
 
 
+## ----cache=TRUE---------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+summary(estimate(e3b, 'z'), transform=tanh)
 
 
+## ----profilecens, cache=TRUE--------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+tanh(confint(e3b, 'z', profile=TRUE))
 
 
 ## -----------------------------------------------------------------------------

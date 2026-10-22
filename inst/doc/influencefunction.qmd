@@ -8,6 +8,7 @@ format:
     toc: true
     html-math-method: mathjax
     fig-format: 'svg'
+    embed-resources: true
 execute:
   echo: true
   warning: false
@@ -20,7 +21,7 @@ vignette: >
 bibliography: ref.bib
 ---
 
-```{r  setup,include=FALSE }
+```{r setup, include=FALSE}
 library("lava")
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -32,7 +33,8 @@ knitr::opts_chunk$set(
 has_mets <- lava:::versioncheck('mets', 1)
 has_geepack <- lava:::versioncheck('geepack', 1)
 ```
-
+::: {.hidden}
+$$
 \newcommand{\arctanh}{\operatorname{arctanh}}
 \newcommand{\indep}{\!\perp\!\!\!\!\perp\!}
 \newcommand{\pr}{\mathbb{P}}
@@ -41,12 +43,16 @@ has_geepack <- lava:::versioncheck('geepack', 1)
 \newcommand{\cov}{\mathbb{C}\!\text{ov}}
 \newcommand{\cor}{\mathbb{C}\!\text{or}}
 \newcommand{\IC}{\operatorname{IC}}
+\DeclarePairedDelimiterX{\norm}[1]{\lVert}{\rVert}{#1}
+\DeclarePairedDelimiterX{\abs}[1]{\lvert}{\rvert}{#1}
 \newcommand{\one}{\mathbf{1}}
-<!-- \newcommand{\Dto}{\rightsquigarrow} -->
-\newcommand{\Dto}{\overset{\mathcal{D}}{\longrightarrow}}
+\newcommand{\Dto}{\rightsquigarrow}
+<!-- \newcommand{\Dto}{\overset{\mathcal{D}}{\longrightarrow}} -->
 \newcommand{\bm}[1]{\mathbf{#1}}
 \newcommand{\Pz}{P_{0}}
 \newcommand{\op}{o_{P}}
+$$
+:::
 
 # Influence functions
 
@@ -105,7 +111,7 @@ space (the *tangent space*), s.t.
     \dot\Psi(P_0)(g) = \langle\phi_{P_0}, g\rangle =
     \int \phi_{P_0}(z)g(z)\,dP_0(z)
 \end{align*}
-The unique representer is exactly the IF which can be found by solving the above
+The unique representer is exactly the efficient IF which can be found by solving the above
 integral equation.
 For more details on how to derive influence
 functions, we refer to [@targetedlearning_2011; @hines2022].
@@ -166,7 +172,6 @@ c(exp(b)^0.5, exp(b * a) / (1 + exp(-b)))
 with the necessary derivatives exactly calculated automatically.
 We refer to section
 [IF building blocks](#if-building-blocks-transformations-and-the-delta-theorem) for more details.
-
 
 # Examples
 
@@ -305,7 +310,7 @@ The same estimates can be obtained with a
 *cumulative link regression* model which also generalizes to
 ordinal outcomes. Here we consider the proportional odds model given by
 \begin{align*}
-\log\left(\frac{\pr(Y\leq j\mid x)}{1-\pr(Y\leq j\mid x)}\right) = \operatorname{expit}(\alpha_{j} - \beta^{t}), \quad j=1,\ldots,J-1
+\log\left(\frac{\pr(Y\leq j\mid x)}{1-\pr(Y\leq j\mid x)}\right) = \alpha_{j} - \beta^{\top}x) \quad j=1,\ldots,J-1
 \end{align*}
 ```{r ordreg}
 ordreg(y1 ~ a + x1, dw, family=binomial(logit)) |> estimate()
@@ -329,7 +334,8 @@ data(pbc, package="survival")
 The Cox proportional hazards model can be fitted with the `mets::phreg` method
 which can estimate the IF for both the partial likelihood parameters and the
 baseline hazard. Here we fit a survival model with right-censored event times
-```{r phreg, eval=has_mets }
+```{r phreg }
+#| eval: !expr lava:::versioncheck('mets', 1)
 fit.phreg <- mets::phreg(Surv(time, status > 0) ~ age + sex, data = pbc)
 fit.phreg
 IC(fit.phreg) |> head()
@@ -340,7 +346,8 @@ The IF for the baseline cumulative hazard at a specific time point
 \Lambda_0(t) = \int_0^t \lambda_0(u)\,du,
 \end{align*}
 where $\lambda_0(t)$ is the baseline hazard, can be estimated in similar way:
-```{r phreg-baseline, eval=has_mets }
+```{r phreg-baseline }
+#| eval: !expr lava:::versioncheck('mets', 1)
 baseline <- function(object, time, ...) {
   ic <- mets::IC(object, baseline = TRUE, time = time, ...)
   est <- mets::predictCumhaz(object$cumhaz, new.time = time)[1, 2]
@@ -352,7 +359,8 @@ baseline(fit.phreg, tt)
 
 The `estimate` and `IC` methods are also available for parametric survival
 models via `survival::survreg`, here a Weibull model:
-```{r survreg, eval=has_mets }
+```{r survreg  }
+#| eval: !expr lava:::versioncheck('mets', 1)
 survival::survreg(Surv(time, status > 0) ~ age + sex, data = pbc, dist="weibull") |>
   estimate()
 ```
@@ -373,7 +381,8 @@ $$
 \pr(Y_{ij} = 1 \mid U_{i}, W_{ij})=\Phi(\mu_{j} + \beta_{j} W_{ij} + U_{i}), \quad U_{i}\sim\mathcal{N}(0,\sigma_{u}^{2}),\quad j=1,2
 $$
 to the simulated dataset
-```{r semfit, eval=has_mets }
+```{r semfit }
+#| eval: !expr lava:::versioncheck('mets', 1)
 sem <- lvm(y1 + y2 ~ 1 * u + w) |>
   latent(~ u) |>
   ordinal(K=2, ~ y1 + y2)
@@ -462,7 +471,7 @@ More details can be found in the Section on [hypothesis testing](#linear-contras
 Let $O_1 = (Z_1, R_1), \ldots, O_N = (Z_N, R_N)$ be iid data from some
 distribution $O = (Z, R) \sim P_0$. We let $Q_0 := P_0(\cdot \mid R=1)$ denote the
 conditional distribution, with $P(R=1) = p > 0$, and let $S = \{i\mid R_i=1\}$,
-$n = \lvert S\rvert$, and $\widehat{p} = n/N$.
+$n = \abs{S}$, and $\widehat{p} = n/N$.
 
 We assume that the *conditional* target parameter $\theta = T(Q_0)$ is pathwise differentiable in $Q_0$, in the sense that
 we have a regular and asymptotic linear estimator $\widehat{\theta} = T_m(O_1, \ldots, O_m)$
@@ -504,11 +513,11 @@ We can write
 We need to show that the term $W_N=o_{P_0}(1)$.
 Let $E_N = \{n > Np/2\}$, it then follows that
 \begin{align*}
-P(\lVert W_N \rVert > \epsilon) \leq P(E_N^\complement)
-+ P(\{\lVert W_N \rVert > \epsilon\}\cap E_N) \\
+P(\norm{W_N} > \epsilon) \leq P(E_N^\complement)
++ P(\{\norm{W_N} > \epsilon\}\cap E_N) \\
 \leq
 P(E_N^\complement)
-+ \sup_{n>Np/2} Q(\lVert V_n \rVert > \epsilon/c)
++ \sup_{n>Np/2} Q(\norm{V_n} > \epsilon/c)
 \end{align*}
 where we have used that on the set $E_N$ we have $\sqrt{N/n}< \sqrt{2/p} = c$.
 The supremum term converges to zero as $N\to\infty$ due to the assumption that
@@ -519,7 +528,7 @@ i=1,\ldots,N$, we get that
 \begin{align*}
 P(N-n - N(1-p) \geq t) \leq \exp(-2t^2/N),
 \end{align*}
-and with $t = Np/2$, we have that $P(n<N\p/2)\leq\exp(-N/(2p^2))\to 0$ as
+and with $t = Np/2$, we have that $P(n<Np/2)\leq\exp(-N/(2p^2))\to 0$ as
 $N\to\infty$, and it follows that the first term $P(E_N^\complement)$ also
 converges to zero.
 
@@ -593,6 +602,8 @@ vcov(ecomb)
 list(vcov(e2), vcov(e3))
 ```
 
+
+
 Note, it is also possible to directly specify the id-variables in the `merge` call:
 ```{r merge}
 merge(e2, e3, id = list(dw$id, dwc$id))
@@ -619,60 +630,174 @@ merge(g1, g2, id = NULL) |> (Print %++% IC)()
 merge(g1, g2, id = NULL) |> vcov()
 ```
 
-## Renaming and subsetting parameters
+Note that for `estimate` objects it is also possible to merge objects directly
+with the `c()` operator. See the Section on [IF building
+blocks](#if-building-blocks-transformations-and-the-delta-theorem).
 
-To only keep a subset of the parameters the `keep` argument can be used.
+
+## Selecting, ordering, and renaming parameters
+
+Parameters can be selected or reordered directly within an `estimate` object.
+These operations retain the corresponding influence functions and covariance
+information. They act on the parameters, rather than on the observations
+contributing to their estimation.
+
+### Selecting parameters
+
+Consider the following `estimate` object
+```{r parameter-selection}
+est1 <- estimate(coef=c(1,3), vcov=diag(2), labels=c("ba","ab"))
+est2 <- estimate(coef=c(2,4), vcov=diag(2), labels=c("cb","da"))
+est <- c(est1, est2)
+est
+```
+
+The `subset` or `[` operator selects parameters by position or label:
+```{r parameter-indexing}
+subset(est, 1:2)
+est[c("ba", "cb")]
+```
+
+The `head` and `tail` methods select parameters from the beginning or end of
+the object:
+```{r parameter-head-tail}
+head(est) # First parameter
+tail(est) # Last parameter
+head(est, n = 2) # First two parameters
+tail(est, n = 2) # Last two parameters
+```
+
+
+Parameters can also be selected when combining estimates, using the `keep`
+argument. This accepts either a character vector of parameter labels or a
+vector of positions:
 ```{r mergekeep}
-merge(g1, g2, keep = c("(Intercept)", "(Intercept).1"))
-```
-The argument can be given either as character vector or a vector of indices:
-```{r merge2}
-merge(g1, g2, keep=c(1, 3))
-```
-or as a vector of perl-style regular expressions
-```{r merge3}
-merge(g1, g2, keep = "cept", regex = TRUE)
-merge(g1, g2, keep = c("\\)$", "^a$"), regex = TRUE, ignore.case = TRUE)
+merge(est1, est2, keep = c("a", "b"))
+merge(g1, g2, keep = c(1, 3))
 ```
 
-When merging estimates unique parameter names are created. It is also possible
-to rename the parameters with the `labels` argument
-```{r merge4}
-merge(g1, g2, labels = c("a", "b", "c")) |> estimate(keep = c("a", "c"))
-merge(g1, g2,
-      labels = c("a", "b", "c"),
-      keep = c("a", "c")
-)
-estimate(g1, labels=c("a", "b"))
+With `regex = TRUE`, selection can instead use Perl-style regular expressions:
+```{r merge-regex}
+merge(est1, est2, keep = c("^a", "a$"),
+      regex = TRUE, ignore.case = TRUE)
+subset(est, "b", regex=TRUE)
 ```
 
-Finally, the `subset` argument can be used to subset the parameters and IFs
-before the actual merging is being done
-```{r merge5}
-merge(g1, g2, subset="(Intercept)")
+### Ordering parameters
+
+The `rev` method reverses the parameter order. The `sort` method orders
+parameters by their estimated values or labels:
+```{r parameter-ordering}
+rev(est)
+sort(est, by = "values")
+sort(est, by = "labels")
+```
+
+These methods return `estimate` objects and can therefore be combined with selection and other operations:
+```{r parameter-ordering-pipe}
+est |>
+  sort(by = "values") |>
+  tail(n = 1) # Parameter with the largest estimated value
+```
+
+### Renaming parameters
+
+When estimates are merged, unique parameter labels are created automatically.
+The `labels` method can be used to rename parameters in an existing object:
+```{r parameter-labels}
+est[1:2] |>
+  labels(c("intercept", "treatment"))
+```
+
+Labels can also be supplied when constructing an `estimate` object:
+```{r estimate-labels}
+estimate(est1, labels = c("intercept", "treatment"))
+```
+
+or directly via the `c()` method
+```{r}
+c(a = est[1], b = est[2])
 ```
 
 ## Clustered data (non-iid case)
 
 Let $Z_i = (Z_{i1},\ldots,Z_{iN_{i}})$ and assume that
-$(Z_{i}, N_{i}) \sim P$, $i=1,\ldots,n$ are iid and $N_i\indep
-Z_{ij}$. The variables $Z_{i1},\ldots,Z_{iN_{i}}$ we assume are exchangeable
-but not necessarily independent. Define $N = \sum_{i=1}^{n} N_i$, and
-assume that a parameter estimate, $\widehat{\theta}\in\mathbb{R}^p$ has the decomposition
+$O_i = (Z_{i}, N_{i}) \sim P$, $i=1,\ldots,n$ are i.i.d.
+Define $N = \sum_{i=1}^{n} N_i$, and
+assume that a parameter estimate, $\widehat{\theta}\in\mathbb{R}^p$ is RAL with decomposition
 $$
 \sqrt{N}(\widehat{\theta}-\theta) =
 \frac{1}{\sqrt{N}}
-\sum_{i=1}^{n} \sum_{k=1}^{N_{i}} IC(Z_{ik}; \Pz) + \op(1).
+\sum_{i=1}^{n} \underbrace{\sum_{k=1}^{N_{i}} IC(Z_{ik}; \Pz)}_{S_i} + \op(1),
 $$
-It then follows that
+where $\E S_1 = 0$ and $\E \norm{S_1}^2 <\infty$.
+
+:::: {#lem-conditional}
+The estimator has the i.i.d. decomposition
 $$
 \sqrt{n}(\widehat{\theta}-\theta) =
 \frac{1}{\sqrt{n}}
-\sum_{i=1}^{n} \widetilde{\IC}(Z_{i}; \Pz) + \op(1)
+\sum_{i=1}^{n} \widetilde{\IC}(O_{i}) + \op(1)
 $$
-with $\widetilde{\IC}(Z_{i}; \Pz)
-= \sum_{k=1}^{N_{i}} \frac{n}{N}IC(Z_{ik}; \Pz)$, $i=1,\ldots,n$ which are iid
-an therefore admits the usual CLT to derive the asymptotic variance of $\widehat{\theta}$.
+where $\widetilde{\IC}(O_i) = S_i\E(N_1)^{-1}$, and
+$$\sqrt{n}(\widehat{\theta}-\theta) \rightsquigarrow \mathcal{N}(0,\Omega).$$
+::::
+
+::: {.proof}
+It follows that
+\begin{align}
+\sqrt{n}(\widehat{\theta}-\theta) &=
+\frac{n}{N}\frac{1}{\sqrt{n}}\sum_{i=1}^{n} S_i + o_p(1) \\
+&= \frac{1}{\E N_1}\frac{1}{\sqrt{n}}\sum_{i=1}^{n} S_i +
+\left(\frac{n}{N} - \frac{1}{\E N_1}\right)\sum_{i=1}^{n} S_i + o_p(1).
+\end{align}
+By the CLT $n^{-1/2}\sum_{i=1}^n S_i \rightsquigarrow \mathcal{N}\{0,
+\var(S_1)\}$
+and $(n/N - \E N_1^{-1}) = o_p(1)$, hence by Slutsky's theorem it follows that
+$\sqrt{n}(\widehat{\theta}-\theta) =
+\frac{1}{\sqrt{n}}
+\sum_{i=1}^{n} \widetilde{\IC}(O_{i}) + \op(1)$, and asymptotic normality follows
+from the central limit theorem.
+
+In practice we will have estimates $\widehat{S}_i =
+\sum_{k=1}^{N_i}\widehat{\phi}(Z_{ij})$ of the influence functions that we need
+to use as plugin-estimates of the variance. Let $V = SS^\top$, then
+$$\mathbb{P}_n
+\widehat{V}- \mathbb{P} V = \mathbb{P}_n
+(\widehat{V} - V) + (\mathbb{P}_n - \mathbb{P})V. $$
+where the last term is seen to be $o_p(1)$ from the LLN. Writing
+
+$$\widehat{V} - V = (\widehat{S}-S)\widehat{S}^\top - S(\widehat{S}-S)^\top,$$
+then by the triangle inequality
+$$ \norm{\widehat{V} - V}_F \leq
+\norm{\widehat{S}-S}\norm{\widehat{S}} + \norm{\widehat{S}-S}\norm{S} =
+\norm{\widehat{S}-S}\left( \norm{S} + \norm{\widehat{S}}\right), $$
+where we used that for the Frobenius norm
+$$
+\norm{ab^\top}_F^2
+=\sum_{j,k}a_j^2b_k^2
+=\left(\sum_j a_j^2\right)\left(\sum_k b_k^2\right) = \norm{a}^2\norm{b}^2.
+$$
+Using the triangle inequality again on $\widehat S=S+(\widehat{S}-S)$ we get
+\begin{align*}
+\mathbb{P}_n\norm{\widehat{V} - V}_F &\leq
+  \mathbb{P}_n\norm{\widehat{S}-S}^2 + 2\mathbb{P}_n\norm{\widehat{S}-S}\norm{S} \\
+&\leq
+  \mathbb{P}_n\norm{\widehat{S}-S}^2 + 2\sqrt{\mathbb{P}_n\norm{\widehat{S}-S}^2}
+  \sqrt{\mathbb{P}_n\norm{S}^2},
+\end{align*}
+where we have used the Cauchy-Schwarz inequality.
+From the LLN and $E\norm{S}^2<\infty$ it follows that
+$\mathbb{P}_n\norm{S}^2=O_p(1)$, and when $n^{-1}\sum_{i=1}^n \norm{
+\widehat{S}_i-S_i}^2 = o_p(1)$, then it follows that a consistent estimate of
+the asympotic variance of $\sqrt{n}(\widehat{\theta}-\theta)$ can be obtained as
+$$
+\widehat{\Omega} = \frac{1}{n} \sum_{i=1}^n (\frac{n}{N}\widehat{S}_i)^{\otimes 2}.
+$$
+\flushright$\blacksquare$
+:::
+
+
 Turning back to the example data, we can estimate the marginal model
 ```{r cluster1}
 g0 <- glm(y ~ a + w + x, data = dl, family = binomial())
@@ -685,7 +810,8 @@ estimate(g0, id=dl$id)
 ```
 We can confirm that this situation is equivalent to the variance estimates we
 obtain from a GEE marginal model with working independence correlation structure [@r_geepack]
-```{r geepack, eval=has_geepack }
+```{r geepack }
+#| eval: !expr lava:::versioncheck('geepack', 1)
 gee0 <- geepack::geeglm(y ~ a + w + x, data = dl, id = dl$id, family=binomial)
 summary(gee0)
 ```
@@ -713,16 +839,12 @@ e
 
 # IF building blocks: transformations and the delta theorem
 
-Let $\phi\colon \mathbb{R}^p\to\mathbb{R}^m$ be differentiable at $\theta$
-and assume that $\widehat{\theta}_n$ is RAL estimator with IF given by
-$\IC(\cdot; \Pz)$ such that
-\begin{align*}
-\sqrt{n}(\widehat{\theta}_n - \theta) =
-\frac{1}{\sqrt{n}}\sum_{i=1}^n \IC(Z_i; \Pz) + \op(1),
-\end{align*}
-then by the delta method [@vaart_1998_asymp Theorem 3.1]
-\begin{align*}
-\sqrt{n}\{\phi(\widehat{\theta}_n) - \phi(\theta)\}  =
+Let $\phi\colon \mathbb{R}^p\to\mathbb{R}^m$ be differentiable at $\theta$ and
+assume that $\widehat{\theta}_n$ is RAL estimator with IF given by $\IC(\cdot;
+\Pz)$ such that \begin{align*} \sqrt{n}(\widehat{\theta}_n - \theta) =
+\frac{1}{\sqrt{n}}\sum_{i=1}^n \IC(Z_i; \Pz) + \op(1), \end{align*} then by the
+delta method [@vaart_1998_asymp Theorem 3.1] \begin{align*}
+\sqrt{n}\{\phi(\widehat{\theta}_n) - \phi(\theta)\} =
 \frac{1}{\sqrt{n}}\sum_{i=1}^n \nabla\phi(\theta)\IC(Z_i; \Pz) + \op(1),
 \end{align*}
 
@@ -773,7 +895,7 @@ a * b
 (3 * cos(a) / sqrt(b) + 1) / a
 e <- c(a,b) # merge
 c(sum=sum(e), sum2=a+b,
-  prod=prod(e), prod2=a*b) # sum and prod function 
+  prod=prod(e), prod2=a*b) # sum and prod function
 e %*% e # inner prod.
 c(1, 2) %*% e
 c(pow = a^b) # power-function, rename parameter
@@ -796,9 +918,11 @@ The following transformations are implemented
 - inverse trigonometric functions: `acos`, `asin`, `atan`
 - hyperbolic functions: `cosh`, `sinh`, `tanh`
 - inverse hyperbolic functions: `acosh`, `asinh`, `atanh`
-- other mathematical functions: `log`, `log1p`, `exp`, `expm1`, `sqrt`
-- mathematical operators: `+`, `-`, `*`, `/`, `^`,
- `prod`, `sum`, `%*%`
+- other mathematical functions: `log`, `log1p`, `exp`, `expm1`, `sqrt`, `gamma`,
+  `lgamma`
+- normal distribution functions (CDF, quantile, PDF): `normcdf`, `norminv`,
+  `normpdf`
+- mathematical operators: `+`, `-`, `*`, `/`, `^`, `prod`, `sum`, `diff`, `%*%`
 
 and any compositions of these functions, which also means we can immediately
  apply most existing user-defined functions. To give an example consider the `logit` function
@@ -944,7 +1068,7 @@ estimate(gg, B)
 
 Such linear statistics can also be specified directly as expressions of the parameter names
 ```{r}
-estimate(gg, a + a.1, 2*a - a.2, a) |> summary(null=c(2,1,1))
+estimate(gg, a + a.1, 2*a - a.2, a) |> summary(null = c(2, 1, 1))
 ```
 
 We refer to the function `lava::contr`  and `lava::parsedesign` for defining contrast matrices.
@@ -959,13 +1083,18 @@ pairwise_diff(3)
 summary(estimate(gg, pairwise_diff(3), use=c(2,4,6)), null=c(1,1,1))
 ```
 
+It is also possible to use this function directly on an `estimate` object:
+```{r pairwise_diff2}
+pairwise_diff(gg[c(2,4,6)]) == 1
+```
+
 When conducting multiple tests each at a nominal-level of $\alpha$ the overall
 type I error is not controlled at $\alpha$-level.
 The influence function also allows for adjusting for multiple comparisons.
 Let $Z_{1},\ldots,Z_{p}$ denote $Z$-statistics from $p$ distinct two-sided
 hypothesis tests which we will assume is asymptotically distributed under the
 null hypothesis as a zero-mean Gaussian distribution with correlation matrix
-$R.$ Let $ Z_{max} = \max_{i=1,\ldots,p} |Z_i|$ then the family-wise error
+$R.$ Let $Z_{max} = \max_{i=1,\ldots,p} |Z_i|$ then the family-wise error
 rate (FWER) under the null can be approximated by
 $$
 P(Z_{max} > z) =
@@ -983,8 +1112,9 @@ where $\Phi$ is the standard Gaussian CDF. As described in
 in [@RitzPipper_multcomp] the joint distribution of $Z_{1},\ldots,Z_{p}$
 can be estimated from the IFs. This is implemented in the `alpha_zmax` method
 
-```{r pcorrect, eval=has_mets }
-gg0 <- estimate(gg, use="^a", regex=TRUE)
+```{r pcorrect }
+#| eval: !expr lava:::versioncheck('mets', 1)
+gg0 <- estimate(gg, keep="^a", regex=TRUE)
 alpha_zmax(gg0, null=rep(.8, 3))
 ```
 
@@ -992,7 +1122,7 @@ While this always yields a more powerful test compared to Bonferroni
 adjustments, another powerful closed-testing procedure [@marcus1976], can be generally
 obtained by considering all intersection hypotheses.
 
-![*Figure: closed testing via Wald tests of all intersections hypotheses.*](../man/figures/closedtesting.svg){width=60%}
+![*Figure: closed testing via Wald tests of all intersections hypotheses.*](../man/figures/closedtesting.svg){width=65%}
 
 To reject the $H_{1}$ at
 an correct $\alpha$-level we should test all intersection hypotheses involving
@@ -1001,12 +1131,13 @@ adjusted $p$-values can here be obtained as the maximum $p$-value across all
 the composite hypothesis tests. Unfortunately, this only works for relatively
 few comparisons as the number of tests grows exponentially.
 
-```{r closedtesting, eval=has_mets}
+```{r closedtesting }
+#| eval: !expr lava:::versioncheck('mets', 1)
 summary(closed_testing(gg0, test = test_wald, null=rep(.8, 3)))
 ```
 
 
-## Averaging
+## Standardization
 
 Some parameters of interest are expressed as averages over functions of the
 observed data and estimated parameters of a model. The asymptotic distribution
@@ -1075,30 +1206,37 @@ values of $X_1,W$ but with the treatment variable $A$ kept fixed at the
 value $1$
 ```{r estpred}
 g <- glm(y1 ~ a + x1 + w, data=dw, family=binomial)
-pr <- function(p, data, ...)
+pr <- function(p, data, ...) {
   with(data, expit(p[1] + p["a"] + p["x1"]*x1 + p["w"]*w))
+}
 pr(coef(g), dw) |> head()
 ```
-The target parameter can now be estimated with the syntax
+The target parameter can now be estimated with the `expectation` function
 ```{r average}
-id <- foldr(NROW(dw), 100, list=FALSE)
-ea <- estimate(g, pr, average=TRUE, id=id)
+ea <- expectation(pr, object = g)
 ea
 IC(ea) |> head()
 ```
 
+Specifically for GLM models, it is possible to do the above steps directly with
+the `predict.estimate.glm` method (note the id argument here is not strictly
+needed as the IF of `e`and the data.frame are already aligned):
+```{r expectation}
+e <- estimate(g, id=dw$id)
+expectation(predict, object = e, data = transform(dw, a=1),
+            id = "id", labels = "trt=1")
+```
+
 ## Average Treatment Effects
 
-Let the observed data be $Z = (W,A,Y)$, where $W$ are covariates, $A$ a binary treatment
-variable, and $Y$ the outcome.
-In the following we are interested in estimating the target parameter
-$\psi_a(P)
-= E_P[Y(a)]$, where $Y(a)$ is the *potential outcome* we would have
-observed if treatment $a$ had been administered, possibly contrary to
-the actual treatment that was observed, i.e., $Y = Y(A)$. To assess the
-treatment effect we can then consider the *average treatment effect*
-(ATE) $$E_P[Y(1)]-E_P[Y(0)],$$ or some other contrast of interest
-$g(\psi_1(P), \psi_0(P))$. Under the following assumptions
+Let the observed data be $Z = (W,A,Y)$, where $W$ are covariates, $A$ a binary
+treatment variable, and $Y$ the outcome. In the following we are interested in
+estimating the target parameter $\psi_a(P) = E_P[Y(a)]$, where $Y(a)$ is the
+*potential outcome* we would have observed if treatment $a$ had been
+administered, possibly contrary to the actual treatment that was observed, i.e.,
+$Y = Y(A)$. To assess the treatment effect we can then consider the *average
+treatment effect* (ATE) $$E_P[Y(1)]-E_P[Y(0)],$$ or some other contrast of
+interest $g(\psi_1(P), \psi_0(P))$. Under the following assumptions
 
 1)  Stable Unit Treatment Values Assumption (the treatment of a specific
     subject is not affecting the potential outcome of other subjects)
@@ -1189,4 +1327,3 @@ sessionInfo()
 ```
 
 # Bibliography
-

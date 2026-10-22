@@ -90,108 +90,29 @@ merge.estimate <- function(x, y,
       }
       return(estimate(coef=coefs, vcov=V, keep=keep))
     }
-    if (!missing(id) && is.null(id)) { # Independence betw. datasets in x,y,...
-        nn <- unlist(lapply(
-          objects,
-          function(x) nrow(x$IC)
-        ))
-        cnn <- c(0, cumsum(nn))
-        id <- list()
-        for (i in seq_along(nn)) {
-          id <- c(id, list(seq(nn[i]) + cnn[i]))
-        }
-    }
-    if (missing(id)) {
-      if (paired) { ## One-to-one dependence between observations in x,y,...
-        id <- lapply(objects, function(x) {
-          seq_len(NROW(x$IC))
-        })
-        } else {
-            id <- lapply(objects, function(x) x$id)
-        }
-    } else {
-        nn <- unlist(lapply(objects,function(x) NROW(IC(x))))
-        if (length(id)==1 && is.logical(id)) {
-            if (id) {
-              if (any(nn[1]!=nn)) {
-                stop("Expected objects of the same size: ",
-                     paste(nn,collapse=","))
-              }
-              id0 <- seq(nn[1]); id <- c()
-              for (i in seq(length(nn))) id <- c(id,list(id0))
-            } else {
-              id <- c()
-              N <- cumsum(c(0,nn))
-              for (i in seq(length(nn))) id <- c(id,list(seq(nn[i])+N[i]))
-            }
-        }
-        if (length(id)!=length(objects)) {
-          stop("Same number of id-elements as model objects expected")
-        }
-        idlen <- unlist(lapply(id,length))
-        if (!identical(idlen,nn)) {
-          stop("Wrong lengths of 'id': ",
-               paste(idlen,collapse=","), "; ", paste(nn,collapse=","))
-        }
-    }
-    ids <- ic_all <- c(); count <- 0
-    first_id <- id[[1]]
-    for (z in objects) {
-        count <- count+1
-        clidx <- NULL
-        id0 <- id[[count]]
-        icz <- IC(z)
-        if (is.null(id0)) {
-            id0 <- rownames(icz)
-            if (is.null(id0)) stop("Need id for object number ", count)
-        }
-        if (!missing(subset)) icz <- icz[,subset,drop=FALSE]
-        if (lava.options()$check.ic) {
-          check_ic_mean_zero(icz)
-        }
-        if (!lava.options()$cluster.index) {
-          ic0 <- matrix(
-            unlist(by(icz,id0,colSums)),
-            byrow = TRUE, ncol = ncol(icz))
-            ids <- c(ids, list(base::sort(unique(id0))))
-        } else {
-          if (!requireNamespace("mets", quietly = TRUE)) {
-            stop("'mets' package required")
-          }
-          clidx <- mets::cluster.index(id0, mat = icz, return.all = TRUE)
-          ic0 <- clidx$X
-          ids <- c(ids, list(id0[as.vector(clidx$firstclustid)+1]))
-        }
-        # order observations such that the order
-        ic0 <- ic0 * NROW(ic0) / length(id0)
-        ic_all <- c(ic_all, list(ic0))
-    }
-    id <- unique(unlist(ids))
-    ic0 <- matrix(NA, nrow=length(id),ncol=length(coefs))
-    model.index <- c()
-    colpos <- 0
-    for (i in seq(length(objects))) {
-        relpos <- seq_along(coef(objects[[i]], messages=0))
-        if (!missing(subset)) relpos <- seq_along(subset)
-        ic0[match(ids[[i]], id), relpos + colpos] <- ic_all[[i]]
-        midx <- list(relpos + colpos)
+    id_missing <- missing(id)
+    id <- merge_ids(objects, id = if (!id_missing) id,
+                    paired = paired, id_missing = id_missing)
+    ics <- list(); model.index <- list(); colpos <- 0
+    for (i in seq_along(objects)) {
+        icz <- IC(objects[[i]])
+        if (!missing(subset)) icz <- icz[, subset, drop = FALSE]
+        ## if (lava.options()$check.ic) {
+        ##   check_ic_mean_zero(icz)
         ## }
-        model.index <- c(model.index, midx)
-        colpos <- colpos+tail(relpos,1)
+        ics <- c(ics, list(cluster_sum_ic(icz, id[[i]])))
+        model.index <- c(model.index, list(colpos + seq_len(ncol(icz))))
+        colpos <- colpos + ncol(icz)
     }
-    rownames(ic0) <- id
-    if (!sort) { # Reorder to original order of the first IC
-      ord <- match(id, unique(c(first_id, id)))
-      ord <- match(unique(c(first_id, id)), id)
-      ic0 <- ic0[ord, , drop=FALSE]
+    al <- align_ic(ics, lapply(id, unique))
+    ic0 <- do.call(cbind, al$ic)
+    id <- al$id
+    if (sort) { # sort according to the ids (default: order of first IC)
+      ord <- order(id)
+      ic0 <- ic0[ord, , drop = FALSE]
       id <- id[ord]
     }
-    ## Rescale each column according to I(obs)/pr(obs)
-    for (i in seq(NCOL(ic0))) {
-      pr <- mean(!is.na(ic0[,i]))
-      ic0[,i] <- ic0[,i]/pr
-    }
-    ic0[is.na(ic0)] <- 0
+    rownames(ic0) <- id
     res <- estimate.default(
       coef = coefs, stack = FALSE, data = NULL,
       IC = ic0, id = id, keep = keep
@@ -201,6 +122,69 @@ merge.estimate <- function(x, y,
     }
     return(res)
 }
+
+## Align influence functions 'ics' (list) with row ids 'ids' (list of unique
+## ids) on the union of ids (first-appearance order). Each IF is zero outside
+## its own ids and rescaled by length(union)/length(own ids) (inverse
+## probability of observation, see the section "Estimators computed on
+## different subsets" in vignette("influencefunction")).
+## Returns the list of aligned IFs and the ids of the union.
+align_ic <- function(ics, ids) {
+  ## union of ids. Starting from the first set keeps its type (e.g. numeric
+  ## ids) when the other sets are contained in it
+  uid <- unique(ids[[1]])
+  for (i in ids[-1]) {
+    i <- unique(i)
+    new <- is.na(match(i, uid))
+    if (any(new)) uid <- c(uid, i[new])
+  }
+  ics <- Map(function(ic, id) {
+    ic <- cbind(ic)
+    res <- matrix(0, nrow = length(uid), ncol = ncol(ic),
+                  dimnames = list(NULL, colnames(ic)))
+    res[match(id, uid), ] <- ic
+    res * length(uid) / length(id)
+  }, ics, ids)
+  list(ic = ics, id = uid)
+}
+
+
+## Ids of the rows of the influence functions of the estimate objects in
+## 'objects' (used by merge.estimate):
+##  - id=NULL or id=FALSE: independence (distinct ids across objects)
+##  - id=TRUE or paired=TRUE: one-to-one matching (objects of the same size)
+##  - 'id' missing (id_missing=TRUE): ids of the objects (index or rownames)
+##  - otherwise a list of ids, one element for each object
+merge_ids <- function(objects, id, paired = FALSE, id_missing = FALSE) {
+  nn <- unlist(lapply(objects, function(x) NROW(IC(x))))
+  if (!id_missing && (is.null(id) || isFALSE(id))) {
+    cnn <- c(0, cumsum(nn))
+    return(lapply(seq_along(nn), function(i) seq_len(nn[i]) + cnn[i]))
+  }
+  if ((id_missing && paired) || isTRUE(id)) {
+    if (any(nn[1] != nn)) {
+      stop("Expected objects of the same size: ", paste(nn, collapse = ","))
+    }
+    return(rep(list(seq_len(nn[1])), length(nn)))
+  }
+  if (id_missing) {
+    return(lapply(seq_along(objects), function(i) {
+      id0 <- ic_ids(objects[[i]], IC(objects[[i]]))
+      if (is.null(id0)) stop("Need id for object number ", i)
+      id0
+    }))
+  }
+  if (length(id) != length(objects)) {
+    stop("Same number of id-elements as model objects expected")
+  }
+  idlen <- unlist(lapply(id, length))
+  if (!identical(idlen, nn)) {
+    stop("Wrong lengths of 'id': ",
+         paste(idlen, collapse = ","), "; ", paste(nn, collapse = ","))
+  }
+  id
+}
+
 
 #' @export
 "%++%.estimate" <- function(x, ...) {
@@ -270,16 +254,77 @@ c.estimate <- function(..., as.list = FALSE) {
 }
 
 #' @export
+#' @param x `estimate` object
+#' @param keep,i subset (integer or character vector) of elements to extract
+#' @param by sorted by "values" or "labels" of parameters
+#' @param ... arguments passed to [utils::tail], [utils::head], [base::sort],
+#'   [base::subset]
+#' @title Subset parameter of estimate object
+#' @description Methods for extracting or sorting parameter estimates
+#' @aliases subset.estimate
+#' @aliases rev.estimate
+#' @aliases tail.estimate
+#' @aliases head.estimate
+#' @aliases sort.estimate
+#' @aliases with.estimate
+#' @aliases [.estimate
+#' @seealso [utils::tail] [base::rev] [utils::head] [base::sort] [base::subset]
+#' @examples
+#' e <- estimate(coef=4:1, IC=matrix(0,nrow=2,ncol=4), labels=letters[1:4])
+#' subset(e, c(1,4))
+#' sort(e, by="values")
+#' head(e, 2)
+#' rev(e)
+#' @rdname estimate-subset
 subset.estimate <- function(x, keep, ...) {
   estimate(x, keep = keep, ...)
 }
 
 #' @export
-"[.estimate" <- function(x, i, ...) {
+#' @rdname estimate-subset
+rev.estimate <- function(x) {
+  x[rev(seq_along(coef(x)))]
+}
+
+#' @export
+#' @rdname estimate-subset
+#' @inheritParams utils::tail
+tail.estimate <- function(x, n = 1, ...) {
+  idx <- tail(seq_along(coef(x)), n = n, ...)
+  x[idx]
+}
+
+#' @export
+#' @rdname estimate-subset
+#' @inheritParams utils::tail
+head.estimate <- function(x, n = 1, ...) {
+  idx <- head(seq_along(coef(x)), n = n, ...)
+  x[idx]
+}
+
+#' @export
+#' @rdname estimate-subset
+#' @inheritParams base::sort
+sort.estimate <- function(x,
+                          decreasing = FALSE,
+                          by=c("labels", "values"),
+                          ...) {
+  val <- coef(x)
+  if(tolower(by[1]) == "labels") val <- names(val)
+  idx <- order(val, decreasing = decreasing, ...)
+  x[idx]
+}
+
+#' @export
+#' @rdname estimate-subset
+#' @inheritParams base::Extract
+`[.estimate` <- function(x, i, ...) {
   subset(x, i, ...)
 }
 
 #' @export
+#' @rdname estimate-subset
+#' @inheritParams base::with
 with.estimate <- function(data, expr, ...) {
     # Recursively walk the expression tree and replace symbols
   # that match names in `data` with data["symbol"] calls
@@ -470,11 +515,12 @@ sqrt.estimate <- function(x, ...) {
 }
 
 #' @export
-sum.estimate <- function(x, ...) {
+sum.estimate <- function(x, labels="sum", ...) {
   estimate(x,
            function(p)
              structure(sum(p),
                        grad = matrix(1, nrow = 1, ncol = length(p))),
+           labels = labels,
            ...)
 }
 
@@ -486,6 +532,24 @@ sum.estimate <- function(x, ...) {
     return(estimate(x, f=t(y), ...))
   }
   sum(x * y)
+}
+
+#' @export
+diff.estimate <- function(x, ...) {
+  estimate(
+    x = x,
+    f = function(p) {
+      grad <- matrix(0, nrow = length(p)-1, ncol = length(p))
+      colnames(grad) <- names(p)
+      for (i in seq_len(nrow(grad))) {
+        grad[i, i + c(0, 1)] <- c(-1, 1)
+      }
+      lbl <- contrast_names(grad)
+      res <- diff(p)
+      names(res) <- lbl
+      structure(res, grad = grad)
+    },
+    ...)
 }
 
 prod_except <- function(p) {
@@ -502,6 +566,212 @@ prod.estimate <- function(x, ...) {
     y <- prod(p)
     # grad of prod(p) is: d/dp_i = prod(p) / p_i
     structure(y, grad = matrix(prod_except(p), nrow = 1, ncol = length(p)))
+  }, ...)
+}
+
+# ---- Gamma function -----------------------------------------------------
+
+#' @export
+lgamma.estimate <- function(x, ...) {
+  estimate(x, function(p) {
+    y <- base::lgamma(p)
+    gr <- diag(base::digamma(p), nrow = length(p))
+    structure(y, grad = gr)
+  }, ...)
+}
+
+#' @export
+gamma.estimate <- function(x, ...) exp(lgamma(x))
+
+# ---- Normal distribution ------------------------------------------------
+
+# Construct an `estimate` object from an elementwise (vectorized) function of
+# several arguments, each of which may either be a plain numeric vector or an
+# `estimate` object.
+#
+# `args` list of arguments (numeric vectors and/or `estimate` objects)
+# `fun`  function of a list of numeric vectors (same length/order as `args`)
+#        returning a list with elements
+#          `y`    the value (numeric vector), and
+#          `grad` list of elementwise partial derivatives dy/darg (one element
+#                 per element of `args`; entries belonging to numeric
+#                 arguments are ignored and may be `NULL`).
+# `...`  passed on to [estimate.default]
+elementwise_estimate <- function(args, fun, ...) {
+  is_est <- vapply(args, inherits, logical(1L), "estimate")
+  lens <- vapply(seq_along(args), function(i) {
+    if (is_est[i]) length(coef(args[[i]], messages = 0)) else length(args[[i]])
+  }, numeric(1L))
+  n <- max(lens)
+  if (any(lens != 1L & lens != n)) {
+    stop("expecting equal length objects or one of them to be a scalar")
+  }
+  est_idx <- which(is_est)
+  if (length(est_idx) == 0L) { # no uncertainty, plain numeric evaluation
+    return(fun(args)$y)
+  }
+  npar <- lens[est_idx]
+  offset <- cumsum(c(0, npar))
+  # names of the resulting parameter vector (inherited from the first
+  # `estimate` argument of full length, cf. `sin.estimate` and friends)
+  nm <- NULL
+  for (i in est_idx) {
+    if (lens[i] == n) {
+      nm <- names(coef(args[[i]], messages = 0))
+      break
+    }
+  }
+  e <- if (length(est_idx) == 1L) {
+    args[[est_idx]]
+  } else {
+    do.call(merge, unname(args[est_idx]))
+  }
+  estimate(e, function(p) {
+    vals <- args
+    for (j in seq_along(est_idx)) {
+      vals[[est_idx[j]]] <- p[offset[j] + seq_len(npar[j])]
+    }
+    res <- fun(vals)
+    y <- rep_len(as.vector(res$y), n)
+    if (!is.null(nm)) names(y) <- nm
+    grad <- matrix(0, nrow = n, ncol = sum(npar))
+    for (j in seq_along(est_idx)) {
+      d <- rep_len(as.vector(res$grad[[est_idx[j]]]), n)
+      cols <- offset[j] + seq_len(npar[j])
+      grad[, cols] <- if (npar[j] == 1L) {
+        matrix(d, nrow = n, ncol = 1L)
+      } else {
+        diag(d, nrow = n, ncol = n)
+      }
+    }
+    structure(y, grad = grad)
+  }, ...)
+}
+
+#' Normal distribution
+#'
+#' Density (`normpdf`), distribution function (`normcdf`), and quantile function
+#' (`norminv`) of the normal distribution for objects of class `estimate` (see
+#' [estimate.default]) in which case the delta method is applied to obtain the
+#' influence function (and hence robust standard errors) of the transformed
+#' parameter.
+#'
+#' Any of the arguments `x`/`q`/`p`, `mean` and `sd` may be an `estimate`
+#' object. When more than one of them is an `estimate` object the objects are
+#' first merged (see [merge.estimate]) and the joint delta method is applied,
+#' correctly propagating the dependence between them.
+#'
+#' @param x,q vector of quantiles, or an `estimate` object
+#' @param p vector of probabilities, or an `estimate` object
+#' @param mean mean of the normal distribution (numeric or `estimate` object)
+#' @param sd standard deviation of the normal distribution (numeric or
+#'   `estimate` object)
+#' @param log,log.p if `TRUE` probabilities/densities are given as
+#'   \eqn{\log(p)}
+#' @param lower.tail if `TRUE` (default) probabilities are
+#'   \eqn{P(X\leq x)}, otherwise \eqn{P(X > x)}
+#' @param ... additional arguments to lower level functions (e.g., `labels`)
+#' @return A numeric vector (default method) or an object of class `estimate`.
+#' @seealso [estimate.default] [stats::dnorm]
+#' @author Klaus Kähler Holst
+#' @examples
+#' e <- estimate(coef = c(a = 1, b = 2), vcov = diag(2) * 0.1)
+#' normcdf(e)
+#' normpdf(e)
+#' norminv(normcdf(e)) # identity
+#'
+#' ## mean and sd may themselves be estimates
+#' mu <- estimate(coef = c(mu = 0.5), vcov = 0.01)
+#' normcdf(e, mean = mu, sd = 2)
+#' @aliases normcdf normpdf norminv
+#' @export
+normcdf <- function(q, mean = 0, sd = 1, ...) UseMethod("normcdf")
+
+#' @export
+#' @rdname normcdf
+normcdf.default <- function(q, mean = 0, sd = 1,
+                            lower.tail = TRUE, log.p = FALSE, ...) {
+  if (inherits(mean, "estimate") || inherits(sd, "estimate")) {
+    return(normcdf.estimate(q, mean = mean, sd = sd,
+                            lower.tail = lower.tail, log.p = log.p, ...))
+  }
+  stats::pnorm(q, mean = mean, sd = sd,
+               lower.tail = lower.tail, log.p = log.p)
+}
+
+#' @export
+normcdf.estimate <- function(q, mean = 0, sd = 1,
+                             lower.tail = TRUE, log.p = FALSE, ...) {
+  elementwise_estimate(list(q, mean, sd), function(v) {
+    z <- (v[[1]] - v[[2]]) / v[[3]]
+    y <- stats::pnorm(z, lower.tail = lower.tail, log.p = log.p)
+    sgn <- if (lower.tail) 1 else -1
+    # d/dq of the (log) tail probability
+    logdens <- stats::dnorm(z, log = TRUE) - log(v[[3]])
+    dq <- sgn * exp(if (log.p) logdens - y else logdens)
+    list(y = y, grad = list(dq, -dq, -z * dq))
+  }, ...)
+}
+
+#' @export
+#' @rdname normcdf
+normpdf <- function(x, mean = 0, sd = 1, ...) UseMethod("normpdf")
+
+#' @export
+#' @rdname normcdf
+normpdf.default <- function(x, mean = 0, sd = 1, log = FALSE, ...) {
+  if (inherits(mean, "estimate") || inherits(sd, "estimate")) {
+    return(normpdf.estimate(x, mean = mean, sd = sd, log = log, ...))
+  }
+  stats::dnorm(x, mean = mean, sd = sd, log = log)
+}
+
+#' @export
+normpdf.estimate <- function(x, mean = 0, sd = 1, log = FALSE, ...) {
+  elementwise_estimate(list(x, mean, sd), function(v) {
+    s <- v[[3]]
+    z <- (v[[1]] - v[[2]]) / s
+    if (log) {
+      y <- stats::dnorm(z, log = TRUE) - base::log(s)
+      dx <- -z / s
+      ds <- (z^2 - 1) / s
+    } else {
+      y <- stats::dnorm(z) / s
+      dx <- -z / s * y
+      ds <- (z^2 - 1) / s * y
+    }
+    list(y = y, grad = list(dx, -dx, ds))
+  }, ...)
+}
+
+#' @export
+#' @rdname normcdf
+norminv <- function(p, mean = 0, sd = 1, ...) UseMethod("norminv")
+
+#' @export
+#' @rdname normcdf
+norminv.default <- function(p, mean = 0, sd = 1,
+                            lower.tail = TRUE, log.p = FALSE, ...) {
+  if (inherits(mean, "estimate") || inherits(sd, "estimate")) {
+    return(norminv.estimate(p, mean = mean, sd = sd,
+                            lower.tail = lower.tail, log.p = log.p, ...))
+  }
+  stats::qnorm(p, mean = mean, sd = sd,
+               lower.tail = lower.tail, log.p = log.p)
+}
+
+#' @export
+norminv.estimate <- function(p, mean = 0, sd = 1,
+                             lower.tail = TRUE, log.p = FALSE, ...) {
+  elementwise_estimate(list(p, mean, sd), function(v) {
+    s <- v[[3]]
+    z <- stats::qnorm(v[[1]], lower.tail = lower.tail, log.p = log.p)
+    y <- v[[2]] + s * z
+    sgn <- if (lower.tail) 1 else -1
+    # dz/dp = 1/phi(z) on the probability scale, p/phi(z) on the log scale
+    logp <- if (log.p) v[[1]] else 0
+    dp <- sgn * s * exp(logp - stats::dnorm(z, log = TRUE))
+    list(y = y, grad = list(dp, 1, z))
   }, ...)
 }
 

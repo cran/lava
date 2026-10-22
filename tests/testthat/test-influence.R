@@ -1,4 +1,4 @@
-context("Influence functions")
+# Influence functions
 
 test_that("GEE", {
   if (requireNamespace("geepack",quietly=TRUE)) {
@@ -79,7 +79,7 @@ test_that("quasipossion", {
 
   # check that iid decomposition is correctly scaled
   ii <- iid(m1)
-  expect_equivalent(crossprod(ii), var_ic(i1))
+  expect_equal(crossprod(ii), var_ic(i1), ignore_attr = TRUE)
 })
 
 test_that("back.transform", {
@@ -87,8 +87,8 @@ test_that("back.transform", {
                  transform=exp)
   tmp2 <- summary(estimate(coef = 2, IC = c(0,1,-1), id = 1:3, f = exp),
                   transform=log)
-  expect_equivalent(coef(tmp), 1)
-  expect_equivalent(coef(tmp2), 2)
+  expect_equal(coef(tmp), 1, ignore_attr = TRUE)
+  expect_equal(coef(tmp2), 2, ignore_attr = TRUE)
 })
 
 test_that("IC.numeric", {
@@ -114,18 +114,40 @@ d <- data.frame(y=y,x=x)
 e <- estimate(l <- lm(y ~ x, data=d))
 
 test_that("influence", {
-  expect_equivalent(influence(e), IC(e))
+  expect_equal(influence(e), IC(e), ignore_attr = TRUE)
 })
 
 test_that("IC misc", {
-  ic0 <- IC(e)
-  id <- rep(1:10, length.out=nrow(d))
-  opt <- lava.options(cluster.index=FALSE)
-  ic1 <- IC(l, id=id)
-  lava.options(cluster.index=TRUE)
-  ic2 <- IC(l, id=id)
-  expect_equivalent(ic1, ic2)
+  ic0 <- IC(l)
+  cl <- paste0("c", rep(c(3, 1, 10, 2, 4:9), length.out = nrow(d)))
+  ic1 <- IC(l, id = cl)
+  # aggregation within clusters in first-appearance order
+  expect_equal(rownames(ic1), unique(cl))
+  expect_equal(ic1, rowsum(ic0, cl, reorder = FALSE) * 10 / nrow(d), ignore_attr = TRUE)
+  expect_equal(attr(ic1, "N"), nrow(d))
+  expect_equal(colnames(ic1), colnames(ic0))
+  expect_false(is.null(attr(ic1, "bread")))
+  expect_equal(var_ic(ic1), vcov(estimate(l, id = cl)), ignore_attr = TRUE)
+  # missing values in id
+  cl[1] <- NA
+  expect_error(IC(l, id = cl), "Missing values in 'id'")
 
-  ic <- IC(l, folds=10)
-  ## lava.options(opt)
+})
+
+test_that("IC.coxph", {
+  library("survival")
+
+  bladder1 <- bladder[bladder$enum < 5, ]
+  a1 <- coxph(formula = Surv(stop, event) ~ (rx + size + number) * strata(enum),
+             data=bladder1, robust=TRUE)
+  b1 <- estimate(a1)
+  a2 <- coxph(formula = Surv(stop, event) ~ (rx + size + number) * strata(enum),
+             data=bladder1)
+  b2 <- estimate(a2)
+
+  coxph_se <- summary(a1)$coefficients[, "robust se"]
+  estimate_se <- parameter(b1)[, 2]
+  estimate_se2 <- parameter(b2)[, 2]
+  expect_equal(coxph_se, estimate_se, ignore_attr=TRUE)
+  expect_equal(estimate_se2, estimate_se, ignore_attr=TRUE)
 })

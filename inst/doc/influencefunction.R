@@ -1,4 +1,4 @@
-## ----setup,include=FALSE------------------------------------------------------
+## ----setup, include=FALSE-----------------------------------------------------
 library("lava")
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -115,12 +115,39 @@ library("survival")
 data(pbc, package="survival")
 
 
+## ----phreg--------------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+fit.phreg <- mets::phreg(Surv(time, status > 0) ~ age + sex, data = pbc)
+fit.phreg
+IC(fit.phreg) |> head()
 
 
+## ----phreg-baseline-----------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+baseline <- function(object, time, ...) {
+  ic <- mets::IC(object, baseline = TRUE, time = time, ...)
+  est <- mets::predictCumhaz(object$cumhaz, new.time = time)[1, 2]
+  estimate(NULL, coef = est, IC = ic, labels = paste0("chaz:", time))
+}
+tt <- 2000
+baseline(fit.phreg, tt)
 
 
+## ----survreg------------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+survival::survreg(Surv(time, status > 0) ~ age + sex, data = pbc, dist="weibull") |>
+  estimate()
 
 
+## ----semfit-------------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+sem <- lvm(y1 + y2 ~ 1 * u + w) |>
+  latent(~ u) |>
+  ordinal(K=2, ~ y1 + y2)
+semfit <- estimate(sem, data = dw)
+
+## Robust standard errors
+estimate(semfit)
 
 
 ## ----quantiles----------------------------------------------------------------
@@ -174,30 +201,59 @@ merge(g1, g2, id = NULL) |> (Print %++% IC)()
 merge(g1, g2, id = NULL) |> vcov()
 
 
+## ----parameter-selection------------------------------------------------------
+est1 <- estimate(coef=c(1,3), vcov=diag(2), labels=c("ba","ab"))
+est2 <- estimate(coef=c(2,4), vcov=diag(2), labels=c("cb","da"))
+est <- c(est1, est2)
+est
+
+
+## ----parameter-indexing-------------------------------------------------------
+subset(est, 1:2)
+est[c("ba", "cb")]
+
+
+## ----parameter-head-tail------------------------------------------------------
+head(est) # First parameter
+tail(est) # Last parameter
+head(est, n = 2) # First two parameters
+tail(est, n = 2) # Last two parameters
+
+
 ## ----mergekeep----------------------------------------------------------------
-merge(g1, g2, keep = c("(Intercept)", "(Intercept).1"))
+merge(est1, est2, keep = c("a", "b"))
+merge(g1, g2, keep = c(1, 3))
 
 
-## ----merge2-------------------------------------------------------------------
-merge(g1, g2, keep=c(1, 3))
+## ----merge-regex--------------------------------------------------------------
+merge(est1, est2, keep = c("^a", "a$"),
+      regex = TRUE, ignore.case = TRUE)
+subset(est, "b", regex=TRUE)
 
 
-## ----merge3-------------------------------------------------------------------
-merge(g1, g2, keep = "cept", regex = TRUE)
-merge(g1, g2, keep = c("\\)$", "^a$"), regex = TRUE, ignore.case = TRUE)
+## ----parameter-ordering-------------------------------------------------------
+rev(est)
+sort(est, by = "values")
+sort(est, by = "labels")
 
 
-## ----merge4-------------------------------------------------------------------
-merge(g1, g2, labels = c("a", "b", "c")) |> estimate(keep = c("a", "c"))
-merge(g1, g2,
-      labels = c("a", "b", "c"),
-      keep = c("a", "c")
-)
-estimate(g1, labels=c("a", "b"))
+## ----parameter-ordering-pipe--------------------------------------------------
+est |>
+  sort(by = "values") |>
+  tail(n = 1) # Parameter with the largest estimated value
 
 
-## ----merge5-------------------------------------------------------------------
-merge(g1, g2, subset="(Intercept)")
+## ----parameter-labels---------------------------------------------------------
+est[1:2] |>
+  labels(c("intercept", "treatment"))
+
+
+## ----estimate-labels----------------------------------------------------------
+estimate(est1, labels = c("intercept", "treatment"))
+
+
+## -----------------------------------------------------------------------------
+c(a = est[1], b = est[2])
 
 
 ## ----cluster1-----------------------------------------------------------------
@@ -208,6 +264,10 @@ g0 <- glm(y ~ a + w + x, data = dl, family = binomial())
 estimate(g0, id=dl$id)
 
 
+## ----geepack------------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('geepack', 1)
+gee0 <- geepack::geeglm(y ~ a + w + x, data = dl, id = dl$id, family=binomial)
+summary(gee0)
 
 
 ## ----aggregate----------------------------------------------------------------
@@ -242,7 +302,7 @@ a * b
 (3 * cos(a) / sqrt(b) + 1) / a
 e <- c(a,b) # merge
 c(sum=sum(e), sum2=a+b,
-  prod=prod(e), prod2=a*b) # sum and prod function 
+  prod=prod(e), prod2=a*b) # sum and prod function
 e %*% e # inner prod.
 c(1, 2) %*% e
 c(pow = a^b) # power-function, rename parameter
@@ -334,7 +394,7 @@ estimate(gg, B)
 
 
 ## -----------------------------------------------------------------------------
-estimate(gg, a + a.1, 2*a - a.2, a) |> summary(null=c(2,1,1))
+estimate(gg, a + a.1, 2*a - a.2, a) |> summary(null = c(2, 1, 1))
 
 
 ## ----contr--------------------------------------------------------------------
@@ -346,22 +406,39 @@ pairwise_diff(3)
 summary(estimate(gg, pairwise_diff(3), use=c(2,4,6)), null=c(1,1,1))
 
 
+## ----pairwise_diff2-----------------------------------------------------------
+pairwise_diff(gg[c(2,4,6)]) == 1
 
 
+## ----pcorrect-----------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+gg0 <- estimate(gg, keep="^a", regex=TRUE)
+alpha_zmax(gg0, null=rep(.8, 3))
+
+
+## ----closedtesting------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+summary(closed_testing(gg0, test = test_wald, null=rep(.8, 3)))
 
 
 ## ----estpred------------------------------------------------------------------
 g <- glm(y1 ~ a + x1 + w, data=dw, family=binomial)
-pr <- function(p, data, ...)
+pr <- function(p, data, ...) {
   with(data, expit(p[1] + p["a"] + p["x1"]*x1 + p["w"]*w))
+}
 pr(coef(g), dw) |> head()
 
 
 ## ----average------------------------------------------------------------------
-id <- foldr(NROW(dw), 100, list=FALSE)
-ea <- estimate(g, pr, average=TRUE, id=id)
+ea <- expectation(pr, object = g)
 ea
 IC(ea) |> head()
+
+
+## ----expectation--------------------------------------------------------------
+e <- estimate(g, id=dw$id)
+expectation(predict, object = e, data = transform(dw, a=1),
+            id = "id", labels = "trt=1")
 
 
 ## ----ate-nuisancemodels-------------------------------------------------------

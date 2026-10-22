@@ -55,7 +55,7 @@ e2
 
 ## ----spline_ci----------------------------------------------------------------
 p <- cbind(u1=newd$u1,
-  estimate(e2,f=function(p)                    predict(e2,p=p,newdata=newd))$coefmat)
+  estimate(e2,f=function(p) predict(e2,p=p,newdata=newd))$coefmat)
 head(p)
 
 
@@ -76,6 +76,16 @@ m2c <- nonlinear(m2, type="spline", knots=kn1, u2~u1)
 m2d <- nonlinear(m2, type="spline", knots=kn2, u2~u1)
 
 
+## ----cv_fit-------------------------------------------------------------------
+#| eval: !expr Sys.getenv('_R_FULL_VIGNETTE_') %in% c('1', 'TRUE')
+# ## Scale models in stage 2 to allow for a fair RMSE comparison
+# d0 <- d
+# for (i in endogenous(m2))
+#     d0[,i] <- scale(d0[,i],center=TRUE,scale=TRUE)
+# ## Repeated 5-fold cross-validation:
+# ff <- lapply(list(linear=m2a,quadratic=m2b,spline4=m2c,spline6=m2d),
+# 	    function(m) function(data,...) twostage(m1,m,data=data,stderr=FALSE,control=list(start=coef(e0),contrain=TRUE)))
+# fit.cv <- lava:::cv(ff,data=d,K=5,rep=2,mc.cores=parallel::detectCores(),seed=1)
 
 
 ## ----results="hide", echo=FALSE-----------------------------------------------
@@ -112,6 +122,11 @@ legend("bottomright",
       col=col, lty=lty, lwd=3)
 
 
+## ----twostageCV---------------------------------------------------------------
+#| eval: !expr Sys.getenv('_R_FULL_VIGNETTE_') %in% c('1', 'TRUE')
+# set.seed(1)
+# selmod <- twostageCV(m1, m2, data=d, df=2:4, nmix=1:2,
+# 	    nfolds=5, rep=2, mc.cores=parallel::detectCores())
 
 
 ## ----results="hide", echo=FALSE-----------------------------------------------
@@ -149,16 +164,20 @@ intercept(m1, ~x1+u1) <- list(0,NA) ## Set intercept of x1 to zero. Remove the l
 regression(m1,x1~u1) <- 1 ## Factor loading fixed to 1
 
 
+## ----mixture1, cache=TRUE-----------------------------------------------------
+#| eval: !expr Sys.getenv('_R_FULL_VIGNETTE_') %in% c('1', 'TRUE')
+# set.seed(1)
+# em0 <- mixture(m1, k=2, data=d)
 
 
 ## ----estmixture, cache=TRUE,warnings=FALSE,messages=FALSE,eval=FALSE----------
 # em0 <- NULL
 # ll <- c()
 # for (i in 1:5) {
-#     set.seed(i)
-#     em <- mixture(m1, k=2, data=d, control=list(trace=0))
-#     ll <- c(ll,logLik(em))
-#     if (is.null(em0) || logLik(em0)<tail(ll,1))
+#   set.seed(i)
+#   em <- mixture(m1, k=2, data=d, control=list(trace=0))
+#   ll <- c(ll,logLik(em))
+#   if (is.null(em0) || logLik(em0)<tail(ll,1))
 # 	em0 <- em
 # }
 
@@ -176,10 +195,34 @@ if (fullVignette) {
 summary(em0)
 
 
+## ----estimatem1---------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+e0 <- estimate(m1,data=d)
+AIC(e0,em0)
 
 
+## ----twostageem2--------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+em2 <- twostage(em0,m2,data=d)
+em2
 
 
+## ----mixturefit---------------------------------------------------------------
+#| eval: !expr lava:::versioncheck('mets', 1)
+plot(I(u2-z) ~ u1, data=d, col=Col("black",0.5), pch=16,
+     xlab=expression(eta[1]), ylab=expression(eta[2]))
+
+lines(Estimate ~ u1, data=as.data.frame(p), col="darkblue", lwd=5)
+confband(p[,1], lower=p[,4], upper=p[,5], polygon=TRUE,
+	 border=NA, col=Col("darkblue",0.2))
+
+pm <- cbind(u1=newd$u1,
+	    estimate(em2, f=function(p) predict(e2,p=p,newdata=newd))$coefmat)
+lines(Estimate ~ u1, data=as.data.frame(pm), col="darkred", lwd=5)
+confband(pm[,1], lower=pm[,4], upper=pm[,5], polygon=TRUE,
+	 border=NA, col=Col("darkred",0.2))
+legend("bottomright", c("Gaussian","Mixture"),
+       col=c("darkblue","darkred"), lwd=2, bty="n")
 
 
 ## -----------------------------------------------------------------------------

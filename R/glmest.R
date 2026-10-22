@@ -221,9 +221,10 @@ predict_glm <- function(object, p=coef(object), data, offset = NULL,
   if (missing(data)) {
     X <- stats::model.matrix.lm(x)
   } else {
-    X <- stats::model.matrix.lm(formula(x),
-                         data = data,
-                         na.action = na.pass)
+    ff <- formula(stats::delete.response(terms(formula(x))))
+    X <- stats::model.matrix.lm(ff,
+                                data = data,
+                                na.action = na.pass)
   }
 
   ## Setting NA parameters to zero
@@ -393,7 +394,7 @@ IC.glm <- function(x,...) {
   IC.default(x,...)
 }
 
-hessian.glm <- function(x, p=coef(x), ...) {
+hessian_glm <- function(x, p=coef(x), ...) {
   pna <- any(is.na(p))
   idx <- is.na(p)
   if(pna) {
@@ -408,7 +409,7 @@ hessian.glm <- function(x, p=coef(x), ...) {
 }
 
 ##' @export
-information.glm <- function(x, ...) -hessian.glm(x, ...)
+information.glm <- function(x, ...) -hessian_glm(x, ...)
 
 glm_logLik.lvm <- function(object, ...) {
   attr(GLMscore(object, ...), "logLik")
