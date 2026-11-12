@@ -4,7 +4,17 @@
 \alias{expectation}
 \title{Mean of (estimated) function via g-computation}
 \usage{
-expectation(f, object, data, id, subset, labels = NULL, ...)
+expectation(
+  f,
+  object,
+  data,
+  ...,
+  id,
+  subset,
+  labels = NULL,
+  details = FALSE,
+  args = list()
+)
 }
 \arguments{
 \item{f}{function with named argument \code{p} providing the parameter vector and
@@ -22,6 +32,8 @@ can be provided to calculate the simple mean (see examples).}
 \item{data}{\code{data.frame} over which \code{f} is averaged. Defaults to
 \code{model.frame(object)} (which is not available for \code{estimate} objects).}
 
+\item{...}{additional arguments passed to \code{f}}
+
 \item{id}{(optional) ids of the values returned by \code{f} (the g-computation
 part): a vector with one value per value of \code{f}, or a column name or
 one-sided formula evaluated in \code{data} (requiring one value of \code{f} per row
@@ -32,17 +44,23 @@ of \code{data}). Defaults to the names of the values of \code{f}, and otherwise
 \item{subset}{(optional) subpopulation on which the average is conditioned
 (conditional marginal mean estimate). Either a logical vector (or numeric
 0/1 vector) with one value per value of \code{f}, a column name of \code{data}, or a
-one-sided formula evaluated in \code{data} (e.g., \code{~ a == 1 & z > 0}). Note
-that \code{subset} uses standard evaluation, i.e., \code{subset = a == 1} is
-evaluated in the calling environment and not in \code{data}. As for model
-formulas (see \link[stats:model.frame]{stats::model.frame}), the variables of a formula \code{subset}
-are looked up in the columns of \code{data} and then in the environment where
-the formula was created (not the environment from which \code{expectation} is
-called).}
+one-sided formula evaluated in \code{data} (e.g., \code{~ a == 1 & z > 0}). Note that
+\code{subset} uses standard evaluation, i.e., \code{subset = a == 1} is evaluated in
+the calling environment and not in \code{data}. As for model formulas (see
+\link[stats:model.frame]{stats::model.frame}), the variables of a formula \code{subset} are looked up in
+the columns of \code{data} and then in the environment where the formula was
+created (not the environment from which \code{expectation} is called).}
 
 \item{labels}{(optional) character vector of parameter names}
 
-\item{...}{additional arguments passed to \code{f}}
+\item{details}{(optional) if TRUE extra information from the estimation
+procedure will be stored in the output as attributes: \code{ic.theta} contains
+the term \eqn{E[Df(theta) s]IC(theta)} where \eqn{Df} is gradient of \code{f}
+evaluted in the data and parameter estimate of \code{object} and \code{s} is the
+subset indicator. \eqn{IC(theta)} is the influence function of
+\code{object}. The \code{subset} attribute holds the subset indicator if provided.}
+
+\item{args}{(list) arguments to \code{f}}
 }
 \value{
 \code{estimate} object

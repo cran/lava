@@ -7,8 +7,6 @@ knitr::opts_chunk$set(
   dev = "svg",
   fig.ext = "svg"
   )
-has_mets <- lava:::versioncheck('mets', 1)
-has_geepack <- lava:::versioncheck('geepack', 1)
 
 
 ## ----estimate.syntax, eval=FALSE----------------------------------------------
@@ -19,7 +17,7 @@ has_geepack <- lava:::versioncheck('geepack', 1)
 
 ## ----estimate.examples, eval=FALSE--------------------------------------------
 # merge(subset(estimate(x), 1), estimate(coef=p, IC=ic, id=id)) |>
-#   transform(function(x) c(exp(x), exp(x[1]))) |> # parameter transformation
+#   transform(function(x) c(exp(x[1]), x[2]^2)) |> # parameter transformation
 #   labels(c("a", "b")) # rename parameters
 
 
@@ -79,7 +77,7 @@ IC(e) |> head()
 summary(e)
 ## extract parameter coefficients
 coef(e)
-## ## Asymptotic (robust) variance estimate
+## Asymptotic (robust) variance estimate
 vcov(e)
 ## Matrix with estimates and confidence limits
 summary(e, level = 0.99) |> parameter()
@@ -221,7 +219,7 @@ tail(est, n = 2) # Last two parameters
 
 
 ## ----mergekeep----------------------------------------------------------------
-merge(est1, est2, keep = c("a", "b"))
+merge(est1, est2, keep = c("ab", "cb"))
 merge(g1, g2, keep = c(1, 3))
 
 
@@ -337,11 +335,11 @@ with(e, c(est = e1*e2))
 ## ----cov----------------------------------------------------------------------
 Cov <- function(x, y, ...) {
   est <- mean(x * y)-mean(x)*mean(y)
-    estimate(
-      coef = est,
-      IC = (x - mean(x)) * (y - mean(y)) - est,
-      ...
-    )
+  estimate(
+    coef = est,
+    IC = (x - mean(x)) * (y - mean(y)) - est,
+    ...
+  )
 }
 with(dw, Cov(x1, x2))
 
@@ -352,7 +350,7 @@ est <- lm(cbind(x1, x2, x1 * x2) ~ 1, data = dw) |>
 est
 
 est["E12"] - est["E2"]*est["E1"]
-# transform(e1, function(x) c(x, cov=with(as.list(x), E12 - E2* E1))) # Same result
+# transform(est, function(x) c(x, cov=with(as.list(x), E12 - E2* E1))) # Same result
 
 
 ## ----rho----------------------------------------------------------------------
@@ -371,7 +369,7 @@ estimate(atanh(rho)) |>
 
 ## ----estglmmerge--------------------------------------------------------------
 g <- lapply(
-  list(y1 ~ a, y2 ~ a, y3 ~ a), #, y4 ~ a+x4),
+  list(y1 ~ a, y2 ~ a, y3 ~ a),
   function(f) glm(f, family = binomial, data = dw)
 )
 gg <- Reduce(merge, g)
@@ -467,13 +465,9 @@ estimate(potential_outcomes, cbind(-1, 1), labels="ate")
 
 
 ## ----est-ate-or---------------------------------------------------------------
-est <- with(potential_outcomes, logit(`y(1)`)-logit(`y(0)`))
+est <- with(potential_outcomes, c(logOR=logit(`y(1)`)-logit(`y(0)`)))
 est
-transform(est, labels="OR") |>
-  summary(transform = exp)
-#logor <- function(p) logit(p[2]) - logit(p[1])
-#transform(potential_outcomes, logor, labels="logOR")
-#transform(potential_outcomes, logor, labels="OR") |> summary(transform = exp)
+summary(est, transform = exp, labels="OR")
 
 
 ## ----est-cate-----------------------------------------------------------------
@@ -481,11 +475,11 @@ transform(est, labels="OR") |>
 # amod <- targeted::learner_glm(a ~ w, family=binomial)
 # qmod <- targeted::learner_glm(y1 ~ a * w, family=binomial)
 # est <- targeted::cate(qmod, amod, data=dw, second.order = FALSE)
-# #>             Estimate Std.Err    2.5%  97.5%   P-value
-# #> E[y1(1)]      0.7050 0.03721 0.63207 0.7779 4.934e-80
-# #> E[y1(0)]      0.5359 0.03535 0.46666 0.6052 6.290e-52
+# #>             Estimate Std.Err   2.5%  97.5%    P-value
+# #> E[y1(1)]      0.6702 0.02454 0.6221 0.7183 3.657e-164
+# #> E[y1(0)]      0.4693 0.02355 0.4232 0.5155  2.187e-88
 # #> ───────────
-# #> (Intercept)   0.1691 0.04996 0.07115 0.2670 7.138e-04
+# #> (Intercept)   0.2008 0.03330 0.1356 0.2661  1.637e-09
 
 
 ## ----sessionInfo--------------------------------------------------------------
